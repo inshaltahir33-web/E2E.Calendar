@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using E2E.Calendar.Core;
+using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 
@@ -7,8 +8,8 @@ namespace E2E.Calendar.App.ViewModels;
 
 public sealed class MonthViewModel : CalendarPageViewModel
 {
-    public MonthViewModel(CalendarStateViewModel state, EventQueryService query)
-        : base(state, query)
+    public MonthViewModel(CalendarStateViewModel state, EventQueryService query, IEventQueryCache cache)
+        : base(state, query, cache)
     {
     }
 

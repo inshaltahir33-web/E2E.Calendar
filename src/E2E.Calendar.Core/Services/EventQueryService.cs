@@ -49,7 +49,13 @@ public sealed class EventQueryService : IEventQueryCache
             .ToList();
     }
 
-    public void Invalidate() => _cache.Clear();
+    public event EventHandler? Invalidated;
+
+    public void Invalidate()
+    {
+        _cache.Clear();
+        Invalidated?.Invoke(this, EventArgs.Empty);
+    }
 
     private async Task<QueryResult> QueryAsync(
         DateTimeOffset fromUtc,

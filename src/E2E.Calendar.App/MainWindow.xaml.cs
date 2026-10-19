@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
     private readonly EventService _events;
     private readonly IClock _clock;
     private readonly ILogger<MainWindow> _logger;
+    private readonly EventEditorViewModel _editor;
 
     private bool _lastAutoCollapsed;
 
@@ -36,7 +37,8 @@ public sealed partial class MainWindow : Window
         CalendarService calendars,
         EventService events,
         IClock clock,
-        ILogger<MainWindow> logger)
+        ILogger<MainWindow> logger,
+        EventEditorViewModel editor)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -45,6 +47,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(editor);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -53,6 +56,7 @@ public sealed partial class MainWindow : Window
         _events = events;
         _clock = clock;
         _logger = logger;
+        _editor = editor;
 
         this.InitializeComponent();
 
@@ -60,6 +64,15 @@ public sealed partial class MainWindow : Window
         _navigation.Navigated += OnNavigated;
 
         StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
+
+        EditorHost.Children.Add(new Views.EventEditorView(editor));
+
+        editor.Opened += OnEditorOpened;
+        editor.CloseRequested += OnEditorCloseRequested;
+        editor.SaveRequested += OnEditorSaveRequested;
+        editor.DeleteRequested += OnEditorDeleteRequested;
+
+        Snackbar.ActionInvoked += OnSnackbarAction;
 
         this.ExtendsContentIntoTitleBar = true;
         this.SetTitleBar(TitleBarElement);
@@ -231,8 +244,73 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnNavigated(object? sender, string key)
+    private void OnEditorOpened(object? sender, EventArgs e)
     {
+        EditorHost.Visibility = Visibility.Visible;
+    }
+
+    private void OnEditorCloseRequested(object? sender, EventArgs e)
+    {
+        EditorHost.Visibility = Visibility.Collapsed;
+    }
+
+    private async void OnEditorSaveRequested(object? sender, EventArgs e)
+    {
+        Core.Services.RecurrenceEditScope? scope = null;
+
+        if (_editor.IsRecurring)
+        {
+            scope = await Views.RecurrenceEditDialog.ShowAsync(RootGrid.XamlRoot);
+
+            if (scope is null)
+            {
+                return;
+            }
+        }
+
+        if (await _editor.SaveAsync(scope))
+        {
+            EditorHost.Visibility = Visibility.Collapsed;
+            ViewModel.Status = "Event saved";
+        }
+    }
+
+    private async void OnEditorDeleteRequested(object? sender, EventArgs e)
+    {
+        await _editor.DeleteAsync();
+
+        ViewModel.RecordDeletion(_editor.EventId);
+        EditorHost.Visibility = Visibility.Collapsed;
+        ViewModel.Status = "Event deleted";
+
+        Snackbar.Show("Event deleted", "Undo");
+    }
+
+    private async void OnSnackbarAction(object? sender, EventArgs e)
+    {
+        await UndoLastDeleteAsync();
+    }
+
+    private async Task UndoLastDeleteAsync()
+    {
+        if (!ViewModel.CanUndoLastDelete)
+        {
+            return;
+        }
+
+        try
+        {
+            await _events.UndoDeleteAsync(ViewModel.LastDeletedEventId);
+            ViewModel.RecordDeletion(string.Empty);
+            ViewModel.Status = "Event restored";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+        {
+            ViewModel.Status = "Nothing to undo";
+        }
+    }
+
+    private void OnNavigated(object? sender, string key)    {
         var hasView = _navigation.RegisteredViews.Contains(key);
 
         _logger.LogInformation("Navigated to {ViewKey} (implemented: {IsImplemented})", key, hasView);
@@ -391,21 +469,7 @@ public sealed partial class MainWindow : Window
     {
         args.Handled = true;
 
-        if (!ViewModel.CanUndoLastDelete)
-        {
-            return;
-        }
-
-        try
-        {
-            await _events.UndoDeleteAsync(ViewModel.LastDeletedEventId);
-            ViewModel.RecordDeletion(string.Empty);
-            ViewModel.Status = "Undone";
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
-        {
-            ViewModel.Status = "Nothing to undo";
-        }
+        await UndoLastDeleteAsync();
     }
 
     private void OnPreviousAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)

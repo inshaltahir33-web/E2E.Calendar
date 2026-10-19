@@ -28,11 +28,15 @@ public sealed class NavigationRegistrationService : IHostedService
 
         _navigation.RegisterFactory(
             NavigationKeys.Week,
-            _ => new WeekView(_services.GetRequiredService<WeekViewModel>()));
+            _ => new WeekView(
+                _services.GetRequiredService<WeekViewModel>(),
+                _services.GetRequiredService<EventEditorViewModel>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Day,
-            _ => new DayView(_services.GetRequiredService<DayViewModel>()));
+            _ => new DayView(
+                _services.GetRequiredService<DayViewModel>(),
+                _services.GetRequiredService<EventEditorViewModel>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Agenda,

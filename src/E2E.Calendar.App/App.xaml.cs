@@ -75,6 +75,9 @@ public partial class App : Application
 
                 services.AddSingleton<CalendarService>();
                 services.AddSingleton<AgendaService>();
+                services.AddSingleton<RecurrenceEditService>();
+                services.AddSingleton<EventTemplateService>();
+                services.AddSingleton<IEntitlementService, FreeEntitlementService>();
                 services.AddSingleton<CalendarStateViewModel>();
                 services.AddSingleton<NavigationService>();
                 services.AddSingleton<MainWindowViewModel>();
@@ -82,6 +85,7 @@ public partial class App : Application
                 services.AddSingleton<WeekViewModel>();
                 services.AddSingleton<DayViewModel>();
                 services.AddSingleton<AgendaViewModel>();
+                services.AddSingleton<EventEditorViewModel>();
                 services.AddSingleton<MainWindow>();
 
                 services.AddHostedService<AppStartupService>();

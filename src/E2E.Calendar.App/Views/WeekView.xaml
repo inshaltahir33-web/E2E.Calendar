@@ -25,9 +25,7 @@
             x:Name="TimeGrid"
             Grid.Row="1"
             Days="{x:Bind ViewModel.Days, Mode=OneWay}"
-            Items="{x:Bind ViewModel.Items, Mode=OneWay}"
-            ItemActivated="OnItemActivated"
-            SlotCreated="OnSlotCreated" />
+            Items="{x:Bind ViewModel.Items, Mode=OneWay}" />
 
     </Grid>
 

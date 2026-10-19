@@ -7,11 +7,16 @@ namespace E2E.Calendar.App.Views;
 
 public partial class DayView : Page
 {
-    public DayView(DayViewModel viewModel)
+    private readonly EventEditorViewModel _editor;
+
+    public DayView(DayViewModel viewModel, EventEditorViewModel editor)
     {
         ViewModel = viewModel;
+        _editor = editor;
 
         InitializeComponent();
+
+        TimeGridInteractions.Wire(TimeGrid, _editor, ViewModel.RefreshAsync);
     }
 
     public DayViewModel ViewModel { get; }
@@ -19,15 +24,5 @@ public partial class DayView : Page
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await ViewModel.RefreshAsync();
-    }
-
-    private void OnItemActivated(object sender, TimeGridItemEventArgs args)
-    {
-        System.Diagnostics.Debug.WriteLine($"Activated {args.Item.Id}");
-    }
-
-    private void OnSlotCreated(object sender, TimeGridSlotEventArgs args)
-    {
-        System.Diagnostics.Debug.WriteLine($"Slot {args.StartUtc:u} - {args.EndUtc:u}");
     }
 }

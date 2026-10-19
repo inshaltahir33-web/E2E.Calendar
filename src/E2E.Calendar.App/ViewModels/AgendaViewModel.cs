@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 
@@ -8,8 +9,8 @@ public sealed class AgendaViewModel : CalendarPageViewModel
 {
     private readonly AgendaService _agenda;
 
-    public AgendaViewModel(CalendarStateViewModel state, EventQueryService query, AgendaService agenda)
-        : base(state, query)
+    public AgendaViewModel(CalendarStateViewModel state, EventQueryService query, IEventQueryCache cache, AgendaService agenda)
+        : base(state, query, cache)
     {
         _agenda = agenda;
     }
