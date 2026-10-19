@@ -1,21 +1,407 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
+using System.Collections.ObjectModel;
+using E2E.Calendar.App.Services;
+using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
+using E2E.Calendar.Core;
+using E2E.Calendar.Core.Abstractions;
+using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace E2E.Calendar.App;
 
 public sealed partial class MainWindow : Window
 {
-    public MainWindow(MainWindowViewModel viewModel)
+    private const double SidebarExpandedWidth = 280;
+    private const double SidebarCollapsedWidth = 52;
+    private const double CompactWidthThreshold = 900;
+
+    private readonly NavigationService _navigation;
+    private readonly CalendarService _calendars;
+    private readonly EventService _events;
+    private readonly IClock _clock;
+
+    private bool _lastAutoCollapsed;
+
+    public MainWindow(
+        MainWindowViewModel viewModel,
+        CalendarStateViewModel stateViewModel,
+        NavigationService navigation,
+        CalendarService calendars,
+        EventService events,
+        IClock clock)
     {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(stateViewModel);
+        ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(calendars);
+        ArgumentNullException.ThrowIfNull(events);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        ViewModel = viewModel;
+        StateViewModel = stateViewModel;
+        _navigation = navigation;
+        _calendars = calendars;
+        _events = events;
+        _clock = clock;
+
         this.InitializeComponent();
-        this.ViewModel = viewModel;
+
+        _navigation.Frame = ContentFrame;
+        _navigation.Navigated += OnNavigated;
+
+        this.ExtendsContentIntoTitleBar = true;
+        this.SetTitleBar(TitleBarElement);
 
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
         {
             this.SystemBackdrop = new MicaBackdrop();
         }
+
+        this.SizeChanged += OnWindowSizeChanged;
+        RootGrid.Loaded += OnLoaded;
     }
 
     public MainWindowViewModel ViewModel { get; }
+
+    public CalendarStateViewModel StateViewModel { get; }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await RefreshCalendarsAsync();
+        _navigation.NavigateTo(NavigationKeys.Week);
+    }
+
+    private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
+    {
+        var collapsed = args.Size.Width < CompactWidthThreshold;
+
+        if (collapsed != _lastAutoCollapsed)
+        {
+            _lastAutoCollapsed = collapsed;
+            ApplySidebarCollapsed(collapsed);
+        }
+    }
+
+    private void OnPaneToggleClick(object sender, RoutedEventArgs e)
+    {
+        ApplySidebarCollapsed(!ViewModel.IsSidebarCollapsed);
+    }
+
+    private void ApplySidebarCollapsed(bool collapsed)
+    {
+        ViewModel.IsSidebarCollapsed = collapsed;
+
+        SidebarHost.Width = collapsed ? SidebarCollapsedWidth : SidebarExpandedWidth;
+        SidebarScroll.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnTodayClick(object sender, RoutedEventArgs e) => StateViewModel.GoToTodayCommand.Execute(null);
+
+    private void OnPreviousClick(object sender, RoutedEventArgs e) => StateViewModel.GoPreviousCommand.Execute(null);
+
+    private void OnNextClick(object sender, RoutedEventArgs e) => StateViewModel.GoNextCommand.Execute(null);
+
+    private void OnViewSwitcherSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (sender.SelectedItem is not SelectorBarItem item || item.Tag is not string tag)
+        {
+            return;
+        }
+
+        if (Enum.TryParse<CalendarViewMode>(tag, out var mode))
+        {
+            StateViewModel.SetViewModeCommand.Execute(mode);
+        }
+    }
+
+    private void OnMiniCalendarSelectedDatesChanged(CalendarView sender, CalendarViewSelectedDatesChangedEventArgs args)
+    {
+        if (args.AddedDates.Count == 0)
+        {
+            return;
+        }
+
+        var selected = args.AddedDates[0];
+        var localDate = DateOnly.FromDateTime(selected.Date);
+        var localStart = localDate.ToDateTime(TimeOnly.MinValue);
+
+        StateViewModel.CurrentDate = _clock.LocalTimeZone.ToUtc(localStart);
+    }
+
+    private void OnNewSplitButtonClick(SplitButton sender, SplitButtonClickEventArgs args) =>
+        _navigation.NavigateTo(NavigationKeys.NewEvent);
+
+    private void OnNewClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
+
+    private void OnNewEventClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
+
+    private void OnNewReminderClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewReminder);
+
+    private void OnNewTaskClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewTask);
+
+    private void OnDayViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Day, NavigationKeys.Day);
+
+    private void OnWeekViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Week, NavigationKeys.Week);
+
+    private void OnMonthViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Month, NavigationKeys.Month);
+
+    private void OnAgendaViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Agenda, NavigationKeys.Agenda);
+
+    private void OnTasksClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Tasks);
+
+    private void OnSettingsClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Settings);
+
+    private void OnPremiumClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Premium);
+
+    private void ShowView(CalendarViewMode mode, string key)
+    {
+        StateViewModel.SetViewModeCommand.Execute(mode);
+        SelectViewInSwitcher(mode);
+        _navigation.NavigateTo(key);
+    }
+
+    private void SelectViewInSwitcher(CalendarViewMode mode)
+    {
+        if (ViewSwitcher.Items
+            .OfType<SelectorBarItem>()
+            .FirstOrDefault(item => Equals(item.Tag, mode.ToString())) is { } target)
+        {
+            ViewSwitcher.SelectedItem = target;
+        }
+    }
+
+    private async void OnSyncClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SyncStatus = "Syncing…";
+
+        await RefreshCalendarsAsync();
+
+        ViewModel.SyncStatus = $"Synced just now · {_calendarProviderSummary()}";
+    }
+
+    private string _calendarProviderSummary() =>
+        ViewModel.Calendars.Count == 0 ? "No calendars" : "Local";
+
+    private async Task RefreshCalendarsAsync()
+    {
+        var calendars = await _calendars.GetAllAsync();
+
+        var items = new ObservableCollection<CalendarListItem>(calendars.Select(calendar => new CalendarListItem
+        {
+            Id = calendar.Id,
+            Name = calendar.Name,
+            Color = calendar.Color ?? CalendarPalette.Other,
+            ColorBrush = ColorHelper.FromHex(calendar.Color),
+            IsVisible = calendar.Visible,
+        }));
+
+        ViewModel.Calendars.Clear();
+
+        foreach (var item in items)
+        {
+            ViewModel.Calendars.Add(item);
+        }
+    }
+
+    private void OnNavigated(object? sender, string key)
+    {
+        var hasView = _navigation.RegisteredViews.Contains(key);
+
+        ViewModel.Status = hasView ? key : $"{key} is not available yet";
+        ViewPlaceholder.Visibility = hasView ? Visibility.Collapsed : Visibility.Visible;
+        ContentFrame.Visibility = hasView ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnNewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        _navigation.NavigateTo(NavigationKeys.NewEvent);
+    }
+
+    private void OnNewReminderAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        _navigation.NavigateTo(NavigationKeys.NewReminder);
+    }
+
+    private void OnTodayAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        StateViewModel.GoToTodayCommand.Execute(null);
+    }
+
+    private void OnDayViewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        ShowView(CalendarViewMode.Day, NavigationKeys.Day);
+    }
+
+    private void OnWeekViewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        ShowView(CalendarViewMode.Week, NavigationKeys.Week);
+    }
+
+    private void OnMonthViewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        ShowView(CalendarViewMode.Month, NavigationKeys.Month);
+    }
+
+    private void OnAgendaViewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        ShowView(CalendarViewMode.Agenda, NavigationKeys.Agenda);
+    }
+
+    private void OnFindAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        SearchBox.Focus(FocusState.Programmatic);
+    }
+
+    private async void OnCommandPaletteAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await ShowCommandPaletteAsync();
+    }
+
+    private async Task ShowCommandPaletteAsync()
+    {
+        var commands = new List<PaletteCommand>
+        {
+            new("New event", () => _navigation.NavigateTo(NavigationKeys.NewEvent)),
+            new("New reminder", () => _navigation.NavigateTo(NavigationKeys.NewReminder)),
+            new("Go to today", () => StateViewModel.GoToTodayCommand.Execute(null)),
+            new("Day view", () => ShowView(CalendarViewMode.Day, NavigationKeys.Day)),
+            new("Week view", () => ShowView(CalendarViewMode.Week, NavigationKeys.Week)),
+            new("Month view", () => ShowView(CalendarViewMode.Month, NavigationKeys.Month)),
+            new("Agenda view", () => ShowView(CalendarViewMode.Agenda, NavigationKeys.Agenda)),
+            new("Settings", () => _navigation.NavigateTo(NavigationKeys.Settings)),
+        };
+
+        var list = new ListView
+        {
+            ItemsSource = commands,
+            SelectionMode = ListViewSelectionMode.Single,
+        };
+
+        AutomationProperties.SetName(list, "Command palette");
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = RootGrid.XamlRoot,
+            Title = "Command palette",
+            CloseButtonText = "Close",
+            Content = list,
+        };
+
+        var result = await dialog.ShowAsync();
+
+        if (result == ContentDialogResult.None && list.SelectedItem is PaletteCommand command)
+        {
+            command.Execute();
+        }
+    }
+
+    private async void OnUndoAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+
+        if (!ViewModel.CanUndoLastDelete)
+        {
+            return;
+        }
+
+        try
+        {
+            await _events.UndoDeleteAsync(ViewModel.LastDeletedEventId);
+            ViewModel.RecordDeletion(string.Empty);
+            ViewModel.Status = "Undone";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+        {
+            ViewModel.Status = "Nothing to undo";
+        }
+    }
+
+    private void OnPreviousAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        StateViewModel.GoPreviousCommand.Execute(null);
+    }
+
+    private void OnNextAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
+        args.Handled = true;
+        StateViewModel.GoNextCommand.Execute(null);
+    }
+
+    private bool IsTextInputActive()
+    {
+        var xamlRoot = RootGrid.XamlRoot;
+
+        if (xamlRoot is null)
+        {
+            return false;
+        }
+
+        return FocusManager.GetFocusedElement(xamlRoot) is TextBox or PasswordBox or RichEditBox;
+    }
+
+    private sealed record PaletteCommand(string Label, Action Execute)
+    {
+        public override string ToString() => Label;
+    }
 }

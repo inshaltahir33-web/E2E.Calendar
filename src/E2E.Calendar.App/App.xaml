@@ -9,6 +9,11 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="ShellIconButtonStyle" TargetType="Button">
+                <Setter Property="Padding" Value="8" />
+                <Setter Property="MinWidth" Value="32" />
+                <Setter Property="MinHeight" Value="32" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 

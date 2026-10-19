@@ -58,8 +58,8 @@ public sealed class RecurrenceExpander : IRecurrenceExpander
                      .TakeWhile(occurrence => occurrence.Period.StartTime.Value <= toLocal))
         {
             var occurrenceLocal = occurrence.Period.StartTime.Value;
-            var occurrenceStartUtc = ToUtc(occurrenceLocal, timeZone);
-            var occurrenceEndUtc = ToUtc(occurrenceLocal + wallDuration, timeZone);
+            var occurrenceStartUtc = timeZone.ToUtc(occurrenceLocal);
+            var occurrenceEndUtc = timeZone.ToUtc(occurrenceLocal + wallDuration);
 
             if (exceptionByOriginalStart.TryGetValue(occurrenceStartUtc, out var exception))
             {
@@ -108,21 +108,4 @@ public sealed class RecurrenceExpander : IRecurrenceExpander
 
     private static IcalCalDateTime ToCalDateTime(DateTime local, TimeZoneInfo timeZone) =>
         new(local.Year, local.Month, local.Day, local.Hour, local.Minute, local.Second, timeZone.Id);
-
-    private static DateTimeOffset ToUtc(DateTime local, TimeZoneInfo timeZone)
-    {
-        var unspecified = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
-
-        if (timeZone.IsInvalidTime(unspecified))
-        {
-            var offsetBefore = timeZone.GetUtcOffset(unspecified.AddDays(-1));
-            var offsetAfter = timeZone.GetUtcOffset(unspecified.AddDays(1));
-
-            unspecified = unspecified.Add(offsetAfter - offsetBefore);
-        }
-
-        var offset = timeZone.GetUtcOffset(unspecified);
-
-        return new DateTimeOffset(unspecified, offset).ToUniversalTime();
-    }
 }

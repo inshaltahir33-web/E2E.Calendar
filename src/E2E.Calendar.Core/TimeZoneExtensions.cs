@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace E2E.Calendar.Core;
 
 public static class TimeZoneExtensions
@@ -44,4 +46,29 @@ public static class TimeZoneExtensions
             return false;
         }
     }
+
+    public static DateTime ToLocal(this TimeZoneInfo timeZone, DateTimeOffset utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(utc.UtcDateTime, timeZone);
+
+    public static DateTimeOffset ToUtc(this TimeZoneInfo timeZone, DateTime local)
+    {
+        ArgumentNullException.ThrowIfNull(timeZone);
+
+        var unspecified = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+
+        if (timeZone.IsInvalidTime(unspecified))
+        {
+            var offsetBefore = timeZone.GetUtcOffset(unspecified.AddDays(-1));
+            var offsetAfter = timeZone.GetUtcOffset(unspecified.AddDays(1));
+
+            unspecified = unspecified.Add(offsetAfter - offsetBefore);
+        }
+
+        var offset = timeZone.GetUtcOffset(unspecified);
+
+        return new DateTimeOffset(unspecified, offset).ToUniversalTime();
+    }
+
+    public static DateOnly ToDateOnly(this DateTimeOffset value) =>
+        DateOnly.FromDateTime(value.Date);
 }
