@@ -1,0 +1,3 @@
+Platform: implement TrayService (H.NotifyIcon.WinUI): icon with badge of today's count, tooltip = next event, left-click mini agenda flyout, right-click menu (New event, New reminder, Remind me in 10/30/60 min, Today's agenda, Open, Quit). Closing main window hides to tray when setting enabled.
+HotkeyService: RegisterHotKey (default Win+Alt+C, configurable, conflict detection with friendly message) -> opens QuickAddWindow over any app. Countdown reminder ("remind me in N minutes") creates standalone reminder.
+Settings page (General/Notifications/Shortcuts) persisted in settings table. Commit "feat: tray and global hotkey".

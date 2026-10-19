@@ -1,0 +1,21 @@
+bin/
+obj/
+.vs/
+*.user
+*.pfx
+*.snk
+AppPackages/
+BundleArtifacts/
+secrets.json
+appsettings.Local.json
+*.db
+*.db-wal
+*.db-shm
+.env
+TestResults/
+artifacts/
+*.binlog
+
+# Source pack that this repo was initialised from; its contents live at the repo root.
+e2e-calendar-project-pack/
+e2e-calendar-project-pack.zip
