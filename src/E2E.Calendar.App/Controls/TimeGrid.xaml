@@ -1,0 +1,36 @@
+<UserControl
+    x:Class="E2E.Calendar.App.Controls.TimeGrid"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid x:Name="RootLayout" RowDefinitions="Auto,Auto,*">
+
+        <Grid
+            x:Name="HeaderHost"
+            Grid.Row="0"
+            ColumnSpacing="0" />
+
+        <Grid
+            x:Name="AllDayHost"
+            Grid.Row="1"
+            ColumnSpacing="0" />
+
+        <ScrollViewer
+            x:Name="ScrollViewer"
+            Grid.Row="2"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Enabled"
+            ViewChanged="OnViewChanged">
+
+            <Grid x:Name="TimeHost">
+                <Canvas x:Name="LinesCanvas" />
+                <Canvas x:Name="GutterCanvas" Width="48" />
+                <Grid x:Name="ColumnsHost" Margin="48,0,0,0" />
+            </Grid>
+
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

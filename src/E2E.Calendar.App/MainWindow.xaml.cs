@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.Extensions.Logging;
 
 namespace E2E.Calendar.App;
 
@@ -24,6 +25,7 @@ public sealed partial class MainWindow : Window
     private readonly CalendarService _calendars;
     private readonly EventService _events;
     private readonly IClock _clock;
+    private readonly ILogger<MainWindow> _logger;
 
     private bool _lastAutoCollapsed;
 
@@ -33,7 +35,8 @@ public sealed partial class MainWindow : Window
         NavigationService navigation,
         CalendarService calendars,
         EventService events,
-        IClock clock)
+        IClock clock,
+        ILogger<MainWindow> logger)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -41,6 +44,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(calendars);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(logger);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -48,11 +52,14 @@ public sealed partial class MainWindow : Window
         _calendars = calendars;
         _events = events;
         _clock = clock;
+        _logger = logger;
 
         this.InitializeComponent();
 
         _navigation.Frame = ContentFrame;
         _navigation.Navigated += OnNavigated;
+
+        StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
         this.ExtendsContentIntoTitleBar = true;
         this.SetTitleBar(TitleBarElement);
@@ -213,9 +220,32 @@ public sealed partial class MainWindow : Window
     {
         var hasView = _navigation.RegisteredViews.Contains(key);
 
+        _logger.LogInformation("Navigated to {ViewKey} (implemented: {IsImplemented})", key, hasView);
+
         ViewModel.Status = hasView ? key : $"{key} is not available yet";
         ViewPlaceholder.Visibility = hasView ? Visibility.Collapsed : Visibility.Visible;
         ContentFrame.Visibility = hasView ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(CalendarStateViewModel.ViewMode))
+        {
+            return;
+        }
+
+        var key = StateViewModel.ViewMode switch
+        {
+            CalendarViewMode.Day => NavigationKeys.Day,
+            CalendarViewMode.Week => NavigationKeys.Week,
+            CalendarViewMode.Month => NavigationKeys.Month,
+            _ => NavigationKeys.Agenda,
+        };
+
+        if (_navigation.CurrentViewKey != key)
+        {
+            _navigation.NavigateTo(key);
+        }
     }
 
     private void OnNewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)

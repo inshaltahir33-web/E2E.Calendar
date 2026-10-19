@@ -74,12 +74,18 @@ public partial class App : Application
                     serviceProvider.GetRequiredService<IEventQueryCache>()));
 
                 services.AddSingleton<CalendarService>();
+                services.AddSingleton<AgendaService>();
                 services.AddSingleton<CalendarStateViewModel>();
                 services.AddSingleton<NavigationService>();
                 services.AddSingleton<MainWindowViewModel>();
+                services.AddSingleton<MonthViewModel>();
+                services.AddSingleton<WeekViewModel>();
+                services.AddSingleton<DayViewModel>();
+                services.AddSingleton<AgendaViewModel>();
                 services.AddSingleton<MainWindow>();
 
                 services.AddHostedService<AppStartupService>();
+                services.AddHostedService<NavigationRegistrationService>();
             })
             .Build();
 

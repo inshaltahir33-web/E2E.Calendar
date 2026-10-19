@@ -1,0 +1,77 @@
+<Page
+    x:Class="E2E.Calendar.App.Views.AgendaView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:vm="using:E2E.Calendar.App.ViewModels">
+
+    <Grid Background="Transparent" RowDefinitions="Auto,*">
+
+        <TextBlock
+            x:Name="PinnedHeader"
+            Grid.Row="0"
+            Padding="12,8"
+            Style="{ThemeResource SubtitleTextBlockStyle}"
+            Visibility="Collapsed"
+            AutomationProperties.Name="Current agenda day" />
+
+        <ScrollViewer
+            x:Name="ScrollViewer"
+            Grid.Row="1"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            ViewChanged="OnViewChanged">
+
+            <muxc:ItemsRepeater x:Name="DaysRepeater" ItemsSource="{x:Bind ViewModel.Days, Mode=OneWay}">
+                <muxc:ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AgendaDayViewModel">
+                        <StackPanel>
+                            <TextBlock
+                                Padding="12,12,12,4"
+                                Style="{ThemeResource SubtitleTextBlockStyle}"
+                                Text="{x:Bind Header, Mode=OneWay}" />
+                            <ItemsControl ItemsSource="{x:Bind Items, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:AgendaItemViewModel">
+                                        <Grid MinHeight="28" ColumnDefinitions="Auto,Auto,*,Auto">
+                                            <CheckBox
+                                                MinWidth="0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Done"
+                                                IsChecked="{x:Bind IsDone, Mode=OneWay}"
+                                                IsEnabled="False"
+                                                Visibility="{x:Bind TickVisibility, Mode=OneWay}" />
+                                            <Border
+                                                Grid.Column="1"
+                                                Width="8"
+                                                Height="8"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center"
+                                                Background="{x:Bind Color, Mode=OneWay, Converter={StaticResource ColorToBrush}}"
+                                                CornerRadius="4" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                Text="{x:Bind Title, Mode=OneWay}"
+                                                TextTrimming="CharacterEllipsis" />
+                                            <TextBlock
+                                                Grid.Column="3"
+                                                Margin="8,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Opacity="0.7"
+                                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind TimeLabel, Mode=OneWay}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </muxc:ItemsRepeater.ItemTemplate>
+            </muxc:ItemsRepeater>
+
+        </ScrollViewer>
+
+    </Grid>
+
+</Page>

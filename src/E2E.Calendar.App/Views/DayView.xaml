@@ -1,0 +1,26 @@
+<Page
+    x:Class="E2E.Calendar.App.Views.DayView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctrl="using:E2E.Calendar.App.Controls"
+    xmlns:vm="using:E2E.Calendar.App.ViewModels">
+
+    <Grid Background="Transparent" RowDefinitions="Auto,*">
+
+        <TextBlock
+            Grid.Row="0"
+            Margin="12,8"
+            Style="{ThemeResource SubtitleTextBlockStyle}"
+            Text="{x:Bind ViewModel.State.PeriodLabel, Mode=OneWay}" />
+
+        <ctrl:TimeGrid
+            x:Name="TimeGrid"
+            Grid.Row="1"
+            Days="{x:Bind ViewModel.Days, Mode=OneWay}"
+            Items="{x:Bind ViewModel.Items, Mode=OneWay}"
+            ItemActivated="OnItemActivated"
+            SlotCreated="OnSlotCreated" />
+
+    </Grid>
+
+</Page>
