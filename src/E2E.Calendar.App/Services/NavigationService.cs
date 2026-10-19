@@ -7,6 +7,7 @@ public sealed class NavigationService
 {
     private readonly Dictionary<string, Type> _views = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Func<object?, object?>> _factories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, object?> _pages = new(StringComparer.OrdinalIgnoreCase);
 
     public Frame? Frame { get; set; }
 
@@ -40,12 +41,15 @@ public sealed class NavigationService
 
         if (_factories.TryGetValue(key, out var factory))
         {
-            if (factory(parameter) is FrameworkElement page)
+            if (!_pages.TryGetValue(key, out var page) || page is null)
             {
-                if (Frame is not null)
-                {
-                    Frame.Content = page;
-                }
+                page = factory(parameter);
+                _pages[key] = page;
+            }
+
+            if (page is FrameworkElement element && Frame is not null)
+            {
+                Frame.Content = element;
             }
         }
         else if (_views.TryGetValue(key, out var viewType) && Frame is not null)

@@ -29,6 +29,12 @@ public partial class MonthView : Page
 
     public MonthViewModel ViewModel { get; }
 
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RefreshAsync();
+    }
+
+
     private void OnDayNumberClicked(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement element && element.DataContext is MonthDay day)
@@ -67,6 +73,7 @@ public partial class MonthView : Page
         var local = day.Date.ToDateTime(TimeOnly.MinValue);
 
         _state.CurrentDate = TimeZoneInfo.Local.ToUtc(local);
+        _state.SetViewModeCommand.Execute(CalendarViewMode.Day);
         _navigation.NavigateTo(NavigationKeys.Day);
     }
 }

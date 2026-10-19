@@ -21,6 +21,11 @@ public partial class AgendaView : Page
 
     public AgendaViewModel ViewModel { get; }
 
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RefreshAsync();
+    }
+
     private void OnElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
     {
         if (args.Element is not FrameworkElement element || args.Index >= ViewModel.Days.Count)

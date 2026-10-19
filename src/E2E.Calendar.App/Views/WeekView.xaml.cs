@@ -16,6 +16,11 @@ public partial class WeekView : Page
 
     public WeekViewModel ViewModel { get; }
 
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RefreshAsync();
+    }
+
     private void OnItemActivated(object sender, TimeGridItemEventArgs args)
     {
         System.Diagnostics.Debug.WriteLine($"Activated {args.Item.Id}");

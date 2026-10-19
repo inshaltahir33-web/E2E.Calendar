@@ -5,7 +5,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="Transparent" RowDefinitions="Auto,*">
+    <Grid Background="Transparent" Loaded="OnLoaded" RowDefinitions="Auto,*">
 
         <TextBlock
             x:Name="PinnedHeader"

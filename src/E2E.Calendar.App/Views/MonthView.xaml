@@ -5,7 +5,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="Transparent">
+    <Grid Background="Transparent" Loaded="OnLoaded">
 
         <muxc:ItemsRepeater x:Name="DaysRepeater" ItemsSource="{x:Bind ViewModel.Days, Mode=OneWay}">
             <muxc:ItemsRepeater.Layout>

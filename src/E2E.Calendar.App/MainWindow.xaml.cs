@@ -168,10 +168,25 @@ public sealed partial class MainWindow : Window
 
     private void ShowView(CalendarViewMode mode, string key)
     {
-        StateViewModel.SetViewModeCommand.Execute(mode);
         SelectViewInSwitcher(mode);
-        _navigation.NavigateTo(key);
+
+        if (StateViewModel.ViewMode != mode)
+        {
+            StateViewModel.SetViewModeCommand.Execute(mode);
+        }
+        else if (_navigation.CurrentViewKey != key)
+        {
+            _navigation.NavigateTo(key);
+        }
     }
+
+    private static string NavigationKeyFor(CalendarViewMode mode) => mode switch
+    {
+        CalendarViewMode.Day => NavigationKeys.Day,
+        CalendarViewMode.Week => NavigationKeys.Week,
+        CalendarViewMode.Month => NavigationKeys.Month,
+        _ => NavigationKeys.Agenda,
+    };
 
     private void SelectViewInSwitcher(CalendarViewMode mode)
     {
@@ -234,13 +249,10 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var key = StateViewModel.ViewMode switch
-        {
-            CalendarViewMode.Day => NavigationKeys.Day,
-            CalendarViewMode.Week => NavigationKeys.Week,
-            CalendarViewMode.Month => NavigationKeys.Month,
-            _ => NavigationKeys.Agenda,
-        };
+        var mode = StateViewModel.ViewMode;
+        var key = NavigationKeyFor(mode);
+
+        SelectViewInSwitcher(mode);
 
         if (_navigation.CurrentViewKey != key)
         {

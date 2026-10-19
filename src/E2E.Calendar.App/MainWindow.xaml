@@ -351,7 +351,7 @@
                         HorizontalAlignment="Center"
                         Opacity="0.7"
                         Style="{ThemeResource BodyTextBlockStyle}"
-                        Text="The view for this section arrives with the calendar views." />
+                        Text="This section is not available yet." />
                     <TextBlock
                         HorizontalAlignment="Center"
                         Opacity="0.7"
