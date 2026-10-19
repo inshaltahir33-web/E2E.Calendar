@@ -16,5 +16,11 @@ public interface IEventRepository
         DateTimeOffset deletedBeforeUtc,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CalendarEvent>> GetExceptionsAsync(
+        string masterId,
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        CancellationToken cancellationToken = default);
+
     Task UpsertAsync(CalendarEvent calendarEvent, CancellationToken cancellationToken = default);
 }

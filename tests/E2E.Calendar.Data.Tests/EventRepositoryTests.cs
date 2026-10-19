@@ -203,6 +203,52 @@ public sealed class EventRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_exceptions_of_a_master_can_be_listed()
+    {
+        await _events.UpsertAsync(CreateEvent(id: "master", rrule: "FREQ=DAILY"));
+
+        await _events.UpsertAsync(CreateEvent(id: "child") with
+        {
+            RecurrenceMasterId = "master",
+            RecurrenceIdUtc = new DateTimeOffset(2026, 10, 21, 9, 0, 0, TimeSpan.Zero),
+        });
+
+        var exceptions = await _events.GetExceptionsAsync(
+            "master",
+            new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 10, 22, 0, 0, 0, TimeSpan.Zero));
+
+        exceptions.Select(e => e.Id).Should().Equal("child");
+        exceptions[0].RecurrenceMasterId.Should().Be("master");
+        exceptions[0].RecurrenceIdUtc.Should().Be(new DateTimeOffset(2026, 10, 21, 9, 0, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public async Task Only_the_exceptions_inside_the_requested_range_are_listed()
+    {
+        await _events.UpsertAsync(CreateEvent(id: "master", rrule: "FREQ=DAILY"));
+
+        await _events.UpsertAsync(CreateEvent(id: "inside") with
+        {
+            RecurrenceMasterId = "master",
+            RecurrenceIdUtc = new DateTimeOffset(2026, 10, 21, 9, 0, 0, TimeSpan.Zero),
+        });
+
+        await _events.UpsertAsync(CreateEvent(id: "outside") with
+        {
+            RecurrenceMasterId = "master",
+            RecurrenceIdUtc = new DateTimeOffset(2026, 11, 21, 9, 0, 0, TimeSpan.Zero),
+        });
+
+        var exceptions = await _events.GetExceptionsAsync(
+            "master",
+            new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 10, 22, 0, 0, 0, TimeSpan.Zero));
+
+        exceptions.Select(e => e.Id).Should().Equal("inside");
+    }
+
+    [Fact]
     public async Task Events_can_be_inserted_in_bulk()
     {
         var events = Enumerable.Range(0, 250)

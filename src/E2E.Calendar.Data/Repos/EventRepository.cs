@@ -157,6 +157,36 @@ public sealed class EventRepository : IEventRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<CalendarEvent>> GetExceptionsAsync(
+        string masterId,
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var sql = $"""
+            SELECT {SelectColumns}
+            FROM event
+            WHERE recurrence_master_id = @MasterId
+              AND recurrence_id_utc >= @From AND recurrence_id_utc < @To
+            ORDER BY recurrence_id_utc;
+            """;
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<CalendarEvent>(
+            new CommandDefinition(
+                sql,
+                new
+                {
+                    MasterId = masterId,
+                    From = SqliteTime.ToUtcText(fromUtc),
+                    To = SqliteTime.ToUtcText(toUtc),
+                },
+                cancellationToken: cancellationToken));
+
+        return rows.AsList();
+    }
+
     public async Task UpsertAsync(CalendarEvent calendarEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(calendarEvent);

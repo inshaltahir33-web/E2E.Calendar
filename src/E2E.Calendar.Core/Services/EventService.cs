@@ -11,16 +11,19 @@ public sealed class EventService : IEventService
     private readonly IEventRepository _events;
     private readonly IOutbox _outbox;
     private readonly IClock _clock;
+    private readonly IEventQueryCache? _queryCache;
 
     public EventService(
         IEventRepository events,
         IOutbox outbox,
         IClock clock,
-        TimeSpan? undoWindow = null)
+        TimeSpan? undoWindow = null,
+        IEventQueryCache? queryCache = null)
     {
         _events = events;
         _outbox = outbox;
         _clock = clock;
+        _queryCache = queryCache;
         UndoWindow = undoWindow ?? DefaultUndoWindow;
     }
 
@@ -186,8 +189,9 @@ public sealed class EventService : IEventService
             ?? throw new KeyNotFoundException($"Event '{id}' does not exist.");
     }
 
-    private Task EnqueueAsync(CalendarEvent calendarEvent, OutboxOp op, CancellationToken cancellationToken) =>
-        _outbox.EnqueueAsync(
+    private async Task EnqueueAsync(CalendarEvent calendarEvent, OutboxOp op, CancellationToken cancellationToken)
+    {
+        await _outbox.EnqueueAsync(
             new OutboxItem
             {
                 Entity = OutboxEntities.Event,
@@ -195,6 +199,9 @@ public sealed class EventService : IEventService
                 Op = op,
             },
             cancellationToken);
+
+        _queryCache?.Invalidate();
+    }
 
     private static string NewId() => Guid.NewGuid().ToString("N");
 
