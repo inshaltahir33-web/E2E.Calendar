@@ -85,6 +85,7 @@
     <x:Double x:Key="EditorPaneWidth">380</x:Double>
     <x:Double x:Key="SnackbarWidth">420</x:Double>
     <x:Double x:Key="MiniCalendarMinWidth">240</x:Double>
+    <x:Double x:Key="MiniCalendarHeight">260</x:Double>
     <x:Double x:Key="CalendarSwatchSize">10</x:Double>
     <x:Double x:Key="CaptionButtonClearance">138</x:Double>
 

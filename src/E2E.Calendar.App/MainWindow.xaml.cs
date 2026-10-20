@@ -6,6 +6,7 @@ using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -17,6 +18,7 @@ namespace E2E.Calendar.App;
 public sealed partial class MainWindow : Window
 {
     private const double CompactWidthThreshold = 900;
+    private const int SidebarCollapseDurationMs = 167;
 
     private readonly NavigationService _navigation;
     private readonly CalendarService _calendars;
@@ -35,7 +37,8 @@ public sealed partial class MainWindow : Window
         EventService events,
         IClock clock,
         ILogger<MainWindow> logger,
-        EventEditorViewModel editor)
+        EventEditorViewModel editor,
+        WeekViewModel weekViewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -45,6 +48,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(editor);
+        ArgumentNullException.ThrowIfNull(weekViewModel);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -54,6 +58,7 @@ public sealed partial class MainWindow : Window
         _clock = clock;
         _logger = logger;
         _editor = editor;
+        WeekViewModel = weekViewModel;
 
         this.InitializeComponent();
 
@@ -87,6 +92,8 @@ public sealed partial class MainWindow : Window
 
     public CalendarStateViewModel StateViewModel { get; }
 
+    public WeekViewModel WeekViewModel { get; }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await RefreshCalendarsAsync();
@@ -113,11 +120,36 @@ public sealed partial class MainWindow : Window
     {
         ViewModel.IsSidebarCollapsed = collapsed;
 
-        SidebarHost.Width = collapsed
+        var targetWidth = collapsed
             ? Tokens.Double("SidebarCollapsedWidth", 48d)
             : Tokens.Double("SidebarWidth", 272d);
-        SidebarScroll.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+
+        var storyboard = new Storyboard();
+        var animation = new DoubleAnimation
+        {
+            To = targetWidth,
+            Duration = new Duration(TimeSpan.FromMilliseconds(SidebarCollapseDurationMs)),
+            EnableDependentAnimation = true,
+        };
+
+        Storyboard.SetTarget(animation, SidebarHost);
+        Storyboard.SetTargetProperty(animation, "Width");
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
+
+        SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnSidebarRowClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element || element.Tag is not string targetKey)
+        {
+            return;
+        }
+
+        ViewModel.SelectTarget(targetKey);
+        _navigation.NavigateTo(targetKey);
     }
 
     private void OnTodayClick(object sender, RoutedEventArgs e) => StateViewModel.GoToTodayCommand.Execute(null);
@@ -156,7 +188,7 @@ public sealed partial class MainWindow : Window
     private void OnNewSplitButtonClick(SplitButton sender, SplitButtonClickEventArgs args) =>
         _navigation.NavigateTo(NavigationKeys.NewEvent);
 
-    private void OnNewClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
+    private void OnNewSplitButtonClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
 
     private void OnNewEventClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
 

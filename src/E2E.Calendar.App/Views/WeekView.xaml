@@ -5,25 +5,10 @@
     xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="Transparent" Loaded="OnLoaded" RowDefinitions="Auto,*">
-
-        <Grid Grid.Row="0" Margin="{StaticResource MarginSection}" ColumnDefinitions="Auto,*">
-            <ToggleButton
-                VerticalAlignment="Center"
-                AutomationProperties.Name="Show weekends"
-                Content="Weekends"
-                IsChecked="{x:Bind ViewModel.ShowWeekends, Mode=TwoWay}" />
-            <TextBlock
-                Grid.Column="1"
-                Margin="{StaticResource MarginStartLarge}"
-                VerticalAlignment="Center"
-                Style="{ThemeResource SubtitleTextBlockStyle}"
-                Text="{x:Bind ViewModel.State.PeriodLabel, Mode=OneWay}" />
-        </Grid>
+    <Grid Background="Transparent" Loaded="OnLoaded">
 
         <ctrl:TimeGrid
             x:Name="TimeGrid"
-            Grid.Row="1"
             Days="{x:Bind ViewModel.Days, Mode=OneWay}"
             Items="{x:Bind ViewModel.Items, Mode=OneWay}" />
 

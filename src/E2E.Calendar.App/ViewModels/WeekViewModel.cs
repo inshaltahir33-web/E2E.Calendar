@@ -9,6 +9,12 @@ public sealed partial class WeekViewModel : TimeGridViewModel
     [ObservableProperty]
     private bool _showWeekends = true;
 
+    [ObservableProperty]
+    private bool _showWeekNumbers;
+
+    [ObservableProperty]
+    private bool _showSecondaryTimeZone;
+
     public WeekViewModel(CalendarStateViewModel state, EventQueryService query, IEventQueryCache cache)
         : base(state, query, cache)
     {

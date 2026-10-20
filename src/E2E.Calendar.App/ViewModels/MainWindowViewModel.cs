@@ -29,6 +29,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _lastDeletedEventId = string.Empty;
 
+    [ObservableProperty]
+    private string _selectedTargetKey = string.Empty;
+
     public ObservableCollection<CalendarListItem> Calendars { get; } = new();
 
     public ObservableCollection<NavigationListItem> ReminderLists { get; } = new();
@@ -60,6 +63,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         LastDeletedEventId = eventId;
         OnPropertyChanged(nameof(CanUndoLastDelete));
+    }
+
+    public void SelectTarget(string targetKey)
+    {
+        SelectedTargetKey = targetKey;
+
+        foreach (var item in ReminderLists.Concat(TaskLists))
+        {
+            item.IsSelected = string.Equals(item.TargetKey, targetKey, StringComparison.Ordinal);
+        }
     }
 
     partial void OnLastDeletedEventIdChanged(string value)
