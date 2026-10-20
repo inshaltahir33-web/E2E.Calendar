@@ -1,0 +1,105 @@
+<UserControl
+    x:Class="E2E.Calendar.App.Controls.MonthDayCell"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:vm="using:E2E.Calendar.App.ViewModels">
+
+    <Grid Background="Transparent">
+
+        <Border
+            x:Name="WeekendTint"
+            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            Opacity="0.6" />
+
+        <Border
+            x:Name="HoverFill"
+            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            CornerRadius="4"
+            Visibility="Collapsed" />
+
+        <Border
+            x:Name="SelectionBorder"
+            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="4"
+            Visibility="Collapsed" />
+
+        <StackPanel Padding="4">
+
+            <Grid Height="24">
+                <Ellipse
+                    x:Name="TodayCircle"
+                    Width="24"
+                    Height="24"
+                    HorizontalAlignment="Left"
+                    Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                    Visibility="Collapsed" />
+                <TextBlock
+                    x:Name="DayText"
+                    Width="24"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    TextAlignment="Center"
+                    FontSize="{StaticResource FontSizeBody}"
+                    Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                <TextBlock
+                    x:Name="TodayText"
+                    Width="24"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    TextAlignment="Center"
+                    FontSize="{StaticResource FontSizeBody}"
+                    Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                    Visibility="Collapsed" />
+                <StackPanel
+                    x:Name="HeatDots"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="2">
+                    <Border
+                        x:Name="HeatDot1"
+                        Width="5"
+                        Height="5"
+                        CornerRadius="3"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Opacity="0.35"
+                        Visibility="Collapsed" />
+                    <Border
+                        x:Name="HeatDot2"
+                        Width="5"
+                        Height="5"
+                        CornerRadius="3"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Opacity="0.65"
+                        Visibility="Collapsed" />
+                    <Border
+                        x:Name="HeatDot3"
+                        Width="5"
+                        Height="5"
+                        CornerRadius="3"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Opacity="0.95"
+                        Visibility="Collapsed" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel x:Name="ChipsHost" Spacing="1" />
+
+            <Button
+                x:Name="MoreButton"
+                HorizontalAlignment="Left"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="4,0"
+                Click="OnMoreClick"
+                Visibility="Collapsed">
+                <TextBlock x:Name="MoreText" FontSize="11" />
+            </Button>
+
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

@@ -1,5 +1,6 @@
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.App.Views;
+using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,20 +24,23 @@ public sealed class NavigationRegistrationService : IHostedService
             NavigationKeys.Month,
             _ => new MonthView(
                 _services.GetRequiredService<MonthViewModel>(),
-                _services.GetRequiredService<CalendarStateViewModel>(),
-                _navigation));
+                _services.GetRequiredService<EventEditorViewModel>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Week,
             _ => new WeekView(
                 _services.GetRequiredService<WeekViewModel>(),
-                _services.GetRequiredService<EventEditorViewModel>()));
+                _services.GetRequiredService<EventEditorViewModel>(),
+                _services.GetRequiredService<IEventRepository>(),
+                _services.GetRequiredService<IEventService>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Day,
             _ => new DayView(
                 _services.GetRequiredService<DayViewModel>(),
-                _services.GetRequiredService<EventEditorViewModel>()));
+                _services.GetRequiredService<EventEditorViewModel>(),
+                _services.GetRequiredService<IEventRepository>(),
+                _services.GetRequiredService<IEventService>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Agenda,

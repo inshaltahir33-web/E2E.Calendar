@@ -128,7 +128,10 @@
                                 Text="Show weekends" />
                             <muxc:ToggleMenuFlyoutItem
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekNumbers, Mode=TwoWay}"
-                                Text="Show week numbers" />
+                                Text="Show week numbers (week)" />
+                            <muxc:ToggleMenuFlyoutItem
+                                IsChecked="{x:Bind MonthViewModel.ShowWeekNumbers, Mode=TwoWay}"
+                                Text="Show week numbers (month)" />
                             <muxc:ToggleMenuFlyoutItem
                                 IsChecked="{x:Bind WeekViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
                                 Text="Secondary time zone" />

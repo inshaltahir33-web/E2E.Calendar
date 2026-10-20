@@ -1,30 +1,30 @@
-using E2E.Calendar.App.Services;
+using E2E.Calendar.App.Controls;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
-using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Media;
 
 namespace E2E.Calendar.App.Views;
 
 public partial class MonthView : Page
 {
-    private readonly CalendarStateViewModel _state;
-    private readonly NavigationService _navigation;
+    private readonly EventEditorViewModel _editor;
+    private readonly List<MonthDayCell> _cells = new();
 
     public MonthView(
         MonthViewModel viewModel,
-        CalendarStateViewModel state,
-        NavigationService navigation)
+        EventEditorViewModel editor)
     {
         ViewModel = viewModel;
-        _state = state;
-        _navigation = navigation;
+        _editor = editor;
 
         InitializeComponent();
+
+        ViewModel.Days.CollectionChanged += OnDaysChanged;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        this.Loaded += OnLoaded;
     }
 
     public MonthViewModel ViewModel { get; }
@@ -32,48 +32,152 @@ public partial class MonthView : Page
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await ViewModel.RefreshAsync();
+        BuildGrid();
     }
 
+    private void OnDaysChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
+        BuildGrid();
 
-    private void OnDayNumberClicked(object sender, RoutedEventArgs e)
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (sender is FrameworkElement element && element.DataContext is MonthDay day)
+        if (e.PropertyName == nameof(MonthViewModel.ShowWeekNumbers))
         {
-            OpenDay(day);
+            BuildGrid();
         }
     }
 
-    private void OnMoreClicked(object sender, RoutedEventArgs e)
+    private void BuildGrid()
     {
-        if (sender is not FrameworkElement element || element.DataContext is not MonthDay day)
+        _cells.Clear();
+        MonthHost.Children.Clear();
+        MonthHost.ColumnDefinitions.Clear();
+        MonthHost.RowDefinitions.Clear();
+        WeekdayHeaderHost.Children.Clear();
+        WeekdayHeaderHost.ColumnDefinitions.Clear();
+        WeekdayHeaderHost.RowDefinitions.Clear();
+
+        var days = ViewModel.Days;
+
+        if (days.Count == 0)
         {
+            EmptyState.Visibility = Visibility.Visible;
             return;
         }
 
-        var list = new ListView
+        EmptyState.Visibility = Visibility.Collapsed;
+
+        var column = 0;
+
+        if (ViewModel.ShowWeekNumbers)
         {
-            ItemsSource = day.AllItems,
-            SelectionMode = ListViewSelectionMode.None,
-            MaxHeight = 320,
-        };
+            MonthHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+            WeekdayHeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
 
-        AutomationProperties.SetName(list, $"All events on {day.Date:yyyy-MM-dd}");
+            for (var week = 0; week < 6; week++)
+            {
+                var number = ViewModel.WeekNumbers.Count > week ? ViewModel.WeekNumbers[week] : 0;
+                var label = new TextBlock
+                {
+                    Text = number.ToString(),
+                    FontSize = 11,
+                    Opacity = 0.6,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
 
-        var flyout = new Flyout
+                Grid.SetColumn(label, 0);
+                Grid.SetRow(label, week);
+                MonthHost.Children.Add(label);
+            }
+
+            column = 1;
+        }
+
+        for (var index = 0; index < 7; index++)
         {
-            Content = list,
-            Placement = FlyoutPlacementMode.BottomEdgeAlignedRight,
-        };
+            MonthHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            WeekdayHeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
 
-        flyout.ShowAt(element);
+        for (var row = 0; row < 6; row++)
+        {
+            MonthHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        }
+
+        WeekdayHeaderHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        BuildWeekdayHeaders(column);
+
+        for (var index = 0; index < days.Count; index++)
+        {
+            var day = days[index];
+            var cell = new MonthDayCell
+            {
+                DayNumber = day.DayNumber.ToString(),
+                IsToday = day.IsToday,
+                IsCurrentMonth = day.IsCurrentMonth,
+                IsWeekend = day.IsWeekend,
+                IsSelected = day.IsSelected,
+                MoreLabel = day.MoreLabel,
+                MoreVisible = day.MoreCount > 0,
+                EventCount = day.EventCount,
+                Date = day.Date,
+            };
+
+            cell.SetChips(day.Chips);
+            cell.DaySelected += OnDaySelected;
+            cell.NewEventRequested += OnNewEventRequested;
+            cell.ChipDropped += OnChipDropped;
+
+            Grid.SetColumn(cell, column + (index % 7));
+            Grid.SetRow(cell, index / 7);
+
+            MonthHost.Children.Add(cell);
+            _cells.Add(cell);
+        }
     }
 
-    private void OpenDay(MonthDay day)
+    private void BuildWeekdayHeaders(int firstColumn)
     {
-        var local = day.Date.ToDateTime(TimeOnly.MinValue);
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var start = ViewModel.State.WeekStart;
 
-        _state.CurrentDate = TimeZoneInfo.Local.ToUtc(local);
-        _state.SetViewModeCommand.Execute(CalendarViewMode.Day);
-        _navigation.NavigateTo(NavigationKeys.Day);
+        for (var index = 0; index < 7; index++)
+        {
+            var day = (int)start + index;
+            var name = culture.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)((day % 7 + 7) % 7));
+            var isWeekend = day is 0 or 6;
+
+            var label = new TextBlock
+            {
+                Text = name.ToUpper(culture),
+                FontSize = 11,
+                Opacity = isWeekend ? 0.6 : 0.85,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 6, 0, 6),
+            };
+
+            Grid.SetColumn(label, firstColumn + index);
+            Grid.SetRow(label, 0);
+            WeekdayHeaderHost.Children.Add(label);
+        }
+    }
+
+    private void OnDaySelected(object? sender, DateOnly date) => ViewModel.SelectDay(date);
+
+    private async void OnNewEventRequested(object? sender, DateOnly date)
+    {
+        var timeZone = TimeZoneInfo.Local;
+        var startUtc = timeZone.ToUtc(date.ToDateTime(new TimeOnly(9, 0)));
+
+        await _editor.OpenNewAsync(startUtc, startUtc.AddHours(1));
+    }
+
+    private async void OnChipDropped(object? sender, MonthChipDrop drop)
+    {
+        await ViewModel.MoveItemToDateAsync(drop.ItemId, drop.TargetDate);
+        await ViewModel.RefreshAsync();
+        BuildGrid();
     }
 }

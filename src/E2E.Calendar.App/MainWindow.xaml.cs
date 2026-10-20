@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window
 
     private readonly NavigationService _navigation;
     private readonly CalendarService _calendars;
+    private readonly IReminderRepository _reminders;
     private readonly EventService _events;
     private readonly IClock _clock;
     private readonly ILogger<MainWindow> _logger;
@@ -39,7 +40,9 @@ public sealed partial class MainWindow : Window
         ILogger<MainWindow> logger,
         EventEditorViewModel editor,
         WeekViewModel weekViewModel,
-        MiniCalendarViewModel miniCalendar)
+        MonthViewModel monthViewModel,
+        MiniCalendarViewModel miniCalendar,
+        IReminderRepository reminders)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -50,7 +53,9 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(weekViewModel);
+        ArgumentNullException.ThrowIfNull(monthViewModel);
         ArgumentNullException.ThrowIfNull(miniCalendar);
+        ArgumentNullException.ThrowIfNull(reminders);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -61,7 +66,9 @@ public sealed partial class MainWindow : Window
         _logger = logger;
         _editor = editor;
         WeekViewModel = weekViewModel;
+        MonthViewModel = monthViewModel;
         MiniCalendar = miniCalendar;
+        _reminders = reminders;
 
         this.InitializeComponent();
 
@@ -97,6 +104,8 @@ public sealed partial class MainWindow : Window
     public CalendarStateViewModel StateViewModel { get; }
 
     public WeekViewModel WeekViewModel { get; }
+
+    public MonthViewModel MonthViewModel { get; }
 
     public MiniCalendarViewModel MiniCalendar { get; }
 
@@ -264,6 +273,41 @@ public sealed partial class MainWindow : Window
         foreach (var item in items)
         {
             ViewModel.Calendars.Add(item);
+        }
+
+        await RefreshReminderCountsAsync();
+    }
+
+    private async Task RefreshReminderCountsAsync()
+    {
+        var now = _clock.UtcNow;
+        var timeZone = _clock.LocalTimeZone;
+        var today = DateOnly.FromDateTime(timeZone.ToLocal(now));
+        var endOfToday = timeZone.ToUtc(today.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        var reminders = await _reminders.GetInRangeAsync(now.AddYears(-5), endOfToday.AddYears(5));
+
+        var open = reminders.Where(reminder => reminder.DoneUtc is null).ToList();
+
+        SetCount("Today", open.Count(reminder => reminder.DueUtc is not null &&
+            DateOnly.FromDateTime(timeZone.ToLocal(reminder.DueUtc.Value)) == today));
+
+        SetCount("Scheduled", open.Count(reminder => reminder.DueUtc is not null && reminder.DueUtc > now));
+
+        SetCount("Overdue", open.Count(reminder => reminder.DueUtc is not null && reminder.DueUtc < now));
+
+        SetCount("Completed", reminders.Count(reminder => reminder.DoneUtc is not null));
+
+        SetCount("Flagged", open.Count(reminder => reminder.Flagged));
+    }
+
+    private void SetCount(string label, int count)
+    {
+        var item = ViewModel.ReminderLists.FirstOrDefault(entry => entry.Label == label);
+
+        if (item is not null)
+        {
+            item.Count = count;
         }
     }
 

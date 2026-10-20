@@ -4,8 +4,11 @@ using Microsoft.UI.Xaml;
 
 namespace E2E.Calendar.App.ViewModels;
 
-public sealed class MonthDay : ObservableObject
+public sealed partial class MonthDay : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isSelected;
+
     public required DateOnly Date { get; init; }
 
     public required int DayNumber { get; init; }
@@ -13,6 +16,8 @@ public sealed class MonthDay : ObservableObject
     public required bool IsToday { get; init; }
 
     public required bool IsCurrentMonth { get; init; }
+
+    public required bool IsWeekend { get; init; }
 
     public required IReadOnlyList<MonthChip> Chips { get; init; }
 
@@ -25,6 +30,8 @@ public sealed class MonthDay : ObservableObject
     public string MoreLabel => $"+{MoreCount} more";
 
     public Visibility MoreVisibility => MoreCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility SelectionVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
     public double Heat => EventCount switch
     {
@@ -40,4 +47,6 @@ public sealed class MonthDay : ObservableObject
     public double Heat2 => EventCount <= 1 ? 0 : 0.65;
 
     public double Heat3 => EventCount <= 3 ? 0 : 0.95;
+
+    partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(SelectionVisibility));
 }
