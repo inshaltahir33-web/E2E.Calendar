@@ -8,7 +8,7 @@
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" RowDefinitions="Auto,*,Auto">
 
-        <Grid Grid.Row="0" Padding="16,12" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="0" Padding="{StaticResource PaddingEditorHeader}" ColumnDefinitions="*,Auto">
             <TextBlock
                 VerticalAlignment="Center"
                 Style="{ThemeResource SubtitleTextBlockStyle}"
@@ -16,10 +16,10 @@
             <Button
                 Grid.Column="1"
                 Click="OnCloseClick"
-                Style="{StaticResource ShellIconButtonStyle}"
+                Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Close the event editor"
                 ToolTipService.ToolTip="Close">
-                <FontIcon FontSize="14" Glyph="&#xE711;" />
+                <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE711;" />
             </Button>
         </Grid>
 
@@ -27,7 +27,7 @@
             Grid.Row="1"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
-            <StackPanel Padding="16,0,16,16" Spacing="16">
+            <StackPanel Padding="{StaticResource PaddingEditorBody}" Spacing="{StaticResource SpaceLG}">
 
                 <ComboBox
                     HorizontalAlignment="Stretch"
@@ -37,7 +37,7 @@
                     PlaceholderText="Start from a template"
                     SelectionChanged="OnTemplateSelected" />
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="TITLE" />
                     <TextBox
                         AutomationProperties.Name="Event title"
@@ -45,7 +45,7 @@
                         Text="{x:Bind ViewModel.Title, Mode=TwoWay}" />
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock
                             VerticalAlignment="Center"
@@ -56,7 +56,7 @@
                             AutomationProperties.Name="All day"
                             IsOn="{x:Bind ViewModel.IsAllDay, Mode=TwoWay}" />
                     </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                         <CalendarDatePicker
                             HorizontalAlignment="Stretch"
                             AutomationProperties.Name="Start date"
@@ -66,7 +66,7 @@
                             AutomationProperties.Name="Start time"
                             Time="{x:Bind ViewModel.StartTime, Mode=TwoWay}" />
                     </Grid>
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                         <CalendarDatePicker
                             HorizontalAlignment="Stretch"
                             AutomationProperties.Name="End date"
@@ -83,7 +83,7 @@
                         SelectedItem="{x:Bind ViewModel.TimeZoneId, Mode=TwoWay}" />
                 </StackPanel>
 
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="{StaticResource SpaceSM}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="REPEATS" />
                     <ComboBox
                         HorizontalAlignment="Stretch"
@@ -97,9 +97,9 @@
                         SpinButtonPlacementMode="Compact"
                         Value="{x:Bind ViewModel.IntervalValue, Mode=TwoWay}" />
                     <StackPanel
-                        Spacing="4"
+                        Spacing="{StaticResource SpaceXS}"
                         Visibility="{x:Bind ViewModel.IsWeekly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
                             <ToggleButton Content="M" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" />
                             <ToggleButton Content="T" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" />
                             <ToggleButton Content="W" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" />
@@ -110,7 +110,7 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel
-                        Spacing="4"
+                        Spacing="{StaticResource SpaceXS}"
                         Visibility="{x:Bind ViewModel.IsMonthly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                         <ComboBox
                             HorizontalAlignment="Stretch"
@@ -125,7 +125,7 @@
                             Value="{x:Bind ViewModel.MonthlyDayValue, Mode=TwoWay}" />
                     </StackPanel>
                     <StackPanel
-                        Spacing="4"
+                        Spacing="{StaticResource SpaceXS}"
                         Visibility="{x:Bind ViewModel.IsYearly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                         <NumberBox
                             Header="Month"
@@ -158,12 +158,12 @@
                         Value="{x:Bind ViewModel.OccurrenceCountValue, Mode=TwoWay}"
                         Visibility="{x:Bind ViewModel.IsEndAfterCount, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                     <TextBlock
-                        Opacity="0.7"
+                        Opacity="{StaticResource TextSecondaryOpacity}"
                         Style="{ThemeResource CaptionTextBlockStyle}"
                         Text="{x:Bind ViewModel.RecurrenceSummary, Mode=OneWay}" />
                 </StackPanel>
 
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="{StaticResource SpaceSM}">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock
                             VerticalAlignment="Center"
@@ -172,16 +172,16 @@
                         <Button
                             Grid.Column="1"
                             Click="OnAddAlertClick"
-                            Style="{StaticResource ShellIconButtonStyle}"
+                            Style="{StaticResource ToolbarButtonStyle}"
                             AutomationProperties.Name="Add an alert"
                             ToolTipService.ToolTip="Add an alert">
-                            <FontIcon FontSize="14" Glyph="&#xE710;" />
+                            <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
                         </Button>
                     </Grid>
                     <ItemsControl ItemsSource="{x:Bind ViewModel.AlertRows, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:AlertRow">
-                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource SpaceXS}">
                                     <ComboBox
                                         HorizontalAlignment="Stretch"
                                         AutomationProperties.Name="Alert time"
@@ -191,9 +191,9 @@
                                     <Button
                                         Grid.Column="1"
                                         Click="OnRemoveAlertClick"
-                                        Style="{StaticResource ShellIconButtonStyle}"
+                                        Style="{StaticResource ToolbarButtonStyle}"
                                         AutomationProperties.Name="Remove the alert">
-                                        <FontIcon FontSize="12" Glyph="&#xE711;" />
+                                        <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE711;" />
                                     </Button>
                                 </Grid>
                             </DataTemplate>
@@ -201,9 +201,9 @@
                     </ItemsControl>
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="LOCATION" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                         <TextBox
                             AutomationProperties.Name="Event location"
                             PlaceholderText="Add a location"
@@ -216,7 +216,7 @@
                     </Grid>
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="MEETING" />
                     <TextBox
                         AutomationProperties.Name="Meeting link"
@@ -224,7 +224,7 @@
                         Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
                     <StackPanel
                         Orientation="Horizontal"
-                        Spacing="8"
+                        Spacing="{StaticResource SpaceSM}"
                         Visibility="{x:Bind ViewModel.HasDetectedMeeting, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                         <HyperlinkButton
                             AutomationProperties.Name="Join the meeting"
@@ -233,26 +233,26 @@
                         <Button
                             Click="OnClearMeetingClick"
                             Content="Clear"
-                            Style="{StaticResource ShellIconButtonStyle}" />
+                            Style="{StaticResource ToolbarButtonStyle}" />
                     </StackPanel>
                     <Button
                         Click="OnDetectMeetingClick"
                         Content="Detect meeting link"
-                        Style="{StaticResource ShellIconButtonStyle}" />
+                        Style="{StaticResource ToolbarButtonStyle}" />
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="NOTES" />
                     <TextBox
                         AcceptsReturn="True"
                         AutomationProperties.Name="Event notes"
-                        Height="90"
+                        Height="{StaticResource NotesBoxHeight}"
                         PlaceholderText="Add notes"
                         Text="{x:Bind ViewModel.Notes, Mode=TwoWay}"
                         TextWrapping="Wrap" />
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="CALENDAR" />
                     <ComboBox
                         HorizontalAlignment="Stretch"
@@ -260,18 +260,18 @@
                         DisplayMemberPath="Name"
                         ItemsSource="{x:Bind ViewModel.CalendarOptions, Mode=OneWay}"
                         SelectedItem="{x:Bind ViewModel.SelectedCalendar, Mode=TwoWay}" />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXSS}">
                         <Button
                             Click="OnPreviousColorClick"
-                            Style="{StaticResource ShellIconButtonStyle}"
+                            Style="{StaticResource ToolbarButtonStyle}"
                             AutomationProperties.Name="Previous colour">
-                            <FontIcon FontSize="12" Glyph="&#xE72B;" />
+                            <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72B;" />
                         </Button>
                         <Button
                             Click="OnNextColorClick"
-                            Style="{StaticResource ShellIconButtonStyle}"
+                            Style="{StaticResource ToolbarButtonStyle}"
                             AutomationProperties.Name="Next colour">
-                            <FontIcon FontSize="12" Glyph="&#xE72A;" />
+                            <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72A;" />
                         </Button>
                         <TextBlock
                             VerticalAlignment="Center"
@@ -280,7 +280,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="{StaticResource SpaceXS}">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="LINK" />
                     <TextBox
                         AutomationProperties.Name="Event link"
@@ -299,7 +299,7 @@
 
         <Grid
             Grid.Row="2"
-            Padding="16,12"
+            Padding="{StaticResource PaddingEditorHeader}"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             ColumnDefinitions="*,Auto,Auto">
             <Button
@@ -309,7 +309,7 @@
                 AutomationProperties.Name="Delete the event" />
             <Button
                 Grid.Column="2"
-                Margin="8,0,0,0"
+                Margin="{StaticResource MarginStartMedium}"
                 Click="OnSaveClick"
                 Content="Save"
                 Style="{StaticResource AccentButtonStyle}"

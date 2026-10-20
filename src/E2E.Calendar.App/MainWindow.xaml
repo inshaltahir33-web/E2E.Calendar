@@ -10,29 +10,30 @@
     <Grid
         x:Name="RootGrid"
         Background="Transparent"
+        KeyboardAcceleratorPlacementMode="Hidden"
         RowDefinitions="Auto,*,Auto">
         <Grid.KeyboardAccelerators>
-            <KeyboardAccelerator Key="N" Invoked="OnNewAccelerator" />
-            <KeyboardAccelerator Key="R" Invoked="OnNewReminderAccelerator" />
-            <KeyboardAccelerator Key="T" Invoked="OnTodayAccelerator" />
-            <KeyboardAccelerator Key="D" Invoked="OnDayViewAccelerator" />
-            <KeyboardAccelerator Key="W" Invoked="OnWeekViewAccelerator" />
-            <KeyboardAccelerator Key="M" Invoked="OnMonthViewAccelerator" />
-            <KeyboardAccelerator Key="A" Invoked="OnAgendaViewAccelerator" />
-            <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="OnFindAccelerator" />
-            <KeyboardAccelerator Key="K" Modifiers="Control" Invoked="OnCommandPaletteAccelerator" />
-            <KeyboardAccelerator Key="Z" Modifiers="Control" Invoked="OnUndoAccelerator" />
-            <KeyboardAccelerator Key="Left" Invoked="OnPreviousAccelerator" />
-            <KeyboardAccelerator Key="Right" Invoked="OnNextAccelerator" />
-            <KeyboardAccelerator Key="Up" Invoked="OnPreviousAccelerator" />
-            <KeyboardAccelerator Key="Down" Invoked="OnNextAccelerator" />
+            <KeyboardAccelerator Key="N" Invoked="OnNewAccelerator"/>
+            <KeyboardAccelerator Key="R" Invoked="OnNewReminderAccelerator"/>
+            <KeyboardAccelerator Key="T" Invoked="OnTodayAccelerator"/>
+            <KeyboardAccelerator Key="D" Invoked="OnDayViewAccelerator"/>
+            <KeyboardAccelerator Key="W" Invoked="OnWeekViewAccelerator"/>
+            <KeyboardAccelerator Key="M" Invoked="OnMonthViewAccelerator"/>
+            <KeyboardAccelerator Key="A" Invoked="OnAgendaViewAccelerator"/>
+            <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="OnFindAccelerator"/>
+            <KeyboardAccelerator Key="K" Modifiers="Control" Invoked="OnCommandPaletteAccelerator"/>
+            <KeyboardAccelerator Key="Z" Modifiers="Control" Invoked="OnUndoAccelerator"/>
+            <KeyboardAccelerator Key="Left" Invoked="OnPreviousAccelerator"/>
+            <KeyboardAccelerator Key="Right" Invoked="OnNextAccelerator"/>
+            <KeyboardAccelerator Key="Up" Invoked="OnPreviousAccelerator"/>
+            <KeyboardAccelerator Key="Down" Invoked="OnNextAccelerator"/>
         </Grid.KeyboardAccelerators>
 
         <Grid
             x:Name="TitleBarElement"
             Grid.Row="0"
-            Height="48"
-            Padding="8,0,0,0"
+            Height="{StaticResource TitleBarHeight}"
+            Padding="{StaticResource PaddingTitleBar}"
             Background="Transparent"
             ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
@@ -40,40 +41,40 @@
                 x:Name="PaneToggleButton"
                 Grid.Column="0"
                 Click="OnPaneToggleClick"
-                Style="{StaticResource ShellIconButtonStyle}"
+                Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Toggle the navigation pane"
                 ToolTipService.ToolTip="Toggle the navigation pane">
-                <FontIcon FontSize="16" Glyph="&#xE700;" />
+                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE700;" />
             </Button>
 
             <Button
                 Grid.Column="1"
-                Margin="4,0,0,0"
+                Margin="{StaticResource MarginStartSmall}"
                 Click="OnTodayClick"
                 Content="Today"
                 AutomationProperties.Name="Go to today" />
 
-            <StackPanel Grid.Column="2" Margin="4,0,0,0" Orientation="Horizontal">
+            <StackPanel Grid.Column="2" Margin="{StaticResource MarginStartSmall}" Orientation="Horizontal">
                 <Button
                     Click="OnPreviousClick"
-                    Style="{StaticResource ShellIconButtonStyle}"
+                    Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="Previous period"
                     ToolTipService.ToolTip="Previous period">
-                    <FontIcon FontSize="14" Glyph="&#xE72B;" />
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
                 </Button>
                 <Button
                     Click="OnNextClick"
-                    Style="{StaticResource ShellIconButtonStyle}"
+                    Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="Next period"
                     ToolTipService.ToolTip="Next period">
-                    <FontIcon FontSize="14" Glyph="&#xE72A;" />
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
                 </Button>
             </StackPanel>
 
             <TextBlock
                 x:Name="PeriodLabelText"
                 Grid.Column="3"
-                Margin="12,0,12,0"
+                Margin="{StaticResource MarginPeriodLabel}"
                 VerticalAlignment="Center"
                 Style="{ThemeResource SubtitleTextBlockStyle}"
                 Text="{x:Bind StateViewModel.PeriodLabel, Mode=OneWay}"
@@ -94,8 +95,8 @@
             <AutoSuggestBox
                 x:Name="SearchBox"
                 Grid.Column="5"
-                Width="220"
-                Margin="12,0,0,0"
+                Width="{StaticResource SearchBoxWidth}"
+                Margin="{StaticResource MarginStartLarge}"
                 VerticalAlignment="Center"
                 PlaceholderText="Search"
                 Text="{x:Bind ViewModel.SearchText, Mode=TwoWay}"
@@ -104,20 +105,20 @@
             <Button
                 Grid.Column="6"
                 Click="OnSyncClick"
-                Style="{StaticResource ShellIconButtonStyle}"
+                Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Sync now"
                 ToolTipService.ToolTip="Sync now">
-                <FontIcon FontSize="14" Glyph="&#xE895;" />
+                <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE895;" />
             </Button>
 
             <Button
                 Grid.Column="7"
-                Margin="0,0,140,0"
+                Margin="{StaticResource MarginEndCaption}"
                 Click="OnSettingsClick"
-                Style="{StaticResource ShellIconButtonStyle}"
+                Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Settings"
                 ToolTipService.ToolTip="Settings">
-                <FontIcon FontSize="14" Glyph="&#xE713;" />
+                <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE713;" />
             </Button>
 
         </Grid>
@@ -127,20 +128,20 @@
             <Grid
                 x:Name="SidebarHost"
                 Grid.Column="0"
-                Width="280"
+                Width="{StaticResource SidebarWidth}"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
 
                 <ScrollViewer
                     x:Name="SidebarScroll"
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
-                    <StackPanel Padding="12,8,12,16" Spacing="12">
+                    <StackPanel Padding="{StaticResource PaddingSidebar}" Spacing="{StaticResource SpaceMD}">
 
                         <CalendarView
                             x:Name="MiniCalendar"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Top"
-                            MinWidth="240"
+                            MinWidth="{StaticResource MiniCalendarMinWidth}"
                             SelectedDatesChanged="OnMiniCalendarSelectedDatesChanged"
                             AutomationProperties.Name="Mini calendar" />
 
@@ -151,8 +152,8 @@
                             Click="OnNewSplitButtonClick"
                             AutomationProperties.Name="Create a new event or reminder">
                             <muxc:SplitButton.Content>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontSize="14" Glyph="&#xE710;" />
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
                                     <TextBlock Text="New" />
                                 </StackPanel>
                             </muxc:SplitButton.Content>
@@ -166,7 +167,7 @@
                         </muxc:SplitButton>
 
                         <TextBlock
-                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Style="{StaticResource SectionHeaderStyle}"
                             Text="CALENDARS" />
 
                         <ListView
@@ -175,7 +176,7 @@
                             AutomationProperties.Name="Calendars">
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CalendarListItem">
-                                    <Grid MinHeight="28">
+                                    <Grid MinHeight="{StaticResource StatusBarHeight}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="Auto" />
@@ -188,15 +189,15 @@
                                             IsChecked="{x:Bind IsVisible, Mode=TwoWay}" />
                                         <Border
                                             Grid.Column="1"
-                                            Width="10"
-                                            Height="10"
-                                            Margin="6,0,0,0"
+                                            Width="{StaticResource CalendarSwatchSize}"
+                                            Height="{StaticResource CalendarSwatchSize}"
+                                            Margin="{StaticResource MarginStartSmall}"
                                             VerticalAlignment="Center"
                                             Background="{x:Bind ColorBrush, Mode=OneWay}"
-                                            CornerRadius="5" />
+                                            CornerRadius="{StaticResource RadiusSwatch}" />
                                         <TextBlock
                                             Grid.Column="2"
-                                            Margin="8,0,0,0"
+                                            Margin="{StaticResource MarginStartMedium}"
                                             VerticalAlignment="Center"
                                             Text="{x:Bind Name, Mode=OneWay}"
                                             TextTrimming="CharacterEllipsis" />
@@ -206,7 +207,7 @@
                         </ListView>
 
                         <TextBlock
-                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Style="{StaticResource SectionHeaderStyle}"
                             Text="REMINDERS" />
 
                         <ItemsControl
@@ -214,7 +215,8 @@
                             AutomationProperties.Name="Reminder lists">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:NavigationListItem">
-                                    <Grid MinHeight="26">
+                                    <Button Style="{StaticResource SidebarRowStyle}">
+                                    <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -222,11 +224,11 @@
                                         </Grid.ColumnDefinitions>
                                         <FontIcon
                                             VerticalAlignment="Center"
-                                            FontSize="14"
+                                            FontSize="{StaticResource IconSizeMedium}"
                                             Glyph="{x:Bind Glyph, Mode=OneWay}" />
                                         <TextBlock
                                             Grid.Column="1"
-                                            Margin="8,0,0,0"
+                                            Margin="{StaticResource MarginStartMedium}"
                                             VerticalAlignment="Center"
                                             Text="{x:Bind Label, Mode=OneWay}" />
                                         <TextBlock
@@ -235,12 +237,13 @@
                                             Style="{ThemeResource CaptionTextBlockStyle}"
                                             Text="{x:Bind Count, Mode=OneWay}" />
                                     </Grid>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
                         <TextBlock
-                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Style="{StaticResource SectionHeaderStyle}"
                             Text="TASKS" />
 
                         <ItemsControl
@@ -248,7 +251,8 @@
                             AutomationProperties.Name="Task lists">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:NavigationListItem">
-                                    <Grid MinHeight="26">
+                                    <Button Style="{StaticResource SidebarRowStyle}">
+                                    <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -256,11 +260,11 @@
                                         </Grid.ColumnDefinitions>
                                         <FontIcon
                                             VerticalAlignment="Center"
-                                            FontSize="14"
+                                            FontSize="{StaticResource IconSizeMedium}"
                                             Glyph="{x:Bind Glyph, Mode=OneWay}" />
                                         <TextBlock
                                             Grid.Column="1"
-                                            Margin="8,0,0,0"
+                                            Margin="{StaticResource MarginStartMedium}"
                                             VerticalAlignment="Center"
                                             Text="{x:Bind Label, Mode=OneWay}" />
                                         <TextBlock
@@ -269,6 +273,7 @@
                                             Style="{ThemeResource CaptionTextBlockStyle}"
                                             Text="{x:Bind Count, Mode=OneWay}" />
                                     </Grid>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -278,105 +283,107 @@
 
                 <StackPanel
                     x:Name="SidebarIconRail"
-                    Padding="6,8,6,8"
-                    Spacing="4"
+                    Padding="{StaticResource PaddingIconRail}"
+                    Spacing="{StaticResource SpaceXS}"
                     VerticalAlignment="Top"
                     Visibility="Collapsed">
                     <Button
                         Click="OnNewClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Create a new event or reminder"
                         ToolTipService.ToolTip="New">
-                        <FontIcon FontSize="16" Glyph="&#xE710;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE710;" />
                     </Button>
                     <Button
                         Click="OnTodayClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Go to today"
                         ToolTipService.ToolTip="Today">
-                        <FontIcon FontSize="16" Glyph="&#xE787;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE787;" />
                     </Button>
                     <Button
                         Click="OnDayViewClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Day view"
                         ToolTipService.ToolTip="Day">
-                        <FontIcon FontSize="16" Glyph="&#xE7B3;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B3;" />
                     </Button>
                     <Button
                         Click="OnWeekViewClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Week view"
                         ToolTipService.ToolTip="Week">
-                        <FontIcon FontSize="16" Glyph="&#xE7B4;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B4;" />
                     </Button>
                     <Button
                         Click="OnMonthViewClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Month view"
                         ToolTipService.ToolTip="Month">
-                        <FontIcon FontSize="16" Glyph="&#xE7B5;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B5;" />
                     </Button>
                     <Button
                         Click="OnAgendaViewClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Agenda view"
                         ToolTipService.ToolTip="Agenda">
-                        <FontIcon FontSize="16" Glyph="&#xE8A5;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE8A5;" />
                     </Button>
                     <Button
                         Click="OnTasksClick"
-                        Style="{StaticResource ShellIconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Tasks"
                         ToolTipService.ToolTip="Tasks">
-                        <FontIcon FontSize="16" Glyph="&#xE9D5;" />
+                        <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE9D5;" />
                     </Button>
                 </StackPanel>
 
             </Grid>
 
-            <Grid Grid.Column="1">
-                <Frame x:Name="ContentFrame" />
+            <Border Grid.Column="1" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Frame x:Name="ContentFrame" />
 
-                <StackPanel
-                    x:Name="ViewPlaceholder"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Spacing="8"
-                    Visibility="Collapsed">
-                    <TextBlock
+                    <StackPanel
+                        x:Name="ViewPlaceholder"
                         HorizontalAlignment="Center"
-                        Style="{ThemeResource TitleTextBlockStyle}"
-                        Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        Opacity="0.7"
-                        Style="{ThemeResource BodyTextBlockStyle}"
-                        Text="This section is not available yet." />
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        Opacity="0.7"
-                        Style="{ThemeResource CaptionTextBlockStyle}"
-                        Text="{x:Bind ViewModel.Status, Mode=OneWay}" />
-                </StackPanel>
-            </Grid>
+                        VerticalAlignment="Center"
+                        Spacing="{StaticResource SpaceSM}"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Style="{ThemeResource TitleTextBlockStyle}"
+                            Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Opacity="{StaticResource TextSecondaryOpacity}"
+                            Style="{ThemeResource BodyTextBlockStyle}"
+                            Text="This section is not available yet." />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Opacity="{StaticResource TextSecondaryOpacity}"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ViewModel.Status, Mode=OneWay}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
 
             <Grid
                 x:Name="EditorHost"
                 Grid.Column="2"
-                Width="380"
+                Width="{StaticResource EditorPaneWidth}"
                 Visibility="Collapsed" />
 
         </Grid>
 
         <Grid
             Grid.Row="2"
-            Height="28"
-            Padding="12,0"
+            Height="{StaticResource StatusBarHeight}"
+            Padding="{StaticResource PaddingStatusBar}"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             ColumnDefinitions="*,Auto">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <FontIcon FontSize="12" Glyph="&#xE73E;" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}" VerticalAlignment="Center">
+                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE73E;" />
                 <TextBlock
                     Style="{ThemeResource CaptionTextBlockStyle}"
                     Text="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
@@ -389,8 +396,8 @@
                 BorderThickness="0"
                 Click="OnPremiumClick"
                 AutomationProperties.Name="Premium features">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <FontIcon FontSize="12" Glyph="&#xE734;" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                    <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE734;" />
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Text="Premium" />
                 </StackPanel>
             </Button>
@@ -400,10 +407,10 @@
         <ctrl:SnackbarView
             x:Name="Snackbar"
             Grid.Row="1"
-            Width="420"
+            Width="{StaticResource SnackbarWidth}"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="0,0,0,12"
+            Margin="{StaticResource MarginSnackbar}"
             Visibility="Collapsed" />
 
     </Grid>

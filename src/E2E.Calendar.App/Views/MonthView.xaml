@@ -11,15 +11,15 @@
             <muxc:ItemsRepeater.Layout>
                 <muxc:UniformGridLayout
                     MaximumRowsOrColumns="7"
-                    MinItemHeight="92"
-                    MinItemWidth="110"
+                    MinItemHeight="{StaticResource MonthCellMinHeight}"
+                    MinItemWidth="{StaticResource MonthCellMinWidth}"
                     Orientation="Horizontal" />
             </muxc:ItemsRepeater.Layout>
             <muxc:ItemsRepeater.ItemTemplate>
                 <DataTemplate x:DataType="vm:MonthDay">
-                    <Grid Padding="4" RowDefinitions="Auto,Auto,*">
+                    <Grid Padding="{StaticResource InsetXS}" RowDefinitions="Auto,Auto,*">
 
-                        <Grid ColumnDefinitions="Auto,*" Height="20">
+                        <Grid ColumnDefinitions="Auto,*" Height="{StaticResource MonthDayNumberHeight}">
                             <Button
                                 HorizontalAlignment="Left"
                                 AutomationProperties.Name="Open the day view"
@@ -27,29 +27,29 @@
                                 BorderThickness="0"
                                 Click="OnDayNumberClicked"
                                 Content="{x:Bind DayNumber, Mode=OneWay}"
-                                Padding="4,0,4,0" />
+                                Padding="{StaticResource PaddingDayNumber}" />
                             <StackPanel
                                 Grid.Column="1"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal"
-                                Spacing="2">
+                                Spacing="{StaticResource SpaceXXS}">
                                 <Border
-                                    Width="5"
-                                    Height="5"
+                                    Width="{StaticResource HeatDotSize}"
+                                    Height="{StaticResource HeatDotSize}"
                                     Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                    CornerRadius="3"
+                                    CornerRadius="{StaticResource HeatDotRadius}"
                                     Opacity="{x:Bind Heat1, Mode=OneWay}" />
                                 <Border
-                                    Width="5"
-                                    Height="5"
+                                    Width="{StaticResource HeatDotSize}"
+                                    Height="{StaticResource HeatDotSize}"
                                     Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                    CornerRadius="3"
+                                    CornerRadius="{StaticResource HeatDotRadius}"
                                     Opacity="{x:Bind Heat2, Mode=OneWay}" />
                                 <Border
-                                    Width="5"
-                                    Height="5"
+                                    Width="{StaticResource HeatDotSize}"
+                                    Height="{StaticResource HeatDotSize}"
                                     Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                    CornerRadius="3"
+                                    CornerRadius="{StaticResource HeatDotRadius}"
                                     Opacity="{x:Bind Heat3, Mode=OneWay}" />
                             </StackPanel>
                         </Grid>
@@ -58,19 +58,19 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:MonthChip">
                                     <Border
-                                        Margin="0,1,0,1"
-                                        Padding="4,1,4,1"
+                                        Margin="{StaticResource MarginMonthChip}"
+                                        Padding="{StaticResource PaddingMonthChip}"
                                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="4">
+                                        CornerRadius="{StaticResource RadiusControl}">
                                         <Grid ColumnDefinitions="Auto,*">
                                             <Border
-                                                Width="3"
+                                                Width="{StaticResource AccentBarWidth}"
                                                 Background="{x:Bind Color, Mode=OneWay, Converter={StaticResource ColorToBrush}}" />
                                             <TextBlock
                                                 Grid.Column="1"
-                                                FontSize="11"
+                                                FontSize="{StaticResource FontSizeEventTime}"
                                                 Text="{x:Bind Title, Mode=OneWay}"
                                                 TextTrimming="CharacterEllipsis"
                                                 ToolTipService.ToolTip="{x:Bind Title, Mode=OneWay}" />
@@ -89,7 +89,7 @@
                             Click="OnMoreClicked"
                             Visibility="{x:Bind MoreVisibility, Mode=OneWay}"
                             AutomationProperties.Name="Show all events of the day">
-                            <TextBlock FontSize="11" Text="{x:Bind MoreLabel, Mode=OneWay}" />
+                            <TextBlock FontSize="{StaticResource FontSizeEventTime}" Text="{x:Bind MoreLabel, Mode=OneWay}" />
                         </Button>
 
                     </Grid>

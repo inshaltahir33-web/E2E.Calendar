@@ -24,6 +24,24 @@ public partial class App : Application
     {
         this.InitializeComponent();
         this.UnhandledException += OnUnhandledException;
+
+        RespectReducedMotion();
+    }
+
+    private void RespectReducedMotion()
+    {
+        try
+        {
+            var settings = new Windows.UI.ViewManagement.UISettings();
+
+            if (!settings.AnimationsEnabled)
+            {
+                this.Resources["TransitionDuration"] = "0:0:0";
+            }
+        }
+        catch (Exception)
+        {
+        }
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)

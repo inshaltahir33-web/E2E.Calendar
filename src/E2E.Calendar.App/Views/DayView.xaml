@@ -9,7 +9,7 @@
 
         <TextBlock
             Grid.Row="0"
-            Margin="12,8"
+            Margin="{StaticResource MarginSection}"
             Style="{ThemeResource SubtitleTextBlockStyle}"
             Text="{x:Bind ViewModel.State.PeriodLabel, Mode=OneWay}" />
 

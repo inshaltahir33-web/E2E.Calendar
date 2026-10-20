@@ -4,12 +4,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Border
-        Padding="16,10"
+        Padding="{StaticResource PaddingSnackbar}"
         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
         BorderThickness="1"
-        CornerRadius="4">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+        CornerRadius="{StaticResource RadiusControl}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceLG}">
             <TextBlock
                 x:Name="MessageText"
                 VerticalAlignment="Center"

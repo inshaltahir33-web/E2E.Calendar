@@ -10,7 +10,7 @@
         <TextBlock
             x:Name="PinnedHeader"
             Grid.Row="0"
-            Padding="12,8"
+            Padding="{StaticResource PaddingAgendaHeader}"
             Style="{ThemeResource SubtitleTextBlockStyle}"
             Visibility="Collapsed"
             AutomationProperties.Name="Current agenda day" />
@@ -27,13 +27,13 @@
                     <DataTemplate x:DataType="vm:AgendaDayViewModel">
                         <StackPanel>
                             <TextBlock
-                                Padding="12,12,12,4"
+                                Padding="{StaticResource PaddingAgendaDayHeader}"
                                 Style="{ThemeResource SubtitleTextBlockStyle}"
                                 Text="{x:Bind Header, Mode=OneWay}" />
                             <ItemsControl ItemsSource="{x:Bind Items, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:AgendaItemViewModel">
-                                        <Grid MinHeight="28" ColumnDefinitions="Auto,Auto,*,Auto">
+                                        <Grid MinHeight="{StaticResource AgendaRowHeight}" ColumnDefinitions="Auto,Auto,*,Auto">
                                             <CheckBox
                                                 MinWidth="0"
                                                 VerticalAlignment="Center"
@@ -43,12 +43,12 @@
                                                 Visibility="{x:Bind TickVisibility, Mode=OneWay}" />
                                             <Border
                                                 Grid.Column="1"
-                                                Width="8"
-                                                Height="8"
-                                                Margin="0,0,8,0"
+                                                Width="{StaticResource AgendaDotSize}"
+                                                Height="{StaticResource AgendaDotSize}"
+                                                Margin="{StaticResource MarginAgendaDot}"
                                                 VerticalAlignment="Center"
                                                 Background="{x:Bind Color, Mode=OneWay, Converter={StaticResource ColorToBrush}}"
-                                                CornerRadius="4" />
+                                                CornerRadius="{StaticResource RadiusControl}" />
                                             <TextBlock
                                                 Grid.Column="2"
                                                 VerticalAlignment="Center"
@@ -56,9 +56,9 @@
                                                 TextTrimming="CharacterEllipsis" />
                                             <TextBlock
                                                 Grid.Column="3"
-                                                Margin="8,0,0,0"
+                                                Margin="{StaticResource MarginStartMedium}"
                                                 VerticalAlignment="Center"
-                                                Opacity="0.7"
+                                                Opacity="{StaticResource TextSecondaryOpacity}"
                                                 Style="{ThemeResource CaptionTextBlockStyle}"
                                                 Text="{x:Bind TimeLabel, Mode=OneWay}" />
                                         </Grid>

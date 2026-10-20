@@ -32,7 +32,7 @@ public sealed partial class TimeGrid : UserControl
         nameof(HourHeight),
         typeof(double),
         typeof(TimeGrid),
-        new PropertyMetadata(48d, OnLayoutSourceChanged));
+        new PropertyMetadata(Tokens.Double("GridHourHeight", 56d), OnLayoutSourceChanged));
 
     public static readonly DependencyProperty NowProperty = DependencyProperty.Register(
         nameof(Now),
@@ -40,7 +40,6 @@ public sealed partial class TimeGrid : UserControl
         typeof(TimeGrid),
         new PropertyMetadata(null, OnLayoutSourceChanged));
 
-    private const double GutterWidth = 48;
     private const double ResizeEdgeInPixels = 6;
     private const double SnapMinutes = 15;
 
@@ -48,9 +47,8 @@ public sealed partial class TimeGrid : UserControl
     private readonly DispatcherTimer _nowTimer;
 
     private DragState? _drag;
-    private Border? _dragPreview;
-    private Canvas? _dragPreviewHost;
     private double _columnWidth;
+    private double GutterWidth => Tokens.Double("GridGutterWidth", 56d);
 
     public TimeGrid()
     {
@@ -164,8 +162,8 @@ public sealed partial class TimeGrid : UserControl
         AllDayHost.ColumnDefinitions.Clear();
         AllDayHost.Children.Clear();
 
-        HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(GutterWidth) });
-        AllDayHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(GutterWidth) });
+        HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Tokens.Double("GridGutterWidth", 56d)) });
+        AllDayHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Tokens.Double("GridGutterWidth", 56d)) });
 
         var viewportWidth = ScrollViewer.ViewportWidth > 0 ? ScrollViewer.ViewportWidth : ActualWidth;
         _columnWidth = days.Count > 0 ? Math.Max(0, (viewportWidth - GutterWidth) / days.Count) : 0;
@@ -180,7 +178,7 @@ public sealed partial class TimeGrid : UserControl
                 Text = day.Header,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 4),
+                Margin = Tokens.Thickness("MarginChipTitle"),
                 Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
             };
 
@@ -244,7 +242,7 @@ public sealed partial class TimeGrid : UserControl
                 Text = hour.ToString("00"),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 6, 0),
+                Margin = new Thickness(0, Tokens.Double("SpaceXS"), Tokens.Double("SpaceSM"), 0),
                 Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
             };
 
@@ -270,7 +268,7 @@ public sealed partial class TimeGrid : UserControl
             {
                 Orientation = Orientation.Vertical,
                 Spacing = 2,
-                Margin = new Thickness(2, 2, 2, 4),
+                Margin = Tokens.Thickness("InsetSM"),
             };
 
             foreach (var item in allDayItems.Where(item => DayIndexFor(item, days) == index).Take(3))
@@ -336,34 +334,22 @@ public sealed partial class TimeGrid : UserControl
         var days = Days ?? Array.Empty<TimeGridDay>();
         var now = Now ?? DateTimeOffset.Now;
 
-        var existing = LinesCanvas.Children.OfType<Rectangle>().Where(line => Equals(line.Tag, "now")).ToList();
-
-        foreach (var line in existing)
-        {
-            LinesCanvas.Children.Remove(line);
-        }
-
         var todayIndex = days.ToList().FindIndex(day => day.Date == DateOnly.FromDateTime(LocalTimeZone.ToLocal(now)));
 
         if (todayIndex < 0 || todayIndex >= _dayCanvases.Count)
         {
+            NowLine.Visibility = Visibility.Collapsed;
             return;
         }
 
         var dayStart = DayStartUtc(days[todayIndex].Date);
         var y = (now - dayStart).TotalHours * HourHeight;
 
-        var nowLine = new Rectangle
-        {
-            Height = 2,
-            Width = _columnWidth,
-            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xE8, 0x11, 0x23)),
-            Tag = "now",
-        };
+        NowLine.Width = _columnWidth;
+        NowLine.Visibility = Visibility.Visible;
 
-        Canvas.SetTop(nowLine, y);
-        Canvas.SetLeft(nowLine, todayIndex * _columnWidth);
-        LinesCanvas.Children.Add(nowLine);
+        Canvas.SetTop(NowLine, y);
+        Canvas.SetLeft(NowLine, GutterWidth + (todayIndex * _columnWidth));
     }
 
     private Border CreateChip(CalendarItem item, bool isAllDay)
@@ -390,10 +376,10 @@ public sealed partial class TimeGrid : UserControl
         var text = new TextBlock
         {
             Text = item.Title,
-            Margin = new Thickness(4, 1, 2, 1),
+            Margin = Tokens.Thickness("PaddingChipTitle"),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 12,
+            FontSize = Tokens.Double("FontSizeEventTitle", 12d),
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
         };
 
@@ -403,7 +389,7 @@ public sealed partial class TimeGrid : UserControl
         return new Border
         {
             Child = content,
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = Tokens.CornerRadius("RadiusControl", 4d),
             Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
             BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(0, 0, 1, 1),
@@ -589,37 +575,19 @@ public sealed partial class TimeGrid : UserControl
             return;
         }
 
-        if (_dragPreview is null)
-        {
-            _dragPreview = new Border
-            {
-                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x40, 0x00, 0x78, 0xD4)),
-                BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-            };
-
-            _dragPreviewHost = _dayCanvases[_drag.DayIndex];
-            _dragPreviewHost.Children.Add(_dragPreview);
-        }
-
         var dayStart = DayStartUtc((Days ?? Array.Empty<TimeGridDay>())[_drag.DayIndex].Date);
 
-        _dragPreview.Width = Math.Max(24, _columnWidth - 4);
-        _dragPreview.Height = Math.Max(18, (_drag.EndUtc - _drag.StartUtc).TotalHours * HourHeight);
+        DragPreview.Width = Math.Max(24, _columnWidth - 4);
+        DragPreview.Height = Math.Max(18, (_drag.EndUtc - _drag.StartUtc).TotalHours * HourHeight);
+        DragPreview.Visibility = Visibility.Visible;
 
-        Canvas.SetTop(_dragPreview, (_drag.StartUtc - dayStart).TotalHours * HourHeight);
-        Canvas.SetLeft(_dragPreview, 2);
+        Canvas.SetTop(DragPreview, (_drag.StartUtc - dayStart).TotalHours * HourHeight);
+        Canvas.SetLeft(DragPreview, GutterWidth + (_drag.DayIndex * _columnWidth) + Tokens.Double("SpaceXS", 4d));
     }
 
     private void HidePreview()
     {
-        if (_dragPreview is not null)
-        {
-            _dragPreviewHost?.Children.Remove(_dragPreview);
-            _dragPreview = null;
-            _dragPreviewHost = null;
-        }
+        DragPreview.Visibility = Visibility.Collapsed;
     }
 
     private Border? HitTest(Canvas canvas, Point position)

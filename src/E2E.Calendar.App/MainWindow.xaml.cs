@@ -1,8 +1,7 @@
 using System.Collections.ObjectModel;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
-using E2E.Calendar.App.ViewModels;
-using E2E.Calendar.Core;
+using E2E.Calendar.App.ViewModels;using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
@@ -17,8 +16,6 @@ namespace E2E.Calendar.App;
 
 public sealed partial class MainWindow : Window
 {
-    private const double SidebarExpandedWidth = 280;
-    private const double SidebarCollapsedWidth = 52;
     private const double CompactWidthThreshold = 900;
 
     private readonly NavigationService _navigation;
@@ -116,7 +113,9 @@ public sealed partial class MainWindow : Window
     {
         ViewModel.IsSidebarCollapsed = collapsed;
 
-        SidebarHost.Width = collapsed ? SidebarCollapsedWidth : SidebarExpandedWidth;
+        SidebarHost.Width = collapsed
+            ? Tokens.Double("SidebarCollapsedWidth", 48d)
+            : Tokens.Double("SidebarWidth", 272d);
         SidebarScroll.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
     }

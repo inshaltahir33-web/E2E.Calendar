@@ -9,12 +9,9 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <ResourceDictionary Source="ms-appx:///Themes/Tokens.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <Style x:Key="ShellIconButtonStyle" TargetType="Button">
-                <Setter Property="Padding" Value="8" />
-                <Setter Property="MinWidth" Value="32" />
-                <Setter Property="MinHeight" Value="32" />
-            </Style>
             <conv:ColorToBrushConverter x:Key="ColorToBrush" />
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
         </ResourceDictionary>
