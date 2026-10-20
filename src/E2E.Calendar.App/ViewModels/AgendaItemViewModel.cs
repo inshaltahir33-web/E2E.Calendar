@@ -1,8 +1,9 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 
 namespace E2E.Calendar.App.ViewModels;
 
-public sealed class AgendaItemViewModel
+public sealed class AgendaItemViewModel : ObservableObject
 {
     public required string Title { get; init; }
 
@@ -17,7 +18,7 @@ public sealed class AgendaItemViewModel
     public Visibility TickVisibility => IsTickable ? Visibility.Visible : Visibility.Collapsed;
 }
 
-public sealed class AgendaDayViewModel
+public sealed class AgendaDayViewModel : ObservableObject
 {
     public required string Header { get; init; }
 

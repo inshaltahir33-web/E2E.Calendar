@@ -38,7 +38,8 @@ public sealed partial class MainWindow : Window
         IClock clock,
         ILogger<MainWindow> logger,
         EventEditorViewModel editor,
-        WeekViewModel weekViewModel)
+        WeekViewModel weekViewModel,
+        MiniCalendarViewModel miniCalendar)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -49,6 +50,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(weekViewModel);
+        ArgumentNullException.ThrowIfNull(miniCalendar);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -59,6 +61,7 @@ public sealed partial class MainWindow : Window
         _logger = logger;
         _editor = editor;
         WeekViewModel = weekViewModel;
+        MiniCalendar = miniCalendar;
 
         this.InitializeComponent();
 
@@ -68,6 +71,7 @@ public sealed partial class MainWindow : Window
         StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
         EditorHost.Children.Add(new Views.EventEditorView(editor));
+        MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar));
 
         editor.Opened += OnEditorOpened;
         editor.CloseRequested += OnEditorCloseRequested;
@@ -93,6 +97,8 @@ public sealed partial class MainWindow : Window
     public CalendarStateViewModel StateViewModel { get; }
 
     public WeekViewModel WeekViewModel { get; }
+
+    public MiniCalendarViewModel MiniCalendar { get; }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -169,20 +175,6 @@ public sealed partial class MainWindow : Window
         {
             StateViewModel.SetViewModeCommand.Execute(mode);
         }
-    }
-
-    private void OnMiniCalendarSelectedDatesChanged(CalendarView sender, CalendarViewSelectedDatesChangedEventArgs args)
-    {
-        if (args.AddedDates.Count == 0)
-        {
-            return;
-        }
-
-        var selected = args.AddedDates[0];
-        var localDate = DateOnly.FromDateTime(selected.Date);
-        var localStart = localDate.ToDateTime(TimeOnly.MinValue);
-
-        StateViewModel.CurrentDate = _clock.LocalTimeZone.ToUtc(localStart);
     }
 
     private void OnNewSplitButtonClick(SplitButton sender, SplitButtonClickEventArgs args) =>

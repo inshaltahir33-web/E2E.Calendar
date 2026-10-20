@@ -103,6 +103,7 @@ public partial class App : Application
                 services.AddSingleton<WeekViewModel>();
                 services.AddSingleton<DayViewModel>();
                 services.AddSingleton<AgendaViewModel>();
+                services.AddSingleton<MiniCalendarViewModel>();
                 services.AddSingleton<EventEditorViewModel>();
                 services.AddSingleton<MainWindow>();
 

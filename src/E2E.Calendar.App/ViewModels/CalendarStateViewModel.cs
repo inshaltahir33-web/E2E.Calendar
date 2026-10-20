@@ -14,6 +14,12 @@ public sealed partial class CalendarStateViewModel : ObservableObject
     private DateTimeOffset _currentDate;
 
     [ObservableProperty]
+    private DateOnly _selectedDate;
+
+    [ObservableProperty]
+    private WeekStartDay _weekStart = WeekStartDay.Monday;
+
+    [ObservableProperty]
     private CalendarViewMode _viewMode = CalendarViewMode.Week;
 
     public CalendarStateViewModel(IClock clock)
@@ -22,6 +28,7 @@ public sealed partial class CalendarStateViewModel : ObservableObject
 
         _clock = clock;
         _currentDate = clock.UtcNow;
+        _selectedDate = DateOnly.FromDateTime(clock.LocalTimeZone.ToLocal(clock.UtcNow));
     }
 
     public string LocalTimeZoneId => _clock.LocalTimeZone.ToIanaId();
@@ -37,6 +44,7 @@ public sealed partial class CalendarStateViewModel : ObservableObject
     public void GoToToday()
     {
         CurrentDate = _clock.UtcNow;
+        SelectDate(DateOnly.FromDateTime(_clock.LocalTimeZone.ToLocal(CurrentDate)));
     }
 
     [RelayCommand]
@@ -69,6 +77,13 @@ public sealed partial class CalendarStateViewModel : ObservableObject
         ViewMode = mode;
     }
 
+    [RelayCommand]
+    public void SelectDate(DateOnly date)
+    {
+        SelectedDate = date;
+        CurrentDate = _clock.LocalTimeZone.ToUtc(date.ToDateTime(TimeOnly.MinValue));
+    }
+
     partial void OnCurrentDateChanged(DateTimeOffset value)
     {
         OnPropertyChanged(nameof(LocalDate));
@@ -76,9 +91,7 @@ public sealed partial class CalendarStateViewModel : ObservableObject
         OnPropertyChanged(nameof(Period));
     }
 
-    partial void OnViewModeChanged(CalendarViewMode value)
-    {
-        OnPropertyChanged(nameof(PeriodLabel));
-        OnPropertyChanged(nameof(Period));
-    }
+    partial void OnSelectedDateChanged(DateOnly value) => OnPropertyChanged(nameof(SelectedDate));
+
+    partial void OnWeekStartChanged(WeekStartDay value) => OnPropertyChanged(nameof(WeekStart));
 }

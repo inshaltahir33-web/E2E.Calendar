@@ -1,9 +1,10 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 
 namespace E2E.Calendar.App.ViewModels;
 
-public sealed class MonthDay
+public sealed class MonthDay : ObservableObject
 {
     public required DateOnly Date { get; init; }
 

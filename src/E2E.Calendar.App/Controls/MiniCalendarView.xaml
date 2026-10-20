@@ -1,0 +1,50 @@
+<UserControl
+    x:Class="E2E.Calendar.App.Controls.MiniCalendarView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StackPanel
+        Spacing="{StaticResource SpaceXXS}"
+        KeyDown="OnCalendarKeyDown"
+        PointerWheelChanged="OnCalendarPointerWheelChanged">
+
+        <Grid Height="28" ColumnDefinitions="Auto,*,Auto">
+            <Button
+                x:Name="PreviousMonthButton"
+                Click="OnPreviousMonthClick"
+                Style="{StaticResource ToolbarButtonStyle}"
+                AutomationProperties.Name="Previous month"
+                ToolTipService.ToolTip="Previous month">
+                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72B;" />
+            </Button>
+
+            <TextBlock
+                x:Name="HeaderText"
+                Grid.Column="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="{StaticResource FontSizeBody}"
+                FontWeight="SemiBold"
+                Text="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
+                AutomationProperties.Name="Month" />
+
+            <Button
+                x:Name="NextMonthButton"
+                Grid.Column="2"
+                Click="OnNextMonthClick"
+                Style="{StaticResource ToolbarButtonStyle}"
+                AutomationProperties.Name="Next month"
+                ToolTipService.ToolTip="Next month">
+                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72A;" />
+            </Button>
+        </Grid>
+
+        <Grid
+            x:Name="WeekdayHeader"
+            Height="16" />
+
+        <Grid x:Name="DaysHost" />
+
+    </StackPanel>
+
+</UserControl>

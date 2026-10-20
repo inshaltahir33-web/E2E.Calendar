@@ -15,14 +15,19 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
         return new CalendarPeriod(mode, timeZone.ToUtc(fromLocal), timeZone.ToUtc(toLocal));
     }
 
-    public static DateOnly StartOfWeek(DateOnly date)
+    public static DateOnly StartOfWeek(DateOnly date) => StartOfWeek(date, WeekStartDay.Monday);
+
+    public static DateOnly StartOfWeek(DateOnly date, WeekStartDay weekStart)
     {
-        var offset = ((int)date.DayOfWeek + 6) % 7;
+        var offset = ((int)date.DayOfWeek - (int)weekStart + 7) % 7;
 
         return date.AddDays(-offset);
     }
 
-    public static DateOnly EndOfWeek(DateOnly date) => StartOfWeek(date).AddDays(6);
+    public static DateOnly EndOfWeek(DateOnly date) => EndOfWeek(date, WeekStartDay.Monday);
+
+    public static DateOnly EndOfWeek(DateOnly date, WeekStartDay weekStart) =>
+        StartOfWeek(date, weekStart).AddDays(6);
 
     public static DateOnly StartOfMonth(DateOnly date) => new(date.Year, date.Month, 1);
 

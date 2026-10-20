@@ -180,19 +180,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <ScrollViewer
-                    Grid.Row="0"
-                    Height="{StaticResource MiniCalendarHeight}"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-                    <CalendarView
-                        x:Name="MiniCalendar"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Top"
-                        MinWidth="{StaticResource MiniCalendarMinWidth}"
-                        SelectedDatesChanged="OnMiniCalendarSelectedDatesChanged"
-                        AutomationProperties.Name="Mini calendar" />
-                </ScrollViewer>
+                <Grid x:Name="MiniCalendarHost" Grid.Row="0" />
 
                 <muxc:SplitButton
                     x:Name="NewSplitButton"
