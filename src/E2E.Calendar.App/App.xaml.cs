@@ -84,12 +84,14 @@ public partial class App : Application
                 services.AddSingleton<IRecurrenceExpander, RecurrenceExpander>();
                 services.AddSingleton<EventQueryService>();
                 services.AddSingleton<IEventQueryCache>(serviceProvider => serviceProvider.GetRequiredService<EventQueryService>());
-                services.AddSingleton(serviceProvider => new EventService(
+                services.AddSingleton<EventService>(serviceProvider => new EventService(
                     serviceProvider.GetRequiredService<IEventRepository>(),
                     serviceProvider.GetRequiredService<IOutbox>(),
                     serviceProvider.GetRequiredService<IClock>(),
                     null,
                     serviceProvider.GetRequiredService<IEventQueryCache>()));
+
+                services.AddSingleton<IEventService>(serviceProvider => serviceProvider.GetRequiredService<EventService>());
 
                 services.AddSingleton<CalendarService>();
                 services.AddSingleton<AgendaService>();
@@ -109,6 +111,16 @@ public partial class App : Application
 
                 services.AddHostedService<AppStartupService>();
                 services.AddHostedService<NavigationRegistrationService>();
+
+#if DEBUG
+                if (string.Equals(
+                        Environment.GetEnvironmentVariable("E2E_DEMO"),
+                        "1",
+                        StringComparison.Ordinal))
+                {
+                    services.AddSingleton<IDemoDataSeeder, DemoDataSeeder>();
+                }
+#endif
             })
             .Build();
 

@@ -1,3 +1,4 @@
+using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,12 +10,18 @@ public sealed class AppStartupService : IHostedService
     private readonly Data.Db _database;
     private readonly CalendarService _calendars;
     private readonly ILogger<AppStartupService> _logger;
+    private readonly IDemoDataSeeder? _demoSeeder;
 
-    public AppStartupService(Data.Db database, CalendarService calendars, ILogger<AppStartupService> logger)
+    public AppStartupService(
+        Data.Db database,
+        CalendarService calendars,
+        ILogger<AppStartupService> logger,
+        IDemoDataSeeder? demoSeeder = null)
     {
         _database = database;
         _calendars = calendars;
         _logger = logger;
+        _demoSeeder = demoSeeder;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -22,6 +29,13 @@ public sealed class AppStartupService : IHostedService
         await _database.MigrateAsync(cancellationToken);
 
         var calendars = await _calendars.EnsureDefaultsAsync(cancellationToken);
+
+        if (_demoSeeder is not null)
+        {
+            await _demoSeeder.SeedAsync(cancellationToken);
+
+            _logger.LogInformation("Demo data seeded");
+        }
 
         _logger.LogInformation(
             "Database ready at {DatabasePath} with {CalendarCount} calendar(s): {Calendars}",
