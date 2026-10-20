@@ -6,6 +6,7 @@ using E2E.Calendar.Core.Services;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
@@ -40,15 +41,56 @@ public sealed partial class TimeGrid : UserControl
         typeof(TimeGrid),
         new PropertyMetadata(null, OnLayoutSourceChanged));
 
+    public static readonly DependencyProperty ClockFormatProperty = DependencyProperty.Register(
+        nameof(ClockFormat),
+        typeof(ClockFormat),
+        typeof(TimeGrid),
+        new PropertyMetadata(ClockFormat.TwentyFourHour, OnLayoutSourceChanged));
+
+    public static readonly DependencyProperty ShowSecondaryTimeZoneProperty = DependencyProperty.Register(
+        nameof(ShowSecondaryTimeZone),
+        typeof(bool),
+        typeof(TimeGrid),
+        new PropertyMetadata(false, OnLayoutSourceChanged));
+
+    public static readonly DependencyProperty SecondaryTimeZoneIdProperty = DependencyProperty.Register(
+        nameof(SecondaryTimeZoneId),
+        typeof(string),
+        typeof(TimeGrid),
+        new PropertyMetadata(null, OnLayoutSourceChanged));
+
+    public static readonly DependencyProperty SelectedItemIdProperty = DependencyProperty.Register(
+        nameof(SelectedItemId),
+        typeof(string),
+        typeof(TimeGrid),
+        new PropertyMetadata(null, OnLayoutSourceChanged));
+
+    private const int HoursPerDay = 24;
+    private const int MaxAllDayRows = 3;
+    private const int MaxOverlapColumns = 4;
     private const double ResizeEdgeInPixels = 6;
-    private const double SnapMinutes = 15;
+    private const double SecondaryColumnWidth = 72;
+    private const int SnapMinutes = 15;
+    private const int FineSnapMinutes = 5;
+
+    private static double _sessionScrollOffset = -1;
 
     private readonly List<Canvas> _dayCanvases = new();
+    private readonly List<FrameworkElement> _headerCells = new();
+    private readonly List<FrameworkElement> _allDayCells = new();
     private readonly DispatcherTimer _nowTimer;
+
+    private Canvas? _linesCanvas;
+    private Canvas? _gutterCanvas;
+    private Canvas? _overlayCanvas;
+    private Border? _ghost;
+    private TextBlock? _ghostLabel;
+    private Ellipse? _nowDot;
+    private Rectangle? _nowLine;
 
     private DragState? _drag;
     private double _columnWidth;
-    private double GutterWidth => Tokens.Double("GridGutterWidth", 56d);
+    private int _dayCount;
 
     public TimeGrid()
     {
@@ -58,8 +100,9 @@ public sealed partial class TimeGrid : UserControl
         _nowTimer.Tick += OnNowTimerTick;
         _nowTimer.Start();
 
-        ScrollViewer.SizeChanged += OnScrollViewerSizeChanged;
+        SizeChanged += OnSizeChanged;
         Unloaded += OnUnloaded;
+        IsTabStop = true;
     }
 
     public IReadOnlyList<TimeGridDay>? Days
@@ -86,6 +129,30 @@ public sealed partial class TimeGrid : UserControl
         set => SetValue(NowProperty, value);
     }
 
+    public ClockFormat ClockFormat
+    {
+        get => (ClockFormat)GetValue(ClockFormatProperty);
+        set => SetValue(ClockFormatProperty, value);
+    }
+
+    public bool ShowSecondaryTimeZone
+    {
+        get => (bool)GetValue(ShowSecondaryTimeZoneProperty);
+        set => SetValue(ShowSecondaryTimeZoneProperty, value);
+    }
+
+    public string? SecondaryTimeZoneId
+    {
+        get => (string?)GetValue(SecondaryTimeZoneIdProperty);
+        set => SetValue(SecondaryTimeZoneIdProperty, value);
+    }
+
+    public string? SelectedItemId
+    {
+        get => (string?)GetValue(SelectedItemIdProperty);
+        set => SetValue(SelectedItemIdProperty, value);
+    }
+
     public event EventHandler<TimeGridItemEventArgs>? ItemActivated;
 
     public event EventHandler<TimeGridSlotEventArgs>? SlotCreated;
@@ -95,6 +162,14 @@ public sealed partial class TimeGrid : UserControl
     public event EventHandler<TimeGridItemEventArgs>? ItemResized;
 
     public event EventHandler<TimeGridItemEventArgs>? ItemCopied;
+
+    public event EventHandler<TimeGridItemEventArgs>? ItemCompleted;
+
+    public event EventHandler<TimeGridItemActionEventArgs>? ItemActionRequested;
+
+    private static TimeZoneInfo LocalTimeZone => TimeZoneInfo.Local;
+
+    private double GutterWidth => Tokens.Double("GridGutterWidth", 56d);
 
     private static void OnLayoutSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
@@ -118,12 +193,8 @@ public sealed partial class TimeGrid : UserControl
 
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        RenderAllDayStrip();
-        RenderItems();
-        RenderNowLine();
+        Rebuild();
     }
-
-    private static TimeZoneInfo LocalTimeZone => TimeZoneInfo.Local;
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
@@ -132,255 +203,416 @@ public sealed partial class TimeGrid : UserControl
 
     private void OnNowTimerTick(object? sender, object e)
     {
-        if (Now is null)
-        {
-            return;
-        }
-
         RenderNowLine();
     }
 
-    private void OnScrollViewerSizeChanged(object sender, SizeChangedEventArgs args)
+    private void OnSizeChanged(object sender, SizeChangedEventArgs args)
     {
         Rebuild();
     }
 
     private void OnViewChanged(object sender, ScrollViewerViewChangedEventArgs args)
     {
-        RenderItems();
+        if (args.IsIntermediate)
+        {
+            return;
+        }
+
+        _sessionScrollOffset = BodyScroll.VerticalOffset;
+        UpdateScrollIndicator();
+        RenderBody();
     }
 
     private void Rebuild()
     {
         var days = Days ?? Array.Empty<TimeGridDay>();
-
-        _dayCanvases.Clear();
-        ColumnsHost.ColumnDefinitions.Clear();
-        ColumnsHost.Children.Clear();
-        HeaderHost.ColumnDefinitions.Clear();
-        HeaderHost.Children.Clear();
-        AllDayHost.ColumnDefinitions.Clear();
-        AllDayHost.Children.Clear();
-
-        HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Tokens.Double("GridGutterWidth", 56d)) });
-        AllDayHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Tokens.Double("GridGutterWidth", 56d)) });
-
-        var viewportWidth = ScrollViewer.ViewportWidth > 0 ? ScrollViewer.ViewportWidth : ActualWidth;
-        _columnWidth = days.Count > 0 ? Math.Max(0, (viewportWidth - GutterWidth) / days.Count) : 0;
-
-        foreach (var day in days)
-        {
-            HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(_columnWidth) });
-            AllDayHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(_columnWidth) });
-
-            var header = new TextBlock
-            {
-                Text = day.Header,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = Tokens.Thickness("MarginChipTitle"),
-                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            };
-
-            Grid.SetColumn(header, HeaderHost.ColumnDefinitions.Count - 1);
-            HeaderHost.Children.Add(header);
-
-            var dayCanvas = new Canvas
-            {
-                Height = HourHeight * 24,
-                Width = _columnWidth,
-            };
-
-            Grid.SetColumn(dayCanvas, ColumnsHost.ColumnDefinitions.Count);
-            ColumnsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(_columnWidth) });
-            ColumnsHost.Children.Add(dayCanvas);
-
-            _dayCanvases.Add(dayCanvas);
-
-            dayCanvas.PointerPressed += OnDayCanvasPointerPressed;
-            dayCanvas.PointerMoved += OnDayCanvasPointerMoved;
-            dayCanvas.PointerReleased += OnDayCanvasPointerReleased;
-            dayCanvas.PointerCaptureLost += OnDayCanvasPointerReleased;
-        }
-
-        TimeHost.Height = HourHeight * 24;
-        LinesCanvas.Height = HourHeight * 24;
-        LinesCanvas.Width = Math.Max(viewportWidth, GutterWidth);
-
-        RenderHourGrid();
-        RenderAllDayStrip();
-        RenderItems();
-        RenderNowLine();
-    }
-
-    private void RenderHourGrid()
-    {
-        LinesCanvas.Children.Clear();
-        GutterCanvas.Children.Clear();
-
-        for (var hour = 0; hour <= 24; hour++)
-        {
-            var y = hour * HourHeight;
-
-            var line = new Rectangle
-            {
-                Height = 1,
-                Width = LinesCanvas.Width,
-                Fill = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"],
-            };
-
-            Canvas.SetTop(line, y);
-            LinesCanvas.Children.Add(line);
-
-            if (hour == 24)
-            {
-                continue;
-            }
-
-            var label = new TextBlock
-            {
-                Text = hour.ToString("00"),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, Tokens.Double("SpaceXS"), Tokens.Double("SpaceSM"), 0),
-                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            };
-
-            Canvas.SetTop(label, y);
-            GutterCanvas.Children.Add(label);
-        }
-    }
-
-    private void RenderAllDayStrip()
-    {
-        var days = Days ?? Array.Empty<TimeGridDay>();
-        var allDayItems = (Items ?? Array.Empty<CalendarItem>())
-            .Where(item => item.AllDay)
-            .ToList();
-
-        foreach (var child in AllDayHost.Children.Skip(1).ToList())
-        {
-            AllDayHost.Children.Remove(child);
-        }
-
-        for (var index = 0; index < days.Count; index++)        {
-            var column = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Spacing = 2,
-                Margin = Tokens.Thickness("InsetSM"),
-            };
-
-            foreach (var item in allDayItems.Where(item => DayIndexFor(item, days) == index).Take(3))
-            {
-                column.Children.Add(CreateChip(item, isAllDay: true));
-            }
-
-            Grid.SetColumn(column, index + 1);
-            AllDayHost.Children.Add(column);
-        }
-    }
-
-    private void RenderItems()
-    {
-        var days = Days ?? Array.Empty<TimeGridDay>();
-
-        foreach (var canvas in _dayCanvases)
-        {
-            canvas.Children.Clear();
-        }
+        _dayCount = days.Count;
 
         if (days.Count == 0)
         {
             return;
         }
 
-        var visible = VisibleRange();
-        var timed = (Items ?? Array.Empty<CalendarItem>())
-            .Where(item => !item.AllDay)
-            .Where(item => item.EndUtc > visible.Start && item.StartUtc < visible.End)
-            .ToList();
-
-        for (var dayIndex = 0; dayIndex < days.Count; dayIndex++)
+        if (_dayCanvases.Count != days.Count)
         {
-            var dayStart = DayStartUtc(days[dayIndex].Date);
-            var dayItems = timed.Where(item => item.StartUtc < DayStartUtc(days[dayIndex].Date).AddDays(1)).ToList();
+            ApplySharedColumns(days.Count);
+            CreateBodyLayers(days.Count);
+        }
+        else
+        {
+            ApplySharedColumns(days.Count);
+        }
 
-            var packed = OverlapLayout.Pack(dayItems, dayStart, dayStart.AddDays(1));
+        _columnWidth = ComputeColumnWidth(days.Count);
 
-            foreach (var entry in packed)
+        RenderHeader(days);
+        RenderAllDayStrip();
+        RenderBody();
+        RenderNowLine();
+        UpdateEmptyHint();
+        UpdateScrollIndicator();
+        EnsureInitialScroll(days);
+
+        Serilog.Log.Debug(
+            "TimeGrid layout: root={RootWidth} body={BodyWidth} column={ColumnWidth} days={DayCount} scrollable={Scrollable}",
+            RootLayout.ActualWidth,
+            BodyGrid.ActualWidth,
+            _columnWidth,
+            days.Count,
+            BodyScroll.ScrollableHeight);
+    }
+
+    private void ApplySharedColumns(int dayCount)
+    {
+        var total = dayCount + 1 + (ShowSecondaryTimeZone ? 1 : 0);
+
+        foreach (var grid in new[] { RootLayout, BodyGrid })
+        {
+            grid.ColumnDefinitions.Clear();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(GutterWidth) });
+
+            for (var index = 0; index < dayCount; index++)
             {
-                var canvas = _dayCanvases[dayIndex];
-                var chip = CreateChip(entry.Item, isAllDay: false);
-
-                var y = (entry.Item.StartUtc - dayStart).TotalHours * HourHeight;
-                var height = Math.Max(18, (entry.Item.EndUtc - entry.Item.StartUtc).TotalHours * HourHeight - 2);
-
-                Canvas.SetTop(chip, y);
-                Canvas.SetLeft(chip, entry.Column * (_columnWidth / entry.ColumnCount));
-                chip.Width = Math.Max(24, (_columnWidth / entry.ColumnCount) - 2);
-                chip.Height = height;
-
-                chip.Tag = entry.Item;
-                chip.PointerPressed += OnChipPointerPressed;
-
-                canvas.Children.Add(chip);
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             }
+
+            if (ShowSecondaryTimeZone)
+            {
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SecondaryColumnWidth) });
+            }
+        }
+
+        Grid.SetColumnSpan(BodyScroll, total);
+        Grid.SetColumnSpan(EmptyHint, total);
+        Grid.SetColumn(ScrollIndicator, total - 1);
+    }
+
+    private void CreateBodyLayers(int dayCount)
+    {
+        var total = dayCount + 1 + (ShowSecondaryTimeZone ? 1 : 0);
+
+        BodyGrid.Children.Clear();
+        BodyGrid.Height = HourHeight * HoursPerDay;
+
+        _linesCanvas = new Canvas { IsHitTestVisible = false };
+        Grid.SetColumn(_linesCanvas, 0);
+        Grid.SetColumnSpan(_linesCanvas, total);
+        BodyGrid.Children.Add(_linesCanvas);
+
+        _dayCanvases.Clear();
+
+        for (var index = 0; index < dayCount; index++)
+        {
+            var canvas = new Canvas
+            {
+                Height = HourHeight * HoursPerDay,
+                Width = ComputeColumnWidth(dayCount),
+            };
+
+            Grid.SetColumn(canvas, index + 1);
+            canvas.PointerPressed += OnDayCanvasPointerPressed;
+            canvas.PointerMoved += OnDayCanvasPointerMoved;
+            canvas.PointerReleased += OnDayCanvasPointerReleased;
+            canvas.PointerCaptureLost += OnDayCanvasPointerReleased;
+            BodyGrid.Children.Add(canvas);
+            _dayCanvases.Add(canvas);
+        }
+
+        _gutterCanvas = new Canvas();
+        Grid.SetColumn(_gutterCanvas, 0);
+        BodyGrid.Children.Add(_gutterCanvas);
+
+        _overlayCanvas = new Canvas { IsHitTestVisible = false };
+        Grid.SetColumn(_overlayCanvas, 0);
+        Grid.SetColumnSpan(_overlayCanvas, total);
+        BodyGrid.Children.Add(_overlayCanvas);
+
+        _nowLine = new Rectangle
+        {
+            Height = 2,
+            Fill = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            Visibility = Visibility.Collapsed,
+        };
+
+        _overlayCanvas.Children.Add(_nowLine);
+
+        _nowDot = new Ellipse
+        {
+            Width = 8,
+            Height = 8,
+            Fill = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            Visibility = Visibility.Collapsed,
+        };
+
+        _overlayCanvas.Children.Add(_nowDot);
+
+        _ghost = new Border
+        {
+            Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["AccentControlElevationBorderBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
+            Opacity = 0.35,
+            Visibility = Visibility.Collapsed,
+        };
+
+        _overlayCanvas.Children.Add(_ghost);
+
+        _ghostLabel = new TextBlock
+        {
+            FontSize = 11,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+            Visibility = Visibility.Collapsed,
+        };
+
+        _overlayCanvas.Children.Add(_ghostLabel);
+    }
+
+    private double ComputeColumnWidth(int dayCount)
+    {
+        // The viewport width is independent of the content, so the columns never
+        // feed back into the size of the grid they are measured against.
+        var width = BodyScroll.ViewportWidth > 0 ? BodyScroll.ViewportWidth : RootLayout.ActualWidth;
+
+        if (width <= 0)
+        {
+            width = ActualWidth;
+        }
+
+        if (width <= 0)
+        {
+            return 120;
+        }
+
+        var reserved = GutterWidth + (ShowSecondaryTimeZone ? SecondaryColumnWidth : 0);
+
+        return Math.Max(40, (width - reserved) / dayCount);
+    }
+
+    private void RenderHeader(IReadOnlyList<TimeGridDay> days)
+    {
+        foreach (var cell in _headerCells)
+        {
+            RootLayout.Children.Remove(cell);
+        }
+
+        _headerCells.Clear();
+
+        var tzLabel = new TextBlock
+        {
+            Text = FormatTimeZoneOffset(LocalTimeZone),
+            FontSize = 11,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 8, 6),
+        };
+
+        Grid.SetRow(tzLabel, 0);
+        Grid.SetColumn(tzLabel, 0);
+        RootLayout.Children.Add(tzLabel);
+        _headerCells.Add(tzLabel);
+
+        for (var index = 0; index < days.Count; index++)
+        {
+            var day = days[index];
+            var cell = CreateHeaderCell(day);
+            Grid.SetRow(cell, 0);
+            Grid.SetColumn(cell, index + 1);
+            RootLayout.Children.Add(cell);
+            _headerCells.Add(cell);
         }
     }
 
-    private void RenderNowLine()
+    private Border CreateHeaderCell(TimeGridDay day)
     {
-        var days = Days ?? Array.Empty<TimeGridDay>();
-        var now = Now ?? DateTimeOffset.Now;
-
-        var todayIndex = days.ToList().FindIndex(day => day.Date == DateOnly.FromDateTime(LocalTimeZone.ToLocal(now)));
-
-        if (todayIndex < 0 || todayIndex >= _dayCanvases.Count)
+        var content = new StackPanel
         {
-            NowLine.Visibility = Visibility.Collapsed;
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 2,
+        };
+
+        content.Children.Add(new TextBlock
+        {
+            Text = day.WeekdayLabel.ToUpperInvariant(),
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            HorizontalAlignment = HorizontalAlignment.Center,
+        });
+
+        var dateHost = new Grid
+        {
+            Width = 32,
+            Height = 32,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+
+        var dateText = new TextBlock
+        {
+            Text = day.Date.Day.ToString(System.Globalization.CultureInfo.CurrentCulture),
+            FontSize = 15,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        if (day.IsToday)
+        {
+            dateHost.Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+            dateHost.CornerRadius = new CornerRadius(16);
+            dateText.Foreground = (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+        }
+        else
+        {
+            dateText.Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+        }
+
+        dateHost.Children.Add(dateText);
+        content.Children.Add(dateHost);
+
+        Brush? background = null;
+
+        if (day.IsToday)
+        {
+            background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x0F, 0x00, 0x78, 0xD4));
+        }
+        else if (day.IsWeekend)
+        {
+            background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x08, 0x00, 0x00, 0x00));
+        }
+
+        return new Border
+        {
+            Child = content,
+            Background = background,
+            MinHeight = Tokens.Double("GridDayHeaderHeight", 60d),
+            Padding = new Thickness(0, 4, 0, 4),
+        };
+    }
+
+    private void RenderAllDayStrip()
+    {
+        foreach (var cell in _allDayCells)
+        {
+            RootLayout.Children.Remove(cell);
+        }
+
+        _allDayCells.Clear();
+
+        var days = Days ?? Array.Empty<TimeGridDay>();
+
+        if (days.Count == 0)
+        {
             return;
         }
 
-        var dayStart = DayStartUtc(days[todayIndex].Date);
-        var y = (now - dayStart).TotalHours * HourHeight;
+        var label = new TextBlock
+        {
+            Text = "all-day",
+            FontSize = 11,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 6, 8, 0),
+        };
 
-        NowLine.Width = _columnWidth;
-        NowLine.Visibility = Visibility.Visible;
+        Grid.SetRow(label, 1);
+        Grid.SetColumn(label, 0);
+        RootLayout.Children.Add(label);
+        _allDayCells.Add(label);
 
-        Canvas.SetTop(NowLine, y);
-        Canvas.SetLeft(NowLine, GutterWidth + (todayIndex * _columnWidth));
+        var allDayItems = (Items ?? Array.Empty<CalendarItem>())
+            .Where(item => item.AllDay)
+            .OrderBy(item => item.StartUtc)
+            .ToList();
+
+        var rowEnds = new List<int>();
+        var overflow = new Dictionary<int, int>();
+
+        foreach (var item in allDayItems)
+        {
+            var startIndex = DayIndexFor(item.StartUtc, days);
+            var endIndex = DayIndexFor(item.EndUtc.AddTicks(-1), days);
+
+            if (startIndex < 0)
+            {
+                continue;
+            }
+
+            if (endIndex < startIndex)
+            {
+                endIndex = startIndex;
+            }
+
+            var row = rowEnds.FindIndex(end => end < startIndex);
+
+            if (row < 0)
+            {
+                row = rowEnds.Count;
+                rowEnds.Add(endIndex);
+            }
+            else
+            {
+                rowEnds[row] = endIndex;
+            }
+
+            if (row >= MaxAllDayRows)
+            {
+                overflow[endIndex] = overflow.TryGetValue(endIndex, out var count) ? count + 1 : 1;
+                continue;
+            }
+
+            var bar = CreateAllDayBar(item);
+            Grid.SetRow(bar, 1 + row);
+            Grid.SetColumn(bar, startIndex + 1);
+            Grid.SetColumnSpan(bar, endIndex - startIndex + 1);
+            RootLayout.Children.Add(bar);
+            _allDayCells.Add(bar);
+        }
+
+        foreach (var pair in overflow)
+        {
+            var chip = new TextBlock
+            {
+                Text = $"+{pair.Value} more",
+                FontSize = 11,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 2, 4, 2),
+            };
+
+            Grid.SetRow(chip, MaxAllDayRows);
+            Grid.SetColumn(chip, pair.Key + 1);
+            RootLayout.Children.Add(chip);
+            _allDayCells.Add(chip);
+        }
     }
 
-    private Border CreateChip(CalendarItem item, bool isAllDay)
+    private Border CreateAllDayBar(CalendarItem item)
     {
-        var accent = ColorHelper.FromHex(item.Color);
-        var content = new Grid
-        {
-            ColumnDefinitions =
-            {
-                new ColumnDefinition { Width = new GridLength(3) },
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-            },
-        };
+        var color = ColorHelper.TryParse(item.Color, out var parsed)
+            ? parsed
+            : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4);
 
-        var edge = new Border
-        {
-            Background = accent,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
+        var content = new Grid();
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        Grid.SetColumn(edge, 0);
-        content.Children.Add(edge);
+        var bar = new Border { Background = new SolidColorBrush(color) };
+        Grid.SetColumn(bar, 0);
+        content.Children.Add(bar);
 
         var text = new TextBlock
         {
             Text = item.Title,
-            Margin = Tokens.Thickness("PaddingChipTitle"),
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
-            FontSize = Tokens.Double("FontSizeEventTitle", 12d),
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            Margin = new Thickness(6, 3, 4, 3),
         };
 
         Grid.SetColumn(text, 1);
@@ -389,52 +621,453 @@ public sealed partial class TimeGrid : UserControl
         return new Border
         {
             Child = content,
-            CornerRadius = Tokens.CornerRadius("RadiusControl", 4d),
-            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(0, 0, 1, 1),
-            Opacity = item.IsDone ? 0.5 : 1,
-            Tag = item,
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x2E, color.R, color.G, color.B)),
+            CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
+            Margin = new Thickness(2, 1, 2, 1),
         };
     }
 
-    private (DateTimeOffset Start, DateTimeOffset End) VisibleRange()
+    private void RenderBody()
     {
-        var scrollOffset = ScrollViewer.VerticalOffset;
-        var viewportHeight = ScrollViewer.ViewportHeight > 0 ? ScrollViewer.ViewportHeight : ActualHeight;
+        var days = Days ?? Array.Empty<TimeGridDay>();
 
-        var firstDay = Days is { Count: > 0 } ? DayStartUtc(Days[0].Date) : DateTimeOffset.UnixEpoch;
-        var start = firstDay.AddMinutes(scrollOffset / HourHeight * 60);
-        var end = start.AddMinutes(viewportHeight / HourHeight * 60);
-
-        return (start, end);
-    }
-
-    private DateTimeOffset DayStartUtc(DateOnly date)
-    {
-        var local = date.ToDateTime(TimeOnly.MinValue);
-
-        return LocalTimeZone.ToUtc(local);
-    }
-
-    private int DayIndexFor(CalendarItem item, IReadOnlyList<TimeGridDay> days)
-    {
-        var local = DateOnly.FromDateTime(LocalTimeZone.ToLocal(item.StartUtc));
-
-        for (var index = 0; index < days.Count; index++)
+        if (days.Count == 0 || _dayCanvases.Count == 0)
         {
-            if (days[index].Date == local)
+            return;
+        }
+
+        _columnWidth = ComputeColumnWidth(days.Count);
+
+        foreach (var canvas in _dayCanvases)
+        {
+            canvas.Children.Clear();
+            canvas.Width = _columnWidth;
+        }
+
+        var visible = VisibleRange();
+
+        var timed = (Items ?? Array.Empty<CalendarItem>())
+            .Where(item => !item.AllDay)
+            .Where(item => item.EndUtc > visible.Start && item.StartUtc < visible.End)
+            .ToList();
+
+        var reminders = (Items ?? Array.Empty<CalendarItem>())
+            .Where(item => item.Kind is CalendarItemKind.Reminder or CalendarItemKind.Task)
+            .Where(item => item.StartUtc >= visible.Start && item.StartUtc < visible.End)
+            .ToList();
+
+        for (var dayIndex = 0; dayIndex < days.Count; dayIndex++)
+        {
+            var dayStart = DayStartUtc(days[dayIndex].Date);
+            var dayEnd = dayStart.AddDays(1);
+
+            var dayItems = timed
+                .Where(item => item.StartUtc < dayEnd && item.EndUtc > dayStart)
+                .ToList();
+
+            var packed = OverlapLayout.Pack(dayItems, dayStart, dayEnd);
+
+            foreach (var group in packed.GroupBy(entry => entry.ClusterIndex))
             {
-                return index;
+                var entries = group.ToList();
+                var columnCount = Math.Min(entries[0].ColumnCount, MaxOverlapColumns);
+                var hidden = entries.Count(entry => entry.Column >= MaxOverlapColumns);
+
+                foreach (var entry in entries)
+                {
+                    if (entry.Column >= MaxOverlapColumns)
+                    {
+                        continue;
+                    }
+
+                    var chip = CreateChip(entry.Item, days[dayIndex]);
+
+                    var y = (entry.Item.StartUtc - dayStart).TotalHours * HourHeight;
+                    var height = Math.Max(22, (entry.Item.EndUtc - entry.Item.StartUtc).TotalHours * HourHeight - 2);
+                    var width = Math.Max(24, (_columnWidth / columnCount) - 1);
+
+                    Canvas.SetTop(chip, y);
+                    Canvas.SetLeft(chip, (entry.Column * _columnWidth / columnCount) + 1);
+                    chip.Width = width;
+                    chip.Height = height;
+
+                    _dayCanvases[dayIndex].Children.Add(chip);
+                }
+
+                if (hidden > 0)
+                {
+                    var more = new TextBlock
+                    {
+                        Text = $"+{hidden}",
+                        FontSize = 11,
+                        Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                    };
+
+                    Canvas.SetLeft(more, ((MaxOverlapColumns - 1) * _columnWidth / columnCount) + 6);
+                    Canvas.SetTop(more, Math.Max(0, (dayEnd - dayStart).TotalHours * HourHeight - 22));
+                    _dayCanvases[dayIndex].Children.Add(more);
+                }
+            }
+
+            foreach (var reminder in reminders.Where(item => item.StartUtc >= dayStart && item.StartUtc < dayEnd))
+            {
+                var chip = CreateChip(reminder, days[dayIndex]);
+
+                var y = (reminder.StartUtc - dayStart).TotalHours * HourHeight;
+
+                Canvas.SetTop(chip, y);
+                Canvas.SetLeft(chip, 4);
+                chip.Width = Math.Max(24, _columnWidth - 8);
+                chip.Height = 22;
+
+                _dayCanvases[dayIndex].Children.Add(chip);
             }
         }
 
-        return -1;
+        RenderLines();
+        RenderNowLine();
+    }
+
+    private void RenderLines()
+    {
+        if (_linesCanvas is null || _gutterCanvas is null)
+        {
+            return;
+        }
+
+        _linesCanvas.Children.Clear();
+        _gutterCanvas.Children.Clear();
+
+        var width = BodyGrid.ActualWidth > 0 ? BodyGrid.ActualWidth : RootLayout.ActualWidth;
+        var divider = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+
+        for (var hour = 0; hour <= HoursPerDay; hour++)
+        {
+            var y = hour * HourHeight;
+
+            var line = new Rectangle
+            {
+                Height = 1,
+                Width = Math.Max(0, width),
+                Fill = divider,
+            };
+
+            Canvas.SetTop(line, y);
+            _linesCanvas.Children.Add(line);
+
+            if (hour == HoursPerDay)
+            {
+                continue;
+            }
+
+            var half = new Rectangle
+            {
+                Height = 1,
+                Width = Math.Max(0, width),
+                Fill = divider,
+                Opacity = 0.4,
+            };
+
+            Canvas.SetTop(half, y + (HourHeight / 2));
+            _linesCanvas.Children.Add(half);
+
+            if (hour == 0)
+            {
+                continue;
+            }
+
+            var label = new TextBlock
+            {
+                Text = FormatHour(hour),
+                FontSize = 12,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+            };
+
+            Canvas.SetTop(label, y - 8);
+            Canvas.SetLeft(label, GutterWidth - 54);
+            label.Width = 46;
+            _gutterCanvas.Children.Add(label);
+        }
+
+        var days = Days ?? Array.Empty<TimeGridDay>();
+
+        for (var index = 1; index < days.Count; index++)
+        {
+            var separator = new Rectangle
+            {
+                Width = 1,
+                Height = HourHeight * HoursPerDay,
+                Fill = divider,
+                Opacity = 0.6,
+            };
+
+            Canvas.SetLeft(separator, GutterWidth + (index * _columnWidth));
+            _linesCanvas.Children.Add(separator);
+        }
+
+        if (ShowSecondaryTimeZone)
+        {
+            RenderSecondaryLabels(days, width);
+        }
+    }
+
+    private void RenderSecondaryLabels(IReadOnlyList<TimeGridDay> days, double width)
+    {
+        if (_gutterCanvas is null)
+        {
+            return;
+        }
+
+        var secondary = ResolveSecondaryTimeZone();
+        var left = GutterWidth + (days.Count * _columnWidth);
+
+        for (var hour = 1; hour < HoursPerDay; hour++)
+        {
+            var local = secondary.ToLocal(DayStartUtc(days[0].Date).AddHours(hour));
+
+            var label = new TextBlock
+            {
+                Text = FormatLocalTime(local),
+                FontSize = 12,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+            };
+
+            Canvas.SetTop(label, (hour * HourHeight) - 8);
+            Canvas.SetLeft(label, left + 8);
+            _gutterCanvas.Children.Add(label);
+        }
+    }
+
+    private void RenderNowLine()
+    {
+        if (_nowLine is null || _nowDot is null)
+        {
+            return;
+        }
+
+        var days = Days ?? Array.Empty<TimeGridDay>();
+        var now = Now ?? DateTimeOffset.Now;
+        var today = DateOnly.FromDateTime(LocalTimeZone.ToLocal(now));
+        var todayIndex = days.ToList().FindIndex(day => day.Date == today);
+
+        if (todayIndex < 0 || todayIndex >= _dayCanvases.Count)
+        {
+            _nowLine.Visibility = Visibility.Collapsed;
+            _nowDot.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var dayStart = DayStartUtc(today);
+        var y = (now - dayStart).TotalHours * HourHeight;
+        var left = GutterWidth + (todayIndex * _columnWidth);
+
+        _nowLine.Width = Math.Max(0, _columnWidth);
+        _nowLine.Visibility = Visibility.Visible;
+        Canvas.SetTop(_nowLine, y);
+        Canvas.SetLeft(_nowLine, left);
+
+        _nowDot.Visibility = Visibility.Visible;
+        Canvas.SetTop(_nowDot, y - 3);
+        Canvas.SetLeft(_nowDot, left - 4);
+    }
+
+    private void UpdateEmptyHint()
+    {
+        var days = Days ?? Array.Empty<TimeGridDay>();
+
+        if (days.Count == 0)
+        {
+            EmptyHint.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var visible = VisibleRange();
+        var hasContent = (Items ?? Array.Empty<CalendarItem>())
+            .Any(item => item.StartUtc < visible.End && item.EndUtc > visible.Start);
+
+        EmptyHint.Visibility = hasContent ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void UpdateScrollIndicator()
+    {
+        var scrollable = BodyScroll.ScrollableHeight;
+
+        if (scrollable <= 1)
+        {
+            ScrollIndicator.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var viewport = BodyScroll.ViewportHeight;
+        var ratio = viewport / (viewport + scrollable);
+        var height = Math.Max(24, BodyGrid.ActualHeight * ratio);
+        var travel = Math.Max(1, BodyScroll.ViewportHeight - height);
+        var progress = Math.Clamp(BodyScroll.VerticalOffset / scrollable, 0, 1);
+
+        ScrollIndicator.Height = height;
+        ScrollIndicator.Margin = new Thickness(0, 2 + (travel * progress), 2, 2);
+        ScrollIndicator.Visibility = Visibility.Visible;
+    }
+
+    private void EnsureInitialScroll(IReadOnlyList<TimeGridDay> days)
+    {
+        if (_hasScrolled)
+        {
+            return;
+        }
+
+        _hasScrolled = true;
+
+        if (_sessionScrollOffset >= 0)
+        {
+            ApplyScroll(_sessionScrollOffset);
+            return;
+        }
+
+        var now = Now ?? DateTimeOffset.Now;
+        var today = DateOnly.FromDateTime(LocalTimeZone.ToLocal(now));
+        var isTodayVisible = days.Any(day => day.Date == today);
+
+        Serilog.Log.Information(
+            "TimeGrid initial scroll: now={Now} today={Today} visible={Visible} days={Days}",
+            now,
+            today,
+            isTodayVisible,
+            string.Join(",", days.Select(day => day.Date.ToString("yyyy-MM-dd"))));
+
+        var offset = isTodayVisible
+            ? ((now.AddMinutes(-90) - DayStartUtc(today)).TotalMinutes / 60 * HourHeight)
+            : 7 * HourHeight;
+
+        ApplyScroll(Math.Max(0, offset));
+    }
+
+    private void ApplyScroll(double offset)
+    {
+        Serilog.Log.Debug(
+            "TimeGrid scroll requested: offset={Offset} scrollable={Scrollable} viewport={Viewport}",
+            offset,
+            BodyScroll.ScrollableHeight,
+            BodyScroll.ViewportHeight);
+
+        if (BodyScroll.ScrollableHeight <= 0)
+        {
+            _pendingScrollOffset = offset;
+            return;
+        }
+
+        _pendingScrollOffset = -1;
+        BodyScroll.ChangeView(null, offset, null, true);
+    }
+
+    private void OnBodyScrollSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        if (_pendingScrollOffset >= 0)
+        {
+            ApplyScroll(_pendingScrollOffset);
+        }
+    }
+
+    private bool _hasScrolled;
+    private double _pendingScrollOffset = -1;
+
+    private EventChipView CreateChip(CalendarItem item, TimeGridDay day)
+    {
+        var isTickable = item.IsTickable;
+        var isShort = (item.EndUtc - item.StartUtc) < TimeSpan.FromMinutes(30);
+
+        var chip = new EventChipView
+        {
+            Title = item.Title,
+            TimeText = isTickable ? string.Empty : FormatTimeRange(item),
+            ColorHex = item.Color,
+            IsTickable = isTickable,
+            IsDone = item.IsDone,
+            ShowTime = !isTickable && !isShort,
+            IsSelected = string.Equals(item.Id, SelectedItemId, StringComparison.Ordinal),
+            TooltipText = BuildTooltip(item),
+        };
+
+        chip.Tag = item;
+        chip.PointerPressed += OnChipPointerPressed;
+        chip.CheckToggled += OnChipCheckToggled;
+        chip.ContextFlyout = BuildContextMenu(item);
+
+        return chip;
+    }
+
+    private string BuildTooltip(CalendarItem item)
+    {
+        var parts = new List<string> { item.Title };
+
+        if (!item.AllDay)
+        {
+            parts.Add($"{FormatTime(item.StartUtc)} to {FormatTime(item.EndUtc)}");
+        }
+        else
+        {
+            parts.Add("All day");
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.Location))
+        {
+            parts.Add(item.Location);
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.CalendarName))
+        {
+            parts.Add(item.CalendarName);
+        }
+
+        return string.Join(", ", parts);
+    }
+
+    private MenuFlyout BuildContextMenu(CalendarItem item)
+    {
+        var flyout = new MenuFlyout();
+
+        var edit = new MenuFlyoutItem { Text = "Edit", Icon = new SymbolIcon(Symbol.Edit) };
+        edit.Click += (_, _) => ItemActionRequested?.Invoke(this, new TimeGridItemActionEventArgs(item, TimeGridItemAction.Edit));
+        flyout.Items.Add(edit);
+
+        var duplicate = new MenuFlyoutItem { Text = "Duplicate", Icon = new SymbolIcon(Symbol.Copy) };
+        duplicate.Click += (_, _) => ItemActionRequested?.Invoke(this, new TimeGridItemActionEventArgs(item, TimeGridItemAction.Duplicate));
+        flyout.Items.Add(duplicate);
+
+        var colour = new MenuFlyoutSubItem { Text = "Change colour" };
+
+        foreach (var hex in CalendarPalette.All)
+        {
+            var entry = new MenuFlyoutItem { Text = hex };
+            entry.Click += (_, _) => ItemActionRequested?.Invoke(this, new TimeGridItemActionEventArgs(item with { Color = hex }, TimeGridItemAction.ChangeColor));
+            colour.Items.Add(entry);
+        }
+
+        flyout.Items.Add(colour);
+
+        var delete = new MenuFlyoutItem { Text = "Delete", Icon = new SymbolIcon(Symbol.Delete) };
+        delete.Click += (_, _) => ItemActionRequested?.Invoke(this, new TimeGridItemActionEventArgs(item, TimeGridItemAction.Delete));
+        flyout.Items.Add(delete);
+
+        return flyout;
+    }
+
+    private void OnChipCheckToggled(object? sender, EventArgs e)
+    {
+        if (sender is EventChipView chip && chip.Tag is CalendarItem item)
+        {
+            ItemCompleted?.Invoke(this, new TimeGridItemEventArgs(item with { IsDone = !item.IsDone }));
+        }
     }
 
     private void OnChipPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is not Border chip || chip.Tag is not CalendarItem item)
+        if (sender is not EventChipView chip || chip.Tag is not CalendarItem item)
         {
             return;
         }
@@ -459,26 +1092,25 @@ public sealed partial class TimeGrid : UserControl
             return;
         }
 
+        Focus(FocusState.Programmatic);
+
         var position = e.GetCurrentPoint(canvas).Position;
         var hit = HitTest(canvas, position);
 
-        if (hit is not null)
+        if (hit is not null && hit.Tag is CalendarItem hitItem)
         {
-            var item = (CalendarItem)hit.Tag!;
             var mode = IsOnResizeEdge(hit, position) ? DragMode.Resize : DragMode.Move;
 
             _drag = new DragState
             {
                 Mode = mode,
-                Item = item,
+                Item = hitItem,
                 DayIndex = dayIndex,
-                StartUtc = item.StartUtc,
-                EndUtc = item.EndUtc,
-                GrabOffset = (TimeAt(dayIndex, position.Y) - item.StartUtc),
+                StartUtc = hitItem.StartUtc,
+                EndUtc = hitItem.EndUtc,
+                GrabOffset = TimeAt(dayIndex, position.Y) - hitItem.StartUtc,
                 IsCopy = mode == DragMode.Move && IsControlDown(),
             };
-
-            canvas.CapturePointer(e.Pointer);
         }
         else
         {
@@ -491,10 +1123,9 @@ public sealed partial class TimeGrid : UserControl
                 StartUtc = time,
                 EndUtc = time.AddMinutes(SnapMinutes),
             };
-
-            canvas.CapturePointer(e.Pointer);
         }
 
+        canvas.CapturePointer(e.Pointer);
         ShowPreview();
     }
 
@@ -568,31 +1199,64 @@ public sealed partial class TimeGrid : UserControl
         }
     }
 
-    private void ShowPreview()
+    private void OnGridKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (_drag is null)
+        if (e.Key != VirtualKey.Escape || _drag is null)
         {
             return;
         }
 
-        var dayStart = DayStartUtc((Days ?? Array.Empty<TimeGridDay>())[_drag.DayIndex].Date);
+        _drag = null;
+        HidePreview();
+        e.Handled = true;
+    }
 
-        DragPreview.Width = Math.Max(24, _columnWidth - 4);
-        DragPreview.Height = Math.Max(18, (_drag.EndUtc - _drag.StartUtc).TotalHours * HourHeight);
-        DragPreview.Visibility = Visibility.Visible;
+    private void ShowPreview()
+    {
+        if (_drag is null || _ghost is null || _ghostLabel is null)
+        {
+            return;
+        }
 
-        Canvas.SetTop(DragPreview, (_drag.StartUtc - dayStart).TotalHours * HourHeight);
-        Canvas.SetLeft(DragPreview, GutterWidth + (_drag.DayIndex * _columnWidth) + Tokens.Double("SpaceXS", 4d));
+        var days = Days ?? Array.Empty<TimeGridDay>();
+
+        if (_drag.DayIndex >= days.Count)
+        {
+            return;
+        }
+
+        var dayStart = DayStartUtc(days[_drag.DayIndex].Date);
+        var top = (_drag.StartUtc - dayStart).TotalHours * HourHeight;
+        var height = Math.Max(22, (_drag.EndUtc - _drag.StartUtc).TotalHours * HourHeight);
+
+        _ghost.Visibility = Visibility.Visible;
+        _ghost.Width = Math.Max(24, _columnWidth - 4);
+        _ghost.Height = height;
+        Canvas.SetTop(_ghost, top);
+        Canvas.SetLeft(_ghost, GutterWidth + (_drag.DayIndex * _columnWidth) + 2);
+
+        _ghostLabel.Visibility = Visibility.Visible;
+        _ghostLabel.Text = $"{FormatTime(_drag.StartUtc)} – {FormatTime(_drag.EndUtc)}";
+        Canvas.SetTop(_ghostLabel, top - 16);
+        Canvas.SetLeft(_ghostLabel, GutterWidth + (_drag.DayIndex * _columnWidth) + 4);
     }
 
     private void HidePreview()
     {
-        DragPreview.Visibility = Visibility.Collapsed;
+        if (_ghost is not null)
+        {
+            _ghost.Visibility = Visibility.Collapsed;
+        }
+
+        if (_ghostLabel is not null)
+        {
+            _ghostLabel.Visibility = Visibility.Collapsed;
+        }
     }
 
-    private Border? HitTest(Canvas canvas, Point position)
+    private EventChipView? HitTest(Canvas canvas, Point position)
     {
-        foreach (var child in canvas.Children.OfType<Border>())
+        foreach (var child in canvas.Children.OfType<EventChipView>())
         {
             var left = Canvas.GetLeft(child);
             var top = Canvas.GetTop(child);
@@ -607,7 +1271,7 @@ public sealed partial class TimeGrid : UserControl
         return null;
     }
 
-    private static bool IsOnResizeEdge(Border chip, Point position)
+    private static bool IsOnResizeEdge(EventChipView chip, Point position)
     {
         var top = Canvas.GetTop(chip);
         var left = Canvas.GetLeft(chip);
@@ -623,13 +1287,105 @@ public sealed partial class TimeGrid : UserControl
         var days = Days ?? Array.Empty<TimeGridDay>();
         var dayStart = DayStartUtc(days[dayIndex].Date);
         var minutes = y / HourHeight * 60;
-        var snapped = Math.Round(minutes / SnapMinutes) * SnapMinutes;
+        var snap = IsShiftDown() ? FineSnapMinutes : SnapMinutes;
+        var snapped = Math.Round(minutes / snap) * snap;
 
         return dayStart.AddMinutes(snapped);
     }
 
+    private (DateTimeOffset Start, DateTimeOffset End) VisibleRange()
+    {
+        var offset = BodyScroll.VerticalOffset;
+        var viewport = BodyScroll.ViewportHeight > 0 ? BodyScroll.ViewportHeight : ActualHeight;
+        var firstDay = Days is { Count: > 0 } ? DayStartUtc(Days[0].Date) : DateTimeOffset.UnixEpoch;
+        var start = firstDay.AddMinutes(offset / HourHeight * 60);
+
+        return (start, start.AddMinutes(viewport / HourHeight * 60));
+    }
+
+    private DateTimeOffset DayStartUtc(DateOnly date)
+    {
+        return LocalTimeZone.ToUtc(date.ToDateTime(TimeOnly.MinValue));
+    }
+
+    private int DayIndexFor(DateTimeOffset utc, IReadOnlyList<TimeGridDay> days)
+    {
+        var local = DateOnly.FromDateTime(LocalTimeZone.ToLocal(utc));
+
+        for (var index = 0; index < days.Count; index++)
+        {
+            if (days[index].Date == local)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private string FormatTime(DateTimeOffset value)
+    {
+        return FormatLocalTime(LocalTimeZone.ToLocal(value));
+    }
+
+    private string FormatLocalTime(DateTime local)
+    {
+        return ClockFormat == ClockFormat.TwentyFourHour
+            ? local.ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture)
+            : local.ToString("h:mm tt", System.Globalization.CultureInfo.CurrentCulture);
+    }
+
+    private string FormatTimeRange(CalendarItem item)
+    {
+        var start = LocalTimeZone.ToLocal(item.StartUtc);
+        var end = LocalTimeZone.ToLocal(item.EndUtc);
+
+        if (ClockFormat == ClockFormat.TwentyFourHour)
+        {
+            return $"{start:HH:mm} – {end:HH:mm}";
+        }
+
+        return $"{start:h:mm tt} – {end:h:mm tt}";
+    }
+
+    private string FormatHour(int hour)
+    {
+        if (ClockFormat == ClockFormat.TwentyFourHour)
+        {
+            return hour.ToString("00", System.Globalization.CultureInfo.CurrentCulture) + ":00";
+        }
+
+        var suffix = hour >= 12 ? "PM" : "AM";
+        var display = hour % 12 == 0 ? 12 : hour % 12;
+
+        return $"{display} {suffix}";
+    }
+
+    private static string FormatTimeZoneOffset(TimeZoneInfo zone)
+    {
+        var offset = zone.GetUtcOffset(DateTimeOffset.UtcNow);
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        var absolute = offset.Duration();
+
+        return $"{sign}{absolute.Hours:00}:{absolute.Minutes:00}";
+    }
+
+    private TimeZoneInfo ResolveSecondaryTimeZone()
+    {
+        if (!string.IsNullOrWhiteSpace(SecondaryTimeZoneId) &&
+            SecondaryTimeZoneId.TryToTimeZoneInfo(out var zone))
+        {
+            return zone;
+        }
+
+        return TimeZoneInfo.Utc;
+    }
+
     private static bool IsControlDown() =>
         (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
+
+    private static bool IsShiftDown() =>
+        (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
 
     private enum DragMode
     {

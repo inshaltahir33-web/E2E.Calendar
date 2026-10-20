@@ -14,17 +14,24 @@ public abstract class TimeGridViewModel : CalendarPageViewModel
     {
     }
 
-    public ObservableCollection<TimeGridDay> Days { get; } = new();
+    public IReadOnlyList<TimeGridDay> Days { get; private set; } = Array.Empty<TimeGridDay>();
 
-    public ObservableCollection<CalendarItem> Items { get; } = new();
+    public IReadOnlyList<CalendarItem> Items { get; private set; } = Array.Empty<CalendarItem>();
 
     public abstract int DayCount { get; }
+
+    public DateTimeOffset? Now => State.UtcNow;
+
+    public ClockFormat ClockFormat { get; set; } = ClockFormat.TwentyFourHour;
+
+    public string? SecondaryTimeZoneId { get; set; } = "UTC";
 
     public override async Task RefreshAsync()
     {
         var period = State.Period;
         var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
         var timeZone = TimeZoneInfo.Local;
+        var today = State.LocalDate;
 
         var days = new List<TimeGridDay>(DayCount);
         var start = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
@@ -33,28 +40,27 @@ public abstract class TimeGridViewModel : CalendarPageViewModel
         {
             var date = start.AddDays(index);
 
-            days.Add(new TimeGridDay(date, date.ToString("ddd d MMM", System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat)));
+            days.Add(new TimeGridDay(
+                date,
+                date.ToString("ddd d MMM", System.Globalization.CultureInfo.CurrentCulture),
+                date.ToString("ddd", System.Globalization.CultureInfo.CurrentCulture),
+                date == today,
+                date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
         }
 
-        var visible = new HashSet<string>(days.Select(day => day.Date.ToString("yyyy-MM-dd")), StringComparer.Ordinal);
+        var visible = new HashSet<string>(
+            days.Select(day => day.Date.ToString("yyyy-MM-dd")),
+            StringComparer.Ordinal);
 
         var visibleItems = items
             .Where(item => visible.Contains(DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)).ToString("yyyy-MM-dd")))
             .OrderBy(item => item.StartUtc)
             .ToList();
 
-        Days.Clear();
+        Days = days;
+        Items = visibleItems;
 
-        foreach (var day in days)
-        {
-            Days.Add(day);
-        }
-
-        Items.Clear();
-
-        foreach (var item in visibleItems)
-        {
-            Items.Add(item);
-        }
+        OnPropertyChanged(nameof(Days));
+        OnPropertyChanged(nameof(Items));
     }
 }

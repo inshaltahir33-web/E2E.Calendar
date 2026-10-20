@@ -142,6 +142,7 @@ public sealed class EventQueryService : IEventQueryCache
             Kind = CalendarItemKind.Event,
             CalendarId = source?.CalendarId,
             Color = source?.Color,
+            Location = source?.Location,
             AllDay = source?.AllDay ?? false,
             HasTime = source?.AllDay != true,
             IsException = occurrence.IsException,

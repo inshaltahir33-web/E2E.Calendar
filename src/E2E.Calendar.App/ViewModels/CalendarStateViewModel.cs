@@ -33,6 +33,10 @@ public sealed partial class CalendarStateViewModel : ObservableObject
 
     public string LocalTimeZoneId => _clock.LocalTimeZone.ToIanaId();
 
+    public DateTimeOffset UtcNow => _clock.UtcNow;
+
+    public TimeZoneInfo LocalTimeZone => _clock.LocalTimeZone;
+
     public DateOnly LocalDate =>
         DateOnly.FromDateTime(_clock.LocalTimeZone.ToLocal(CurrentDate));
 

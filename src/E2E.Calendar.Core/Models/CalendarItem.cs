@@ -16,6 +16,10 @@ public sealed record CalendarItem
 
     public string? Color { get; init; }
 
+    public string? Location { get; init; }
+
+    public string? CalendarName { get; init; }
+
     public bool AllDay { get; init; }
 
     public bool HasTime { get; init; } = true;

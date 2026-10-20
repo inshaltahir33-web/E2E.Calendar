@@ -3,48 +3,63 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Grid x:Name="RootLayout" RowDefinitions="Auto,Auto,*">
+    <Grid
+        x:Name="RootLayout"
+        KeyDown="OnGridKeyDown"
+        RowDefinitions="Auto,Auto,Auto,Auto,*">
 
-        <Grid
-            x:Name="HeaderHost"
-            Grid.Row="0"
-            ColumnSpacing="0" />
-
-        <Grid
-            x:Name="AllDayHost"
-            Grid.Row="1"
-            ColumnSpacing="0" />
+        <!-- Row 0: day headers. Row 1-3: all-day strip. Row 4: scrollable body.
+             Header, all-day strip and body share the same column definitions. -->
 
         <ScrollViewer
-            x:Name="ScrollViewer"
-            Grid.Row="2"
+            x:Name="BodyScroll"
+            Grid.Row="4"
             HorizontalScrollBarVisibility="Disabled"
-            VerticalScrollBarVisibility="Auto"
+            VerticalScrollBarVisibility="Hidden"
             VerticalScrollMode="Enabled"
+            HorizontalScrollMode="Disabled"
+            SizeChanged="OnBodyScrollSizeChanged"
             ViewChanged="OnViewChanged">
 
-            <Grid x:Name="TimeHost">
-                <Canvas x:Name="LinesCanvas" />
-                <Canvas x:Name="GutterCanvas" Width="{StaticResource GridGutterWidth}" />
-                <Grid x:Name="ColumnsHost" Margin="{StaticResource MarginGridGutter}" />
-                <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False">
-                    <Rectangle
-                        x:Name="NowLine"
-                        Height="2"
-                        Fill="{ThemeResource SystemFillColorCriticalBrush}"
-                        Visibility="Collapsed" />
-                    <Border
-                        x:Name="DragPreview"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="{StaticResource RadiusChip}"
-                        Opacity="0.25"
-                        Visibility="Collapsed" />
-                </Canvas>
+            <Grid x:Name="BodyGrid">
+                <Canvas x:Name="GutterCanvas" Grid.Column="0" />
+                <Canvas
+                    x:Name="OverlayCanvas"
+                    Grid.Column="0"
+                    IsHitTestVisible="False" />
             </Grid>
 
         </ScrollViewer>
+
+        <Border
+            x:Name="ScrollIndicator"
+            Grid.Row="4"
+            Width="4"
+            Margin="0,2,2,2"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Stretch"
+            Background="{ThemeResource ScrollBarThumbBackground}"
+            CornerRadius="2"
+            IsHitTestVisible="False"
+            Visibility="Collapsed" />
+
+        <Border
+            x:Name="EmptyHint"
+            Grid.Row="4"
+            Padding="16,8"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="16"
+            IsHitTestVisible="False"
+            Visibility="Collapsed">
+            <TextBlock
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                FontSize="12"
+                Text="Nothing scheduled. Double-click or press N." />
+        </Border>
 
     </Grid>
 

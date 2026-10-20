@@ -7,7 +7,8 @@ public sealed record PackedItem(
     int Column,
     int ColumnCount,
     double StartFraction,
-    double EndFraction);
+    double EndFraction,
+    int ClusterIndex = 0);
 
 public static class OverlapLayout
 {
@@ -29,6 +30,8 @@ public static class OverlapLayout
             .ToList();
 
         var packed = new List<PackedItem>(ordered.Count);
+
+        var clusterIndex = 0;
 
         foreach (var cluster in BuildClusters(ordered))
         {
@@ -61,8 +64,11 @@ public static class OverlapLayout
                     assignments[index],
                     columnEnds.Count,
                     Fraction(item.StartUtc, rangeStartUtc, rangeEndUtc),
-                    Fraction(item.EndUtc, rangeStartUtc, rangeEndUtc)));
+                    Fraction(item.EndUtc, rangeStartUtc, rangeEndUtc),
+                    clusterIndex));
             }
+
+            clusterIndex++;
         }
 
         return packed;

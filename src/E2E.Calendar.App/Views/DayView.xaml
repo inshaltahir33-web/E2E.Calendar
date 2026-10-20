@@ -10,7 +10,10 @@
         <ctrl:TimeGrid
             x:Name="TimeGrid"
             Days="{x:Bind ViewModel.Days, Mode=OneWay}"
-            Items="{x:Bind ViewModel.Items, Mode=OneWay}" />
+            Items="{x:Bind ViewModel.Items, Mode=OneWay}"
+            Now="{x:Bind ViewModel.Now, Mode=OneWay}"
+            ClockFormat="{x:Bind ViewModel.ClockFormat, Mode=OneWay}"
+            SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}" />
 
     </Grid>
 
