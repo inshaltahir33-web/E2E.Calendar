@@ -24,7 +24,8 @@ public sealed class NavigationRegistrationService : IHostedService
             NavigationKeys.Month,
             _ => new MonthView(
                 _services.GetRequiredService<MonthViewModel>(),
-                _services.GetRequiredService<EventEditorViewModel>()));
+                _services.GetRequiredService<EventEditorViewModel>(),
+                _services.GetRequiredService<ReminderQuickAdd>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Week,
@@ -32,7 +33,8 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<WeekViewModel>(),
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<IEventRepository>(),
-                _services.GetRequiredService<IEventService>()));
+                _services.GetRequiredService<IEventService>(),
+                _services.GetRequiredService<ReminderQuickAdd>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Day,
@@ -40,11 +42,14 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<DayViewModel>(),
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<IEventRepository>(),
-                _services.GetRequiredService<IEventService>()));
+                _services.GetRequiredService<IEventService>(),
+                _services.GetRequiredService<ReminderQuickAdd>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Agenda,
-            _ => new AgendaView(_services.GetRequiredService<AgendaViewModel>()));
+            _ => new AgendaView(
+                _services.GetRequiredService<AgendaViewModel>(),
+                _services.GetRequiredService<EventEditorViewModel>()));
 
         return Task.CompletedTask;
     }

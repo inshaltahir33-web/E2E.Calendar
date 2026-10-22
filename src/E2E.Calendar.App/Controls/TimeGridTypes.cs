@@ -58,3 +58,25 @@ public sealed class TimeGridItemActionEventArgs : EventArgs
 
     public TimeGridItemAction Action { get; }
 }
+
+public enum TimeGridSlotAction
+{
+    NewEvent,
+    NewReminder,
+}
+
+public sealed class TimeGridSlotActionEventArgs : EventArgs
+{
+    public TimeGridSlotActionEventArgs(DateOnly date, DateTimeOffset startUtc, TimeGridSlotAction action)
+    {
+        Date = date;
+        StartUtc = startUtc;
+        Action = action;
+    }
+
+    public DateOnly Date { get; }
+
+    public DateTimeOffset StartUtc { get; }
+
+    public TimeGridSlotAction Action { get; }
+}

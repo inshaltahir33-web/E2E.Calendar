@@ -11,15 +11,30 @@
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
         BorderThickness="1"
         CornerRadius="4">
-        <Grid ColumnDefinitions="3,*">
-            <Border x:Name="AccentEdge" Background="Transparent" />
-            <TextBlock
-                x:Name="TitleText"
-                Grid.Column="1"
-                Margin="4,0,0,0"
-                VerticalAlignment="Center"
-                FontSize="11"
-                TextTrimming="CharacterEllipsis" />
+        <Grid>
+            <Grid ColumnDefinitions="3,*">
+                <Border x:Name="AccentEdge" Background="Transparent" />
+                <TextBlock
+                    x:Name="TitleText"
+                    Grid.Column="1"
+                    Margin="4,0,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    TextTrimming="CharacterEllipsis" />
+            </Grid>
+
+            <Border
+                x:Name="HoverFill"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                CornerRadius="3"
+                Visibility="Collapsed" />
+
+            <Border
+                x:Name="FocusRing"
+                BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+                BorderThickness="{StaticResource FocusStrokeThickness}"
+                CornerRadius="4"
+                Visibility="Collapsed" />
         </Grid>
     </Border>
 

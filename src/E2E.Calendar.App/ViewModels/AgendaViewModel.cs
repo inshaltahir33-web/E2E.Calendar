@@ -111,6 +111,11 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
 
     private async Task LoadRangeAsync()
     {
+        await LoadPeriodAsync(LoadRangeCoreAsync);
+    }
+
+    private async Task LoadRangeCoreAsync()
+    {
         var timeZone = _clock.LocalTimeZone;
         var fromUtc = timeZone.ToUtc(_from.ToDateTime(TimeOnly.MinValue));
         var toUtc = timeZone.ToUtc(_to.ToDateTime(TimeOnly.MinValue));

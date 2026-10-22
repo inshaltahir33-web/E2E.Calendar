@@ -1,4 +1,5 @@
 using E2E.Calendar.App.Controls;
+using E2E.Calendar.App.Services;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core.Abstractions;
 
@@ -11,16 +12,38 @@ internal static class TimeGridInteractions
         EventEditorViewModel editor,
         IEventRepository events,
         IEventService eventService,
+        ReminderQuickAdd reminders,
         Func<Task> refresh)
     {
         ArgumentNullException.ThrowIfNull(grid);
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(eventService);
+        ArgumentNullException.ThrowIfNull(reminders);
         ArgumentNullException.ThrowIfNull(refresh);
 
         grid.ItemActivated += async (_, args) => await editor.OpenAsync(args.Item);
         grid.SlotCreated += async (_, args) => await editor.OpenNewAsync(args.StartUtc, args.EndUtc);
+
+        grid.SlotActionRequested += async (_, args) =>
+        {
+            switch (args.Action)
+            {
+                case TimeGridSlotAction.NewEvent:
+                    await editor.OpenNewAsync(args.StartUtc, args.StartUtc.AddHours(1));
+                    break;
+
+                case TimeGridSlotAction.NewReminder:
+                    var reminder = await reminders.ShowAndCreateAsync(grid.XamlRoot, args.StartUtc);
+
+                    if (reminder is not null)
+                    {
+                        await refresh();
+                    }
+
+                    break;
+            }
+        };
 
         grid.ItemMoved += async (_, args) =>
         {

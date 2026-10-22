@@ -167,6 +167,8 @@ public sealed partial class TimeGrid : UserControl
 
     public event EventHandler<TimeGridItemActionEventArgs>? ItemActionRequested;
 
+    public event EventHandler<TimeGridSlotActionEventArgs>? SlotActionRequested;
+
     private static TimeZoneInfo LocalTimeZone => TimeZoneInfo.Local;
 
     private double GutterWidth => Tokens.Double("GridGutterWidth", 56d);
@@ -314,6 +316,7 @@ public sealed partial class TimeGrid : UserControl
             canvas.PointerMoved += OnDayCanvasPointerMoved;
             canvas.PointerReleased += OnDayCanvasPointerReleased;
             canvas.PointerCaptureLost += OnDayCanvasPointerReleased;
+            canvas.RightTapped += OnDayCanvasRightTapped;
             BodyGrid.Children.Add(canvas);
             _dayCanvases.Add(canvas);
         }
@@ -1063,6 +1066,38 @@ public sealed partial class TimeGrid : UserControl
         {
             ItemCompleted?.Invoke(this, new TimeGridItemEventArgs(item with { IsDone = !item.IsDone }));
         }
+    }
+
+    private void OnDayCanvasRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not Canvas canvas)
+        {
+            return;
+        }
+
+        var dayIndex = _dayCanvases.IndexOf(canvas);
+        var days = Days ?? Array.Empty<TimeGridDay>();
+
+        if (dayIndex < 0 || dayIndex >= days.Count)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(canvas);
+        var minutes = Math.Round((position.Y / HourHeight) * 60 / 15) * 15;
+        var startUtc = DayStartUtc(days[dayIndex].Date).AddMinutes(minutes);
+
+        var flyout = new MenuFlyout();
+
+        var newEvent = new MenuFlyoutItem { Text = "New event here", Icon = new SymbolIcon(Symbol.Add) };
+        newEvent.Click += (_, _) => SlotActionRequested?.Invoke(this, new TimeGridSlotActionEventArgs(days[dayIndex].Date, startUtc, TimeGridSlotAction.NewEvent));
+        flyout.Items.Add(newEvent);
+
+        var newReminder = new MenuFlyoutItem { Text = "New reminder here" };
+        newReminder.Click += (_, _) => SlotActionRequested?.Invoke(this, new TimeGridSlotActionEventArgs(days[dayIndex].Date, startUtc, TimeGridSlotAction.NewReminder));
+        flyout.Items.Add(newReminder);
+
+        flyout.ShowAt(canvas, new FlyoutShowOptions { Position = e.GetPosition(canvas) });
     }
 
     private void OnChipPointerPressed(object sender, PointerRoutedEventArgs e)

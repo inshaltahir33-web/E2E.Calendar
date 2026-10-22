@@ -37,56 +37,59 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
 
     public override async Task RefreshAsync()
     {
-        var period = State.Period;
-        var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
-        var timeZone = _clock.LocalTimeZone;
-
-        var byDay = items
-            .GroupBy(item => DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)))
-            .ToDictionary(group => group.Key, group => group.OrderBy(item => item.StartUtc).ToList());
-
-        var firstOfMonth = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
-        var gridStart = CalendarPeriod.StartOfWeek(firstOfMonth, State.WeekStart);
-        var today = DateOnly.FromDateTime(timeZone.ToLocal(State.CurrentDate));
-
-        var days = new List<MonthDay>(42);
-
-        for (var index = 0; index < 42; index++)
+        await LoadPeriodAsync(async () =>
         {
-            var date = gridStart.AddDays(index);
+            var period = State.Period;
+            var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
+            var timeZone = _clock.LocalTimeZone;
 
-            byDay.TryGetValue(date, out var dayItems);
-            dayItems ??= new List<CalendarItem>();
+            var byDay = items
+                .GroupBy(item => DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)))
+                .ToDictionary(group => group.Key, group => group.OrderBy(item => item.StartUtc).ToList());
 
-            days.Add(new MonthDay
+            var firstOfMonth = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
+            var gridStart = CalendarPeriod.StartOfWeek(firstOfMonth, State.WeekStart);
+            var today = DateOnly.FromDateTime(timeZone.ToLocal(State.CurrentDate));
+
+            var days = new List<MonthDay>(42);
+
+            for (var index = 0; index < 42; index++)
             {
-                Date = date,
-                DayNumber = date.Day,
-                IsToday = date == today,
-                IsCurrentMonth = date.Month == firstOfMonth.Month && date.Year == firstOfMonth.Year,
-                IsWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday,
-                IsSelected = date == State.SelectedDate,
-                Chips = dayItems.Take(3).Select(ToChip).ToList(),
-                AllItems = dayItems,
-                MoreCount = Math.Max(0, dayItems.Count - 3),
-                EventCount = dayItems.Count,
-            });
-        }
+                var date = gridStart.AddDays(index);
 
-        Days.Clear();
+                byDay.TryGetValue(date, out var dayItems);
+                dayItems ??= new List<CalendarItem>();
 
-        foreach (var day in days)
-        {
-            Days.Add(day);
-        }
+                days.Add(new MonthDay
+                {
+                    Date = date,
+                    DayNumber = date.Day,
+                    IsToday = date == today,
+                    IsCurrentMonth = date.Month == firstOfMonth.Month && date.Year == firstOfMonth.Year,
+                    IsWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday,
+                    IsSelected = date == State.SelectedDate,
+                    Chips = dayItems.Take(3).Select(ToChip).ToList(),
+                    AllItems = dayItems,
+                    MoreCount = Math.Max(0, dayItems.Count - 3),
+                    EventCount = dayItems.Count,
+                });
+            }
 
-        WeekNumbers.Clear();
+            Days.Clear();
 
-        for (var week = 0; week < 6; week++)
-        {
-            var weekStart = gridStart.AddDays(week * 7);
-            WeekNumbers.Add(ISOWeek.GetWeekOfYear(weekStart.ToDateTime(TimeOnly.MinValue)));
-        }
+            foreach (var day in days)
+            {
+                Days.Add(day);
+            }
+
+            WeekNumbers.Clear();
+
+            for (var week = 0; week < 6; week++)
+            {
+                var weekStart = gridStart.AddDays(week * 7);
+                WeekNumbers.Add(ISOWeek.GetWeekOfYear(weekStart.ToDateTime(TimeOnly.MinValue)));
+            }
+        });
     }
 
     public void SelectDay(DateOnly date)

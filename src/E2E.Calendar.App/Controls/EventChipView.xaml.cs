@@ -65,6 +65,7 @@ public sealed partial class EventChipView : UserControl
         new PropertyMetadata(null, OnVisualChanged));
 
     private bool _isHovered;
+    private bool _isPressed;
 
     public EventChipView()
     {
@@ -72,6 +73,9 @@ public sealed partial class EventChipView : UserControl
 
         PointerEntered += OnPointerEntered;
         PointerExited += OnPointerExited;
+        PointerPressed += OnPointerPressed;
+        GotFocus += OnGotFocus;
+        LostFocus += OnLostFocus;
         CheckBox.Tapped += OnCheckBoxTapped;
     }
 
@@ -142,9 +146,25 @@ public sealed partial class EventChipView : UserControl
     private void OnPointerExited(object sender, PointerRoutedEventArgs args)
     {
         _isHovered = false;
+        _isPressed = false;
         ApplyVisual();
     }
 
+    private void OnPointerPressed(object sender, PointerRoutedEventArgs args)
+    {
+        _isPressed = true;
+        ApplyVisual();
+    }
+
+    private void OnGotFocus(object sender, RoutedEventArgs e)
+    {
+        FocusRing.Visibility = Visibility.Visible;
+    }
+
+    private void OnLostFocus(object sender, RoutedEventArgs e)
+    {
+        FocusRing.Visibility = Visibility.Collapsed;
+    }
     private void OnCheckBoxTapped(object sender, TappedRoutedEventArgs args)
     {
         CheckToggled?.Invoke(this, EventArgs.Empty);
@@ -184,9 +204,11 @@ public sealed partial class EventChipView : UserControl
         }
         else if (hasColor)
         {
-            var alpha = _isHovered
-                ? (isDark ? HoverAlphaDark : HoverAlphaLight)
-                : (isDark ? TintAlphaDark : TintAlphaLight);
+            var alpha = _isPressed
+                ? (isDark ? (byte)0x70 : (byte)0x52)
+                : _isHovered
+                    ? (isDark ? HoverAlphaDark : HoverAlphaLight)
+                    : (isDark ? TintAlphaDark : TintAlphaLight);
 
             ChipBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
         }

@@ -75,6 +75,24 @@ public sealed partial class MonthDayCell : UserControl
         this.AllowDrop = true;
         this.DragOver += OnDragOver;
         this.Drop += OnDrop;
+        this.GotFocus += (_, _) => FocusRing.Visibility = Visibility.Visible;
+        this.LostFocus += (_, _) => FocusRing.Visibility = Visibility.Collapsed;
+        this.ContextFlyout = BuildContextFlyout();
+    }
+
+    private MenuFlyout BuildContextFlyout()
+    {
+        var flyout = new MenuFlyout();
+
+        var newEvent = new MenuFlyoutItem { Text = "New event", Icon = new SymbolIcon(Symbol.Add) };
+        newEvent.Click += (_, _) => NewEventRequested?.Invoke(this, Date);
+        flyout.Items.Add(newEvent);
+
+        var newReminder = new MenuFlyoutItem { Text = "New reminder" };
+        newReminder.Click += (_, _) => NewReminderRequested?.Invoke(this, Date);
+        flyout.Items.Add(newReminder);
+
+        return flyout;
     }
 
     public string DayNumber
@@ -138,6 +156,8 @@ public sealed partial class MonthDayCell : UserControl
     public event EventHandler<DateOnly>? DaySelected;
 
     public event EventHandler<DateOnly>? NewEventRequested;
+
+    public event EventHandler<DateOnly>? NewReminderRequested;
 
     public event EventHandler<MonthChipDrop>? ChipDropped;
 

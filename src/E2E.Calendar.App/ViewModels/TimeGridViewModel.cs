@@ -28,39 +28,42 @@ public abstract class TimeGridViewModel : CalendarPageViewModel
 
     public override async Task RefreshAsync()
     {
-        var period = State.Period;
-        var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
-        var timeZone = TimeZoneInfo.Local;
-        var today = State.LocalDate;
-
-        var days = new List<TimeGridDay>(DayCount);
-        var start = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
-
-        for (var index = 0; index < DayCount; index++)
+        await LoadPeriodAsync(async () =>
         {
-            var date = start.AddDays(index);
+            var period = State.Period;
+            var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
+            var timeZone = TimeZoneInfo.Local;
+            var today = State.LocalDate;
 
-            days.Add(new TimeGridDay(
-                date,
-                date.ToString("ddd d MMM", System.Globalization.CultureInfo.CurrentCulture),
-                date.ToString("ddd", System.Globalization.CultureInfo.CurrentCulture),
-                date == today,
-                date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
-        }
+            var days = new List<TimeGridDay>(DayCount);
+            var start = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
 
-        var visible = new HashSet<string>(
-            days.Select(day => day.Date.ToString("yyyy-MM-dd")),
-            StringComparer.Ordinal);
+            for (var index = 0; index < DayCount; index++)
+            {
+                var date = start.AddDays(index);
 
-        var visibleItems = items
-            .Where(item => visible.Contains(DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)).ToString("yyyy-MM-dd")))
-            .OrderBy(item => item.StartUtc)
-            .ToList();
+                days.Add(new TimeGridDay(
+                    date,
+                    date.ToString("ddd d MMM", System.Globalization.CultureInfo.CurrentCulture),
+                    date.ToString("ddd", System.Globalization.CultureInfo.CurrentCulture),
+                    date == today,
+                    date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
+            }
 
-        Days = days;
-        Items = visibleItems;
+            var visible = new HashSet<string>(
+                days.Select(day => day.Date.ToString("yyyy-MM-dd")),
+                StringComparer.Ordinal);
 
-        OnPropertyChanged(nameof(Days));
-        OnPropertyChanged(nameof(Items));
+            var visibleItems = items
+                .Where(item => visible.Contains(DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)).ToString("yyyy-MM-dd")))
+                .OrderBy(item => item.StartUtc)
+                .ToList();
+
+            Days = days;
+            Items = visibleItems;
+
+            OnPropertyChanged(nameof(Days));
+            OnPropertyChanged(nameof(Items));
+        });
     }
 }

@@ -70,19 +70,20 @@
                     <Button
                         Click="OnTodayClick"
                         Content="Today"
-                        AutomationProperties.Name="Go to today" />
+                        AutomationProperties.Name="Go to today"
+                        ToolTipService.ToolTip="Go to today (T)" />
                     <Button
                         Click="OnPreviousClick"
                         Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Previous period"
-                        ToolTipService.ToolTip="Previous period">
+                        ToolTipService.ToolTip="Previous period (Left arrow)">
                         <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
                     </Button>
                     <Button
                         Click="OnNextClick"
                         Style="{StaticResource ToolbarButtonStyle}"
                         AutomationProperties.Name="Next period"
-                        ToolTipService.ToolTip="Next period">
+                        ToolTipService.ToolTip="Next period (Right arrow)">
                         <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
                     </Button>
                     <TextBlock
@@ -119,7 +120,7 @@
                     x:Name="ViewOptionsButton"
                     Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="View options"
-                    ToolTipService.ToolTip="View options">
+                    ToolTipService.ToolTip="View options (weekends, week numbers, time zone)">
                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE712;" />
                     <Button.Flyout>
                         <muxc:MenuFlyout>
@@ -146,7 +147,11 @@
                     PlaceholderText="Search"
                     QueryIcon="Find"
                     Text="{x:Bind ViewModel.SearchText, Mode=TwoWay}"
-                    AutomationProperties.Name="Search events" />
+                    TextChanged="OnSearchTextChanged"
+                    QuerySubmitted="OnSearchSubmitted"
+                    SuggestionChosen="OnSearchSuggestionSelected"
+                    AutomationProperties.Name="Search events"
+                    ToolTipService.ToolTip="Search events (Ctrl+F)" />
 
                 <Button
                     Click="OnSyncClick"
@@ -225,8 +230,10 @@
                                     Text="CALENDARS" />
                             </muxc:Expander.Header>
                             <ListView
+                                x:Name="CalendarList"
                                 ItemsSource="{x:Bind ViewModel.Calendars, Mode=OneWay}"
                                 SelectionMode="None"
+                                RightTapped="OnCalendarListRightTapped"
                                 AutomationProperties.Name="Calendars">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="vm:CalendarListItem">
@@ -411,29 +418,28 @@
 
             <Border Grid.Column="1" Style="{StaticResource CardStyle}">
                 <Grid>
+                    <muxc:InfoBar
+                        x:Name="StatusInfoBar"
+                        Margin="12,12,12,0"
+                        VerticalAlignment="Top"
+                        IsClosable="True"
+                        IsOpen="False"
+                        Severity="Informational"
+                        Closed="OnStatusInfoBarClosed"
+                        AutomationProperties.Name="Status message" />
+
                     <Frame x:Name="ContentFrame" />
 
-                    <StackPanel
-                        x:Name="ViewPlaceholder"
+                    <ctrl:EmptyStateView
+                        x:Name="PlaceholderState"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Spacing="{StaticResource SpaceSM}"
-                        Visibility="Collapsed">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            Style="{ThemeResource TitleTextBlockStyle}"
-                            Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            Opacity="{StaticResource TextSecondaryOpacity}"
-                            Style="{ThemeResource BodyTextBlockStyle}"
-                            Text="This section is not available yet." />
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            Opacity="{StaticResource TextSecondaryOpacity}"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Text="{x:Bind ViewModel.Status, Mode=OneWay}" />
-                    </StackPanel>
+                        ActionText="Create event"
+                        Description="This part of the app is still being built. The calendar views are ready to use."
+                        Glyph="&#xE7F4;"
+                        Title="Coming soon"
+                        Visibility="Collapsed" />
+
                 </Grid>
             </Border>
 
@@ -457,42 +463,42 @@
                 Click="OnNewSplitButtonClick"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Create a new event or reminder"
-                ToolTipService.ToolTip="New">
+                ToolTipService.ToolTip="New event (N)">
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE710;" />
             </Button>
             <Button
                 Click="OnTodayClick"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Go to today"
-                ToolTipService.ToolTip="Today">
+                ToolTipService.ToolTip="Go to today (T)">
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE787;" />
             </Button>
             <Button
                 Click="OnDayViewClick"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Day view"
-                ToolTipService.ToolTip="Day">
+                ToolTipService.ToolTip="Day view (D)">
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B3;" />
             </Button>
             <Button
                 Click="OnWeekViewClick"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Week view"
-                ToolTipService.ToolTip="Week">
+                ToolTipService.ToolTip="Week view (W)">
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B4;" />
             </Button>
             <Button
                 Click="OnMonthViewClick"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Month view"
-                ToolTipService.ToolTip="Month">
+                ToolTipService.ToolTip="Month view (M)">
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B5;" />
             </Button>
             <Button
                 Click="OnAgendaViewClick"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Agenda view"
-                ToolTipService.ToolTip="Agenda">
+                ToolTipService.ToolTip="Agenda view (A)">
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE8A5;" />
             </Button>
             <Button

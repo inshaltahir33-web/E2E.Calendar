@@ -19,6 +19,9 @@ public sealed class CalendarService
     public Task<IReadOnlyList<Calendar>> GetAllAsync(CancellationToken cancellationToken = default) =>
         _calendars.GetAllAsync(cancellationToken);
 
+    public Task UpsertAsync(Calendar calendar, CancellationToken cancellationToken = default) =>
+        _calendars.UpsertAsync(calendar, cancellationToken);
+
     public async Task<IReadOnlyList<Calendar>> EnsureDefaultsAsync(CancellationToken cancellationToken = default)
     {
         var existing = await _calendars.GetAllAsync(cancellationToken);

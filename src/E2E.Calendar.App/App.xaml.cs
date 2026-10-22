@@ -97,6 +97,7 @@ public partial class App : Application
                 services.AddSingleton<AgendaService>();
                 services.AddSingleton<RecurrenceEditService>();
                 services.AddSingleton<EventTemplateService>();
+                services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<IEntitlementService, FreeEntitlementService>();
                 services.AddSingleton<CalendarStateViewModel>();
                 services.AddSingleton<NavigationService>();

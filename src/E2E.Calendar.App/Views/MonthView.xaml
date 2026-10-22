@@ -11,14 +11,20 @@
 
         <Grid x:Name="MonthHost" Grid.Row="1" />
 
-        <TextBlock
-            x:Name="EmptyState"
+        <ctrl:SkeletonView
+            x:Name="Skeleton"
             Grid.Row="1"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Opacity="0.7"
-            Style="{ThemeResource BodyTextBlockStyle}"
-            Text="Nothing scheduled this month."
+            Margin="16"
+            Rows="8"
+            IsActive="False" />
+
+        <ctrl:EmptyStateView
+            x:Name="EmptyStateView"
+            Grid.Row="1"
+            ActionText="New event"
+            Description="Double-click a day or press N to add something to this month."
+            Glyph="&#xE787;"
+            Title="Nothing scheduled this month"
             Visibility="Collapsed" />
 
     </Grid>

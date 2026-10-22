@@ -14,6 +14,13 @@
             CornerRadius="{StaticResource RadiusControl}"
             Visibility="Collapsed" />
 
+        <Border
+            x:Name="HoverFill"
+            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            CornerRadius="{StaticResource RadiusControl}"
+            Opacity="0.6"
+            Visibility="Collapsed" />
+
         <Ellipse
             x:Name="TodayCircle"
             Width="28"
@@ -48,6 +55,13 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
             Fill="{ThemeResource AccentFillColorDefaultBrush}"
+            Visibility="Collapsed" />
+
+        <Border
+            x:Name="FocusRing"
+            BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+            BorderThickness="{StaticResource FocusStrokeThickness}"
+            CornerRadius="{StaticResource RadiusControl}"
             Visibility="Collapsed" />
 
     </Grid>

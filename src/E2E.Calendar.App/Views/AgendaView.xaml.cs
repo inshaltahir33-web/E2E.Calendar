@@ -1,8 +1,11 @@
+using E2E.Calendar.App.Utilities;
+using E2E.Calendar.Core;
 using E2E.Calendar.App.ViewModels;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
+using Microsoft.UI.Xaml.Input;
 using System.Numerics;
 using Windows.Foundation;
 
@@ -10,13 +13,19 @@ namespace E2E.Calendar.App.Views;
 
 public partial class AgendaView : Page
 {
+    private readonly EventEditorViewModel _editor;
     private readonly List<DayHeaderAnchor> _anchors = new();
 
-    public AgendaView(AgendaViewModel viewModel)
+    public AgendaView(AgendaViewModel viewModel, EventEditorViewModel editor)
     {
         ViewModel = viewModel;
+        _editor = editor;
 
         InitializeComponent();
+
+        ViewModel.PeriodChanged += OnPeriodChanged;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        EmptyStateView.ActionInvoked += OnEmptyStateAction;
 
         this.Loaded += OnLoaded;
         this.Unloaded += OnUnloaded;
@@ -30,6 +39,26 @@ public partial class AgendaView : Page
 
         UpdateEmptyState();
         UpdateStickyHeader();
+    }
+
+    private async void OnPeriodChanged(object? sender, EventArgs e) =>
+        await Motion.SlideAndFadeInAsync(AgendaScroll);
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AgendaViewModel.IsLoading))
+        {
+            Skeleton.IsActive = ViewModel.IsLoading;
+        }
+    }
+
+    private async void OnEmptyStateAction(object? sender, EventArgs e)
+    {
+        var timeZone = TimeZoneInfo.Local;
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var startUtc = timeZone.ToUtc(today.ToDateTime(new TimeOnly(9, 0)));
+
+        await _editor.OpenNewAsync(startUtc, startUtc.AddHours(1));
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -143,9 +172,25 @@ public partial class AgendaView : Page
         visual.StartAnimation("Offset", animator);
     }
 
+    private void OnRowPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element)
+        {
+            element.Opacity = 1;
+        }
+    }
+
+    private void OnRowPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element)
+        {
+            element.Opacity = 0;
+        }
+    }
+
     private void UpdateEmptyState()
     {
-        EmptyState.Visibility = ViewModel.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+        EmptyStateView.Visibility = ViewModel.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void OnLoadEarlierClick(object sender, RoutedEventArgs e)

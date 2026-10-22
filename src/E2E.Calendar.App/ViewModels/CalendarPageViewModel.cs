@@ -1,13 +1,25 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Services;
 
 namespace E2E.Calendar.App.ViewModels;
 
-public abstract class CalendarPageViewModel : ObservableObject
+public abstract partial class CalendarPageViewModel : ObservableObject
 {
+    /// <summary>
+    /// A skeleton is only worth showing when the query is slow enough to be
+    /// noticed, so the loading state waits this long before it appears.
+    /// </summary>
+    protected const int LoadingDelayMs = 150;
+
     private readonly IEventQueryCache _cache;
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    private DateOnly _lastPeriodKey = DateOnly.MinValue;
 
     protected CalendarPageViewModel(
         CalendarStateViewModel state,
@@ -27,6 +39,67 @@ public abstract class CalendarPageViewModel : ObservableObject
     protected EventQueryService Query { get; }
 
     public abstract Task RefreshAsync();
+
+    /// <summary>
+    /// Raised after the content for a new period has been rendered, so the
+    /// view can play the period-change transition.
+    /// </summary>
+    public event EventHandler? PeriodChanged;
+
+    /// <summary>
+    /// Runs a range query and raises <see cref="IsLoading"/> only when the
+    /// query takes longer than <see cref="LoadingDelayMs"/>.
+    /// </summary>
+    protected async Task LoadAsync(Func<Task> query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var stopwatch = Stopwatch.StartNew();
+        var pending = query();
+
+        var remaining = LoadingDelayMs - (int)stopwatch.ElapsedMilliseconds;
+
+        if (remaining > 0)
+        {
+            var completed = await Task.WhenAny(pending, Task.Delay(remaining));
+
+            if (completed == pending)
+            {
+                await pending;
+                return;
+            }
+        }
+
+        IsLoading = true;
+
+        try
+        {
+            await pending;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Runs a range query for the visible period and notifies the view when
+    /// the period changed so it can animate the transition.
+    /// </summary>
+    protected async Task LoadPeriodAsync(Func<Task> query)
+    {
+        var key = State.LocalDate;
+        var changed = _lastPeriodKey != DateOnly.MinValue && _lastPeriodKey != key;
+
+        _lastPeriodKey = key;
+
+        await LoadAsync(query);
+
+        if (changed)
+        {
+            PeriodChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     private async void OnCacheInvalidated(object? sender, EventArgs e)
     {

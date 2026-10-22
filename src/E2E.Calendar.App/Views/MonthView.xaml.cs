@@ -1,4 +1,6 @@
 using E2E.Calendar.App.Controls;
+using E2E.Calendar.App.Services;
+using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Services;
@@ -10,19 +12,25 @@ namespace E2E.Calendar.App.Views;
 public partial class MonthView : Page
 {
     private readonly EventEditorViewModel _editor;
+    private readonly ReminderQuickAdd _reminders;
     private readonly List<MonthDayCell> _cells = new();
 
     public MonthView(
         MonthViewModel viewModel,
-        EventEditorViewModel editor)
+        EventEditorViewModel editor,
+        ReminderQuickAdd reminders)
     {
         ViewModel = viewModel;
         _editor = editor;
+        _reminders = reminders;
 
         InitializeComponent();
 
         ViewModel.Days.CollectionChanged += OnDaysChanged;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ViewModel.PeriodChanged += OnPeriodChanged;
+
+        EmptyStateView.ActionInvoked += OnEmptyStateAction;
 
         this.Loaded += OnLoaded;
     }
@@ -35,6 +43,21 @@ public partial class MonthView : Page
         BuildGrid();
     }
 
+    private async void OnPeriodChanged(object? sender, EventArgs e) =>
+        await Motion.SlideAndFadeInAsync(MonthHost);
+
+    private async void OnEmptyStateAction(object? sender, EventArgs e)
+    {
+        var date = ViewModel.State.SelectedDate == default
+            ? DateOnly.FromDateTime(DateTime.Now)
+            : ViewModel.State.SelectedDate;
+
+        var timeZone = TimeZoneInfo.Local;
+        var startUtc = timeZone.ToUtc(date.ToDateTime(new TimeOnly(9, 0)));
+
+        await _editor.OpenNewAsync(startUtc, startUtc.AddHours(1));
+    }
+
     private void OnDaysChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
         BuildGrid();
 
@@ -43,6 +66,10 @@ public partial class MonthView : Page
         if (e.PropertyName == nameof(MonthViewModel.ShowWeekNumbers))
         {
             BuildGrid();
+        }
+        else if (e.PropertyName == nameof(MonthViewModel.IsLoading))
+        {
+            Skeleton.IsActive = ViewModel.IsLoading;
         }
     }
 
@@ -60,11 +87,13 @@ public partial class MonthView : Page
 
         if (days.Count == 0)
         {
-            EmptyState.Visibility = Visibility.Visible;
+            EmptyStateView.Visibility = Visibility.Visible;
             return;
         }
 
-        EmptyState.Visibility = Visibility.Collapsed;
+        var hasEvents = days.Any(day => day.EventCount > 0);
+
+        EmptyStateView.Visibility = hasEvents ? Visibility.Collapsed : Visibility.Visible;
 
         var column = 0;
 
@@ -127,6 +156,7 @@ public partial class MonthView : Page
             cell.SetChips(day.Chips);
             cell.DaySelected += OnDaySelected;
             cell.NewEventRequested += OnNewEventRequested;
+            cell.NewReminderRequested += OnNewReminderRequested;
             cell.ChipDropped += OnChipDropped;
 
             Grid.SetColumn(cell, column + (index % 7));
@@ -172,6 +202,20 @@ public partial class MonthView : Page
         var startUtc = timeZone.ToUtc(date.ToDateTime(new TimeOnly(9, 0)));
 
         await _editor.OpenNewAsync(startUtc, startUtc.AddHours(1));
+    }
+
+    private async void OnNewReminderRequested(object? sender, DateOnly date)
+    {
+        var timeZone = TimeZoneInfo.Local;
+        var dueUtc = timeZone.ToUtc(date.ToDateTime(new TimeOnly(9, 0)));
+
+        var reminder = await _reminders.ShowAndCreateAsync(XamlRoot, dueUtc);
+
+        if (reminder is not null)
+        {
+            await ViewModel.RefreshAsync();
+            BuildGrid();
+        }
     }
 
     private async void OnChipDropped(object? sender, MonthChipDrop drop)

@@ -31,6 +31,11 @@ public sealed partial class MonthChipView : UserControl
 
         this.CanDrag = true;
         this.DragStarting += OnDragStarting;
+
+        PointerEntered += (_, _) => HoverFill.Visibility = Visibility.Visible;
+        PointerExited += (_, _) => HoverFill.Visibility = Visibility.Collapsed;
+        GotFocus += (_, _) => FocusRing.Visibility = Visibility.Visible;
+        LostFocus += (_, _) => FocusRing.Visibility = Visibility.Collapsed;
     }
 
     public string Title

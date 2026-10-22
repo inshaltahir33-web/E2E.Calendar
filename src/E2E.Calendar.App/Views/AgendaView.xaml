@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
     <Grid Background="Transparent" RowDefinitions="Auto,*,Auto">
@@ -61,7 +62,17 @@
                                             <Grid
                                                 Height="48"
                                                 Padding="12,0"
+                                                Background="Transparent"
                                                 ColumnDefinitions="72,Auto,Auto,*,Auto">
+                                                <Border
+                                                    x:Name="RowHover"
+                                                    Grid.Column="0"
+                                                    Grid.ColumnSpan="5"
+                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                    CornerRadius="4"
+                                                    Opacity="0"
+                                                    PointerEntered="OnRowPointerEntered"
+                                                    PointerExited="OnRowPointerExited" />
                                                 <TextBlock
                                                     Grid.Column="0"
                                                     VerticalAlignment="Center"
@@ -117,21 +128,24 @@
                     </muxc:ItemsRepeater.ItemTemplate>
                 </muxc:ItemsRepeater>
 
-                <StackPanel
-                    x:Name="EmptyState"
-                    Padding="24"
-                    Spacing="8"
-                    Visibility="Collapsed">
-                    <TextBlock
-                        Style="{ThemeResource BodyStrongTextBlockStyle}"
-                        Text="Nothing scheduled" />
-                    <TextBlock
-                        Opacity="0.7"
-                        Style="{ThemeResource BodyTextBlockStyle}"
-                        Text="Your agenda is clear for this period." />
-                </StackPanel>
             </StackPanel>
         </ScrollViewer>
+
+        <ctrl:SkeletonView
+            x:Name="Skeleton"
+            Grid.Row="1"
+            Margin="16"
+            Rows="10"
+            IsActive="False" />
+
+        <ctrl:EmptyStateView
+            x:Name="EmptyStateView"
+            Grid.Row="1"
+            ActionText="New event"
+            Description="Press N or double-click a day in Month view to add something."
+            Glyph="&#xE787;"
+            Title="Nothing scheduled"
+            Visibility="Collapsed" />
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Padding="12,8">
             <Button

@@ -25,6 +25,13 @@
             CornerRadius="4"
             Visibility="Collapsed" />
 
+        <Border
+            x:Name="FocusRing"
+            BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+            BorderThickness="{StaticResource FocusStrokeThickness}"
+            CornerRadius="4"
+            Visibility="Collapsed" />
+
         <StackPanel Padding="4">
 
             <Grid Height="24">

@@ -45,6 +45,12 @@ public sealed partial class DayCell : UserControl
     public DayCell()
     {
         InitializeComponent();
+
+        PointerEntered += (_, _) => HoverFill.Visibility = Visibility.Visible;
+        PointerExited += (_, _) => HoverFill.Visibility = Visibility.Collapsed;
+        PointerPressed += (_, _) => HoverFill.Visibility = Visibility.Collapsed;
+        GotFocus += (_, _) => FocusRing.Visibility = Visibility.Visible;
+        LostFocus += (_, _) => FocusRing.Visibility = Visibility.Collapsed;
     }
 
     public string DayNumber

@@ -16,6 +16,12 @@
             ShowSecondaryTimeZone="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=OneWay}"
             SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}" />
 
+        <ctrl:SkeletonView
+            x:Name="Skeleton"
+            Margin="16"
+            Rows="10"
+            IsActive="False" />
+
     </Grid>
 
 </Page>

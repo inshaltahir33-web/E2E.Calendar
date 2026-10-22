@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Extensions.Logging;
@@ -24,9 +25,13 @@ public sealed partial class MainWindow : Window
     private readonly CalendarService _calendars;
     private readonly IReminderRepository _reminders;
     private readonly EventService _events;
+    private readonly EventQueryService _query;
     private readonly IClock _clock;
     private readonly ILogger<MainWindow> _logger;
     private readonly EventEditorViewModel _editor;
+
+    private readonly Dictionary<CalendarItem, string> _searchResults = new();
+    private CancellationTokenSource? _searchCts;
 
     private bool _lastAutoCollapsed;
 
@@ -36,6 +41,7 @@ public sealed partial class MainWindow : Window
         NavigationService navigation,
         CalendarService calendars,
         EventService events,
+        EventQueryService query,
         IClock clock,
         ILogger<MainWindow> logger,
         EventEditorViewModel editor,
@@ -49,6 +55,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(calendars);
         ArgumentNullException.ThrowIfNull(events);
+        ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(editor);
@@ -62,6 +69,7 @@ public sealed partial class MainWindow : Window
         _navigation = navigation;
         _calendars = calendars;
         _events = events;
+        _query = query;
         _clock = clock;
         _logger = logger;
         _editor = editor;
@@ -86,6 +94,7 @@ public sealed partial class MainWindow : Window
         editor.DeleteRequested += OnEditorDeleteRequested;
 
         Snackbar.ActionInvoked += OnSnackbarAction;
+        PlaceholderState.ActionInvoked += OnPlaceholderAction;
 
         this.ExtendsContentIntoTitleBar = true;
         this.SetTitleBar(TitleBarElement);
@@ -139,6 +148,15 @@ public sealed partial class MainWindow : Window
             ? Tokens.Double("SidebarCollapsedWidth", 48d)
             : Tokens.Double("SidebarWidth", 272d);
 
+        SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!Motion.IsEnabled)
+        {
+            SidebarHost.Width = targetWidth;
+            return;
+        }
+
         var storyboard = new Storyboard();
         var animation = new DoubleAnimation
         {
@@ -151,9 +169,6 @@ public sealed partial class MainWindow : Window
         Storyboard.SetTargetProperty(animation, "Width");
         storyboard.Children.Add(animation);
         storyboard.Begin();
-
-        SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnSidebarRowClicked(object sender, RoutedEventArgs e)
@@ -247,9 +262,18 @@ public sealed partial class MainWindow : Window
     {
         ViewModel.SyncStatus = "Syncing…";
 
-        await RefreshCalendarsAsync();
+        try
+        {
+            await RefreshCalendarsAsync();
 
-        ViewModel.SyncStatus = $"Synced just now · {_calendarProviderSummary()}";
+            ViewModel.SyncStatus = $"Synced just now · {_calendarProviderSummary()}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sync failed");
+            ViewModel.SyncStatus = "Sync failed";
+            ShowStatus("Sync failed. We will retry automatically.", InfoBarSeverity.Error);
+        }
     }
 
     private string _calendarProviderSummary() =>
@@ -340,17 +364,210 @@ public sealed partial class MainWindow : Window
             EditorHost.Visibility = Visibility.Collapsed;
             ViewModel.Status = "Event saved";
         }
+        else if (!string.IsNullOrWhiteSpace(_editor.ErrorMessage))
+        {
+            ShowStatus(_editor.ErrorMessage, InfoBarSeverity.Error);
+        }
     }
 
     private async void OnEditorDeleteRequested(object? sender, EventArgs e)
     {
-        await _editor.DeleteAsync();
+        try
+        {
+            await _editor.DeleteAsync();
 
-        ViewModel.RecordDeletion(_editor.EventId);
-        EditorHost.Visibility = Visibility.Collapsed;
-        ViewModel.Status = "Event deleted";
+            ViewModel.RecordDeletion(_editor.EventId);
+            EditorHost.Visibility = Visibility.Collapsed;
+            ViewModel.Status = "Event deleted";
 
-        Snackbar.Show("Event deleted", "Undo");
+            Snackbar.Show("Event deleted", "Undo");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete the event");
+            ShowStatus("The event could not be deleted.", InfoBarSeverity.Error);
+        }
+    }
+
+    private void ShowStatus(string message, InfoBarSeverity severity)
+    {
+        StatusInfoBar.Message = message;
+        StatusInfoBar.Severity = severity;
+        StatusInfoBar.IsOpen = true;
+    }
+
+    private void OnStatusInfoBarClosed(InfoBar sender, object args)
+    {
+        StatusInfoBar.IsOpen = false;
+    }
+
+    private void OnPlaceholderAction(object? sender, EventArgs e) =>
+        _navigation.NavigateTo(NavigationKeys.NewEvent);
+
+    private async void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            return;
+        }
+
+        await RefreshSearchResultsAsync(sender.Text);
+    }
+
+    private async Task RefreshSearchResultsAsync(string query)
+    {
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _searchResults.Clear();
+            SearchBox.ItemsSource = null;
+            return;
+        }
+
+        var now = _clock.UtcNow;
+        var items = await _query.GetItemsAsync(now.AddYears(-1), now.AddYears(1), cancellationToken: token);
+
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _searchResults.Clear();
+
+        foreach (var item in items
+            .Where(item => item.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.StartUtc)
+            .Take(8))
+        {
+            _searchResults[item] = FormatSearchResult(item);
+        }
+
+        SearchBox.ItemsSource = _searchResults.Values.ToList();
+    }
+
+    private static string FormatSearchResult(CalendarItem item)
+    {
+        var when = item.HasTime
+            ? item.StartUtc.ToLocalTime().ToString("ddd d MMM HH:mm", System.Globalization.CultureInfo.CurrentCulture)
+            : item.StartUtc.ToLocalTime().ToString("ddd d MMM", System.Globalization.CultureInfo.CurrentCulture);
+
+        return $"{item.Title} · {when}";
+    }
+
+    private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        if (args.ChosenSuggestion is null && !string.IsNullOrWhiteSpace(sender.Text))
+        {
+            ShowStatus($"No events match “{sender.Text}”", InfoBarSeverity.Informational);
+            return;
+        }
+
+        StatusInfoBar.IsOpen = false;
+    }
+
+    private void OnSearchSuggestionSelected(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+    {
+        if (args.SelectedItem is string label)
+        {
+            var match = _searchResults.FirstOrDefault(pair => pair.Value == label);
+
+            if (match.Key is not null)
+            {
+                _ = _editor.OpenAsync(match.Key);
+            }
+        }
+    }
+
+    private void OnCalendarListRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not ListView list)
+        {
+            return;
+        }
+
+        var element = e.OriginalSource as FrameworkElement;
+        var container = element is null ? null : FindAncestor<ListViewItem>(element);
+        var item = container?.DataContext as CalendarListItem ?? list.SelectedItem as CalendarListItem;
+
+        if (item is null)
+        {
+            return;
+        }
+
+        var flyout = BuildCalendarContextFlyout(item);
+
+        flyout.ShowAt(list, new FlyoutShowOptions { Position = e.GetPosition(list) });
+    }
+
+    private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        while (element is not null)
+        {
+            if (element is T match)
+            {
+                return match;
+            }
+
+            element = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(element);
+        }
+
+        return null;
+    }
+
+    private MenuFlyout BuildCalendarContextFlyout(CalendarListItem item)
+    {
+        var flyout = new MenuFlyout();
+
+        var colour = new MenuFlyoutSubItem { Text = "Colour" };
+
+        foreach (var hex in CalendarPalette.All)
+        {
+            var entry = new MenuFlyoutItem { Text = hex };
+            entry.Click += async (_, _) => await SetCalendarColorAsync(item.Id, hex);
+            colour.Items.Add(entry);
+        }
+
+        flyout.Items.Add(colour);
+
+        var showOnly = new MenuFlyoutItem { Text = "Show only this calendar" };
+        showOnly.Click += async (_, _) => await ShowOnlyCalendarAsync(item.Id);
+        flyout.Items.Add(showOnly);
+
+        var settings = new MenuFlyoutItem { Text = "Calendar settings" };
+        settings.Click += (_, _) => _navigation.NavigateTo(NavigationKeys.Settings);
+        flyout.Items.Add(settings);
+
+        return flyout;
+    }
+
+    private async Task SetCalendarColorAsync(string calendarId, string color)
+    {
+        var calendars = await _calendars.GetAllAsync();
+        var calendar = calendars.FirstOrDefault(item => item.Id == calendarId);
+
+        if (calendar is null)
+        {
+            return;
+        }
+
+        await _calendars.UpsertAsync(calendar with { Color = color });
+
+        await RefreshCalendarsAsync();
+    }
+
+    private async Task ShowOnlyCalendarAsync(string calendarId)
+    {
+        var calendars = await _calendars.GetAllAsync();
+
+        foreach (var calendar in calendars)
+        {
+            await _calendars.UpsertAsync(calendar with { Visible = calendar.Id == calendarId });
+        }
+
+        await RefreshCalendarsAsync();
     }
 
     private async void OnSnackbarAction(object? sender, EventArgs e)
@@ -383,8 +600,13 @@ public sealed partial class MainWindow : Window
         _logger.LogInformation("Navigated to {ViewKey} (implemented: {IsImplemented})", key, hasView);
 
         ViewModel.Status = hasView ? key : $"{key} is not available yet";
-        ViewPlaceholder.Visibility = hasView ? Visibility.Collapsed : Visibility.Visible;
+        PlaceholderState.Visibility = hasView ? Visibility.Collapsed : Visibility.Visible;
         ContentFrame.Visibility = hasView ? Visibility.Visible : Visibility.Collapsed;
+
+        if (hasView)
+        {
+            _ = Motion.FadeInAsync(ContentFrame);
+        }
     }
 
     private void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
