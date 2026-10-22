@@ -10,7 +10,7 @@
         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
         BorderThickness="1"
-        CornerRadius="4">
+        CornerRadius="{StaticResource RadiusChip}">
         <Grid>
             <Grid ColumnDefinitions="3,*">
                 <Border x:Name="AccentEdge" Background="Transparent" />

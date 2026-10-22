@@ -264,5 +264,10 @@ public sealed partial class EventChipView : UserControl
         }
 
         AutomationProperties.SetName(this, TooltipText ?? Title);
+
+        if (!string.IsNullOrWhiteSpace(TimeText))
+        {
+            AutomationProperties.SetItemStatus(this, TimeText);
+        }
     }
 }

@@ -1,21 +1,19 @@
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
 using Windows.UI.ViewManagement;
 
 namespace E2E.Calendar.App.Services;
 
 /// <summary>
 /// Applies <see cref="AppSettings"/> to the running UI: theme, accent colour and
-/// grid metrics. The theme is applied to the window content because
+/// grid metrics. The theme is applied to every registered window root because
 /// <see cref="Application.RequestedTheme"/> can only be set at startup in WinUI 3.
 /// </summary>
 public sealed class AppearanceService
 {
     private readonly SettingsService _settings;
-
-    private FrameworkElement? _target;
+    private readonly List<WeakReference<FrameworkElement>> _targets = new();
 
     public AppearanceService(SettingsService settings)
     {
@@ -28,7 +26,11 @@ public sealed class AppearanceService
     public void Attach(FrameworkElement target)
     {
         ArgumentNullException.ThrowIfNull(target);
-        _target = target;
+
+        if (!_targets.Any(reference => reference.TryGetTarget(out var existing) && ReferenceEquals(existing, target)))
+        {
+            _targets.Add(new WeakReference<FrameworkElement>(target));
+        }
 
         Apply(_settings.Current);
     }
@@ -44,17 +46,22 @@ public sealed class AppearanceService
 
     private void ApplyTheme(AppTheme theme)
     {
-        if (_target is null)
-        {
-            return;
-        }
-
-        _target.RequestedTheme = theme switch
+        var elementTheme = theme switch
         {
             AppTheme.Light => ElementTheme.Light,
             AppTheme.Dark => ElementTheme.Dark,
             _ => ResolveSystemTheme(),
         };
+
+        _targets.RemoveAll(reference => !reference.TryGetTarget(out _));
+
+        foreach (var reference in _targets)
+        {
+            if (reference.TryGetTarget(out var target))
+            {
+                target.RequestedTheme = elementTheme;
+            }
+        }
     }
 
     private static ElementTheme ResolveSystemTheme()
