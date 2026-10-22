@@ -57,6 +57,10 @@ public static class Motion
             return;
         }
 
+        // Set the target value before starting the composition animation — setting
+        // a XAML property after StartAnimation would cancel the animation.
+        element.Opacity = 1;
+
         var visual = ElementCompositionPreview.GetElementVisual(element);
         var animation = visual.Compositor.CreateScalarKeyFrameAnimation();
 
@@ -65,7 +69,6 @@ public static class Motion
         animation.Duration = TimeSpan.FromMilliseconds(durationMs);
 
         visual.StartAnimation("Opacity", animation);
-        element.Opacity = 1;
 
         await Task.Delay(durationMs);
     }
@@ -86,6 +89,8 @@ public static class Motion
             return;
         }
 
+        element.Opacity = 1;
+
         var visual = ElementCompositionPreview.GetElementVisual(element);
         var compositor = visual.Compositor;
         var easing = CompositionEasingFunction.CreateCubicBezierEasingFunction(
@@ -105,13 +110,54 @@ public static class Motion
 
         visual.StartAnimation("Opacity", opacity);
         visual.StartAnimation("Offset", offset);
-        element.Opacity = 1;
 
         await Task.Delay(durationMs);
     }
 
-    public static void Pulse(UIElement element, int durationMs = SlowDurationMs)
+    /// <summary>
+    /// Slides an element in horizontally from the left and fades it in. Used for
+    /// the sidebar when it collapses or expands; the element's layout has
+    /// already been committed so this is a purely visual animation.
+    /// </summary>
+    public static void SlideInFromLeftAsync(
+        UIElement element,
+        int durationMs = MediumDurationMs,
+        double offsetPixels = SlideOffsetPixels)
     {
+        if (element is null || !IsEnabled)
+        {
+            if (element is not null)
+            {
+                element.Opacity = 1;
+            }
+
+            return;
+        }
+
+        element.Opacity = 1;
+
+        var visual = ElementCompositionPreview.GetElementVisual(element);
+        var compositor = visual.Compositor;
+        var easing = CompositionEasingFunction.CreateCubicBezierEasingFunction(
+            compositor,
+            new Vector2(0.1f, 0.9f),
+            new Vector2(0.2f, 1f));
+
+        var opacity = compositor.CreateScalarKeyFrameAnimation();
+        opacity.InsertKeyFrame(0f, 0f);
+        opacity.InsertKeyFrame(1f, 1f);
+        opacity.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        var offset = compositor.CreateVector3KeyFrameAnimation();
+        offset.InsertKeyFrame(0f, new Vector3((float)-offsetPixels, 0, 0));
+        offset.InsertKeyFrame(1f, Vector3.Zero, easing);
+        offset.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        visual.StartAnimation("Opacity", opacity);
+        visual.StartAnimation("Offset", offset);
+    }
+
+    public static void Pulse(UIElement element, int durationMs = SlowDurationMs)    {
         if (element is null || !IsEnabled)
         {
             return;
