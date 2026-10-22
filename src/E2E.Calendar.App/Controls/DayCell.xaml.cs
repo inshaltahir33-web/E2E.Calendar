@@ -1,3 +1,4 @@
+using E2E.Calendar.App.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -53,6 +54,34 @@ public sealed partial class DayCell : UserControl
         LostFocus += (_, _) => FocusRing.Visibility = Visibility.Collapsed;
     }
 
+    private bool _suppressVisualUpdates;
+
+    /// <summary>
+    /// Sets every visual state in one pass so a day cell is not refreshed six
+    /// times while it is being produced by the grid builder.
+    /// </summary>
+    public void Apply(MiniCalendarDayViewModel day)
+    {
+        _suppressVisualUpdates = true;
+
+        try
+        {
+            DayNumber = day.Label;
+            IsToday = day.IsToday;
+            IsInSelectedWeek = day.IsInSelectedWeek;
+            IsCurrentMonth = day.IsCurrentMonth;
+            HasEvents = day.EventCount > 0;
+            AutomationName = day.AutomationName;
+            Tag = day;
+        }
+        finally
+        {
+            _suppressVisualUpdates = false;
+        }
+
+        UpdateVisuals();
+    }
+
     public string DayNumber
     {
         get => (string)GetValue(DayNumberProperty);
@@ -91,7 +120,7 @@ public sealed partial class DayCell : UserControl
 
     private static void OnVisualChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
-        if (sender is DayCell cell)
+        if (sender is DayCell cell && !cell._suppressVisualUpdates)
         {
             cell.UpdateVisuals();
         }

@@ -15,6 +15,7 @@ public abstract partial class CalendarPageViewModel : ObservableObject
     protected const int LoadingDelayMs = 150;
 
     private readonly IEventQueryCache _cache;
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     [ObservableProperty]
     private bool _isLoading;
@@ -48,37 +49,48 @@ public abstract partial class CalendarPageViewModel : ObservableObject
 
     /// <summary>
     /// Runs a range query and raises <see cref="IsLoading"/> only when the
-    /// query takes longer than <see cref="LoadingDelayMs"/>.
+    /// query takes longer than <see cref="LoadingDelayMs"/>. Refreshes are
+    /// serialised so rapid period changes cannot interleave and leave the view
+    /// showing a result for a period the user already navigated away from.
     /// </summary>
     protected async Task LoadAsync(Func<Task> query)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var stopwatch = Stopwatch.StartNew();
-        var pending = query();
-
-        var remaining = LoadingDelayMs - (int)stopwatch.ElapsedMilliseconds;
-
-        if (remaining > 0)
-        {
-            var completed = await Task.WhenAny(pending, Task.Delay(remaining));
-
-            if (completed == pending)
-            {
-                await pending;
-                return;
-            }
-        }
-
-        IsLoading = true;
+        await _refreshGate.WaitAsync();
 
         try
         {
-            await pending;
+            var stopwatch = Stopwatch.StartNew();
+            var pending = query();
+
+            var remaining = LoadingDelayMs - (int)stopwatch.ElapsedMilliseconds;
+
+            if (remaining > 0)
+            {
+                var completed = await Task.WhenAny(pending, Task.Delay(remaining));
+
+                if (completed == pending)
+                {
+                    await pending;
+                    return;
+                }
+            }
+
+            IsLoading = true;
+
+            try
+            {
+                await pending;
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
         finally
         {
-            IsLoading = false;
+            _refreshGate.Release();
         }
     }
 

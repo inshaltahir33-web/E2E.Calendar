@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using E2E.Calendar.Core;
@@ -33,6 +32,9 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
     [ObservableProperty]
     private bool _hasLater;
 
+    [ObservableProperty]
+    private IReadOnlyList<AgendaDayViewModel> _days = Array.Empty<AgendaDayViewModel>();
+
     public AgendaViewModel(
         CalendarStateViewModel state,
         EventQueryService query,
@@ -51,11 +53,15 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
         _clock = clock;
     }
 
-    public ObservableCollection<AgendaDayViewModel> Days { get; } = new();
-
     public bool IsEmpty => Days.Count == 0;
 
     public Visibility EmptyStateVisibility => IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+
+    partial void OnDaysChanged(IReadOnlyList<AgendaDayViewModel> value)
+    {
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(EmptyStateVisibility));
+    }
 
     public override async Task RefreshAsync()
     {
@@ -127,27 +133,66 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
         var today = Today();
 
         var allItems = days.SelectMany(day => day.Items).ToList();
+        var multiDayItems = allItems.Where(item => !IsSingleDay(item)).ToList();
 
-        Days.Clear();
+        var singleDayByDate = new Dictionary<DateOnly, List<CalendarItem>>();
+
+        foreach (var item in allItems)
+        {
+            if (!IsSingleDay(item))
+            {
+                continue;
+            }
+
+            var date = DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc));
+
+            if (!singleDayByDate.TryGetValue(date, out var bucket))
+            {
+                bucket = new List<CalendarItem>();
+                singleDayByDate[date] = bucket;
+            }
+
+            bucket.Add(item);
+        }
+
+        var agendaDays = new List<AgendaDayViewModel>();
 
         for (var date = _from; date <= _to; date = date.AddDays(1))
         {
-            var dayItems = allItems
-                .Where(item => SpansDay(item, date, timeZone))
-                .OrderBy(item => item.StartUtc)
-                .ThenBy(item => item.Title, StringComparer.Ordinal)
-                .ToList();
+            var dayItems = new List<CalendarItem>();
+
+            if (singleDayByDate.TryGetValue(date, out var singleDay))
+            {
+                dayItems.AddRange(singleDay);
+            }
+
+            foreach (var item in multiDayItems)
+            {
+                if (SpansDay(item, date, timeZone))
+                {
+                    dayItems.Add(item);
+                }
+            }
 
             if (dayItems.Count == 0)
             {
                 continue;
             }
 
+            dayItems.Sort(static (left, right) =>
+            {
+                var byStart = left.StartUtc.CompareTo(right.StartUtc);
+
+                return byStart != 0
+                    ? byStart
+                    : string.CompareOrdinal(left.Title, right.Title);
+            });
+
             var weekday = culture.DateTimeFormat.GetAbbreviatedDayName(date.DayOfWeek);
             var dayMonth = date.ToDateTime(TimeOnly.MinValue).ToString("d MMM", culture);
             var isToday = date == today;
 
-            Days.Add(new AgendaDayViewModel
+            agendaDays.Add(new AgendaDayViewModel
             {
                 Header = isToday ? "Today" : weekday,
                 Weekday = weekday,
@@ -175,20 +220,21 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
         HasEarlier = _from < today;
         HasLater = _to > today.AddDays(InitialDaysAfter);
 
-        OnPropertyChanged(nameof(IsEmpty));
-        OnPropertyChanged(nameof(EmptyStateVisibility));
+        Days = agendaDays;
 
-        if (Days.Count > 0)
-        {
-            StickyHeader = Days[0].Header + " · " + Days[0].DayText;
-        }
+        StickyHeader = agendaDays.Count > 0
+            ? agendaDays[0].Header + " · " + agendaDays[0].DayText
+            : string.Empty;
     }
+
+    private static bool IsSingleDay(CalendarItem item) =>
+        !item.AllDay && item.EndUtc - item.StartUtc <= TimeSpan.FromDays(1);
 
     private static bool SpansDay(CalendarItem item, DateOnly date, TimeZoneInfo timeZone)
     {
         var start = DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc));
 
-        if (!item.AllDay && item.EndUtc - item.StartUtc <= TimeSpan.FromDays(1))
+        if (IsSingleDay(item))
         {
             return start == date;
         }

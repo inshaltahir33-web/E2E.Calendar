@@ -30,15 +30,14 @@
             VerticalScrollBarVisibility="Auto"
             ViewChanged="OnViewChanged">
 
-            <StackPanel>
-                <muxc:ItemsRepeater
-                    x:Name="DaysRepeater"
-                    ItemsSource="{x:Bind ViewModel.Days, Mode=OneTime}"
-                    ElementPrepared="OnDayElementPrepared">
-                    <muxc:ItemsRepeater.Layout>
-                        <muxc:StackLayout Orientation="Vertical" />
-                    </muxc:ItemsRepeater.Layout>
-                    <muxc:ItemsRepeater.ItemTemplate>
+            <muxc:ItemsRepeater
+                x:Name="DaysRepeater"
+                ItemsSource="{x:Bind ViewModel.Days, Mode=OneWay}"
+                ElementPrepared="OnDayElementPrepared">
+                <muxc:ItemsRepeater.Layout>
+                    <muxc:StackLayout Orientation="Vertical" />
+                </muxc:ItemsRepeater.Layout>
+                <muxc:ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="vm:AgendaDayViewModel">
                             <StackPanel>
                                 <Grid Margin="12,14,12,2" ColumnDefinitions="Auto,Auto,*">
@@ -126,9 +125,7 @@
                             </StackPanel>
                         </DataTemplate>
                     </muxc:ItemsRepeater.ItemTemplate>
-                </muxc:ItemsRepeater>
-
-            </StackPanel>
+            </muxc:ItemsRepeater>
         </ScrollViewer>
 
         <ctrl:SkeletonView

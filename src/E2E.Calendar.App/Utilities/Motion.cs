@@ -103,11 +103,8 @@ public static class Motion
         offset.InsertKeyFrame(1f, Vector3.Zero, easing);
         offset.Duration = TimeSpan.FromMilliseconds(durationMs);
 
-        var group = compositor.CreateAnimationGroup();
-        group.Add(opacity);
-        group.Add(offset);
-
-        visual.StartAnimationGroup(group);
+        visual.StartAnimation("Opacity", opacity);
+        visual.StartAnimation("Offset", offset);
         element.Opacity = 1;
 
         await Task.Delay(durationMs);

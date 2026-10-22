@@ -80,6 +80,39 @@ public sealed partial class MonthDayCell : UserControl
         this.ContextFlyout = BuildContextFlyout();
     }
 
+    private bool _suppressVisualUpdates;
+
+    /// <summary>
+    /// Applies a month day in a single visual pass. Setting the individual
+    /// dependency properties one by one would otherwise refresh the whole cell
+    /// for every property.
+    /// </summary>
+    public void Apply(MonthDay day)
+    {
+        _suppressVisualUpdates = true;
+
+        try
+        {
+            DayNumber = day.DayNumber.ToString();
+            IsToday = day.IsToday;
+            IsCurrentMonth = day.IsCurrentMonth;
+            IsWeekend = day.IsWeekend;
+            IsSelected = day.IsSelected;
+            MoreLabel = day.MoreLabel;
+            MoreVisible = day.MoreCount > 0;
+            EventCount = day.EventCount;
+            Date = day.Date;
+        }
+        finally
+        {
+            _suppressVisualUpdates = false;
+        }
+
+        UpdateVisuals();
+        SetChips(day.Chips);
+        Items = day.AllItems;
+    }
+
     private MenuFlyout BuildContextFlyout()
     {
         var flyout = new MenuFlyout();
@@ -163,7 +196,7 @@ public sealed partial class MonthDayCell : UserControl
 
     private static void OnVisualChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
-        if (sender is MonthDayCell cell)
+        if (sender is MonthDayCell cell && !cell._suppressVisualUpdates)
         {
             cell.UpdateVisuals();
         }

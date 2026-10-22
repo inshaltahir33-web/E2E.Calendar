@@ -6,14 +6,48 @@ namespace E2E.Calendar.App.Utilities;
 
 public static class ColorHelper
 {
+    private const int MaxCachedBrushes = 128;
+
+    private static readonly Dictionary<uint, SolidColorBrush> BrushCache = new();
+
     public static Brush FromHex(string? hex)
     {
         if (!TryParse(hex, out var color))
         {
-            return new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+            return Transparent;
         }
 
-        return new SolidColorBrush(color);
+        return FromColor(color);
+    }
+
+    public static SolidColorBrush Transparent => FromColor(Color.FromArgb(0, 0, 0, 0));
+
+    /// <summary>
+    /// Brushes are immutable and shareable, so a small palette-wide cache avoids
+    /// allocating a new brush for every chip that is rendered or hovered.
+    /// </summary>
+    public static SolidColorBrush FromColor(Color color)
+    {
+        var key = ((uint)color.A << 24) | ((uint)color.R << 16) | ((uint)color.G << 8) | color.B;
+
+        lock (BrushCache)
+        {
+            if (BrushCache.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+
+            if (BrushCache.Count >= MaxCachedBrushes)
+            {
+                BrushCache.Clear();
+            }
+
+            var brush = new SolidColorBrush(color);
+
+            BrushCache[key] = brush;
+
+            return brush;
+        }
     }
 
     public static bool TryParse(string? hex, out Color color)

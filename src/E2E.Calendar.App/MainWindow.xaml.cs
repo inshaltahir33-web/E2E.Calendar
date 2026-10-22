@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Dispatching;
 using Microsoft.Extensions.Logging;
 
 namespace E2E.Calendar.App;
@@ -31,6 +32,7 @@ public sealed partial class MainWindow : Window
     private readonly EventEditorViewModel _editor;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
+    private readonly DispatcherQueueTimer _searchDebounce;
     private CancellationTokenSource? _searchCts;
 
     private bool _lastAutoCollapsed;
@@ -79,6 +81,11 @@ public sealed partial class MainWindow : Window
         _reminders = reminders;
 
         this.InitializeComponent();
+
+        _searchDebounce = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _searchDebounce.Interval = TimeSpan.FromMilliseconds(250);
+        _searchDebounce.IsRepeating = false;
+        _searchDebounce.Tick += OnSearchDebounceTick;
 
         _navigation.Frame = ContentFrame;
         _navigation.Navigated += OnNavigated;
@@ -404,14 +411,22 @@ public sealed partial class MainWindow : Window
     private void OnPlaceholderAction(object? sender, EventArgs e) =>
         _navigation.NavigateTo(NavigationKeys.NewEvent);
 
-    private async void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
         {
             return;
         }
 
-        await RefreshSearchResultsAsync(sender.Text);
+        _searchCts?.Cancel();
+        _searchDebounce.Stop();
+        _searchDebounce.Start();
+    }
+
+    private void OnSearchDebounceTick(DispatcherQueueTimer sender, object args)
+    {
+        sender.Stop();
+        _ = RefreshSearchResultsAsync(SearchBox.Text);
     }
 
     private async Task RefreshSearchResultsAsync(string query)

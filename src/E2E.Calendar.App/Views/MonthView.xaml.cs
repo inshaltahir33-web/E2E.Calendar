@@ -14,6 +14,9 @@ public partial class MonthView : Page
     private readonly EventEditorViewModel _editor;
     private readonly ReminderQuickAdd _reminders;
     private readonly List<MonthDayCell> _cells = new();
+    private readonly List<TextBlock> _weekNumberLabels = new();
+    private IReadOnlyList<MonthDay>? _builtDays;
+    private bool? _builtShowWeekNumbers;
 
     public MonthView(
         MonthViewModel viewModel,
@@ -26,7 +29,6 @@ public partial class MonthView : Page
 
         InitializeComponent();
 
-        ViewModel.Days.CollectionChanged += OnDaysChanged;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         ViewModel.PeriodChanged += OnPeriodChanged;
 
@@ -39,8 +41,8 @@ public partial class MonthView : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        await ViewModel.RefreshAsync();
         BuildGrid();
+        await ViewModel.RefreshAsync();
     }
 
     private async void OnPeriodChanged(object? sender, EventArgs e) =>
@@ -58,12 +60,9 @@ public partial class MonthView : Page
         await _editor.OpenNewAsync(startUtc, startUtc.AddHours(1));
     }
 
-    private void OnDaysChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
-        BuildGrid();
-
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MonthViewModel.ShowWeekNumbers))
+        if (e.PropertyName is nameof(MonthViewModel.Days) or nameof(MonthViewModel.ShowWeekNumbers))
         {
             BuildGrid();
         }
@@ -75,18 +74,36 @@ public partial class MonthView : Page
 
     private void BuildGrid()
     {
-        _cells.Clear();
-        MonthHost.Children.Clear();
+        if (ReferenceEquals(_builtDays, ViewModel.Days) && _builtShowWeekNumbers == ViewModel.ShowWeekNumbers)
+        {
+            return;
+        }
+
+        _builtDays = ViewModel.Days;
+        _builtShowWeekNumbers = ViewModel.ShowWeekNumbers;
+
         MonthHost.ColumnDefinitions.Clear();
         MonthHost.RowDefinitions.Clear();
-        WeekdayHeaderHost.Children.Clear();
         WeekdayHeaderHost.ColumnDefinitions.Clear();
+        WeekdayHeaderHost.Children.Clear();
         WeekdayHeaderHost.RowDefinitions.Clear();
+
+        foreach (var label in _weekNumberLabels)
+        {
+            MonthHost.Children.Remove(label);
+        }
+
+        _weekNumberLabels.Clear();
 
         var days = ViewModel.Days;
 
         if (days.Count == 0)
         {
+            foreach (var cell in _cells)
+            {
+                cell.Visibility = Visibility.Collapsed;
+            }
+
             EmptyStateView.Visibility = Visibility.Visible;
             return;
         }
@@ -117,6 +134,7 @@ public partial class MonthView : Page
                 Grid.SetColumn(label, 0);
                 Grid.SetRow(label, week);
                 MonthHost.Children.Add(label);
+                _weekNumberLabels.Add(label);
             }
 
             column = 1;
@@ -137,30 +155,46 @@ public partial class MonthView : Page
 
         BuildWeekdayHeaders(column);
 
+        EnsureCellCount(days.Count);
+
         for (var index = 0; index < days.Count; index++)
         {
-            var day = days[index];
-            var cell = new MonthDayCell
-            {
-                DayNumber = day.DayNumber.ToString(),
-                IsToday = day.IsToday,
-                IsCurrentMonth = day.IsCurrentMonth,
-                IsWeekend = day.IsWeekend,
-                IsSelected = day.IsSelected,
-                MoreLabel = day.MoreLabel,
-                MoreVisible = day.MoreCount > 0,
-                EventCount = day.EventCount,
-                Date = day.Date,
-            };
+            var cell = _cells[index];
 
-            cell.SetChips(day.Chips);
+            cell.Apply(days[index]);
+            cell.Visibility = Visibility.Visible;
+
+            Grid.SetColumn(cell, column + (index % 7));
+            Grid.SetRow(cell, index / 7);
+        }
+
+        for (var index = days.Count; index < _cells.Count; index++)
+        {
+            _cells[index].Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void EnsureCellCount(int count)
+    {
+        while (_cells.Count > count)
+        {
+            var last = _cells[^1];
+            MonthHost.Children.Remove(last);
+            last.DaySelected -= OnDaySelected;
+            last.NewEventRequested -= OnNewEventRequested;
+            last.NewReminderRequested -= OnNewReminderRequested;
+            last.ChipDropped -= OnChipDropped;
+            _cells.RemoveAt(_cells.Count - 1);
+        }
+
+        while (_cells.Count < count)
+        {
+            var cell = new MonthDayCell();
+
             cell.DaySelected += OnDaySelected;
             cell.NewEventRequested += OnNewEventRequested;
             cell.NewReminderRequested += OnNewReminderRequested;
             cell.ChipDropped += OnChipDropped;
-
-            Grid.SetColumn(cell, column + (index % 7));
-            Grid.SetRow(cell, index / 7);
 
             MonthHost.Children.Add(cell);
             _cells.Add(cell);
@@ -174,9 +208,9 @@ public partial class MonthView : Page
 
         for (var index = 0; index < 7; index++)
         {
-            var day = (int)start + index;
-            var name = culture.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)((day % 7 + 7) % 7));
-            var isWeekend = day is 0 or 6;
+            var dayOfWeek = (DayOfWeek)(((int)start + index) % 7);
+            var name = culture.DateTimeFormat.GetAbbreviatedDayName(dayOfWeek);
+            var isWeekend = dayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
             var label = new TextBlock
             {
@@ -214,7 +248,6 @@ public partial class MonthView : Page
         if (reminder is not null)
         {
             await ViewModel.RefreshAsync();
-            BuildGrid();
         }
     }
 
@@ -222,6 +255,5 @@ public partial class MonthView : Page
     {
         await ViewModel.MoveItemToDateAsync(drop.ItemId, drop.TargetDate);
         await ViewModel.RefreshAsync();
-        BuildGrid();
     }
 }

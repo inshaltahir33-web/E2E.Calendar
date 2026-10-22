@@ -66,6 +66,7 @@ public sealed partial class EventChipView : UserControl
 
     private bool _isHovered;
     private bool _isPressed;
+    private bool _visualDirty = true;
 
     public EventChipView()
     {
@@ -76,6 +77,7 @@ public sealed partial class EventChipView : UserControl
         PointerPressed += OnPointerPressed;
         GotFocus += OnGotFocus;
         LostFocus += OnLostFocus;
+        Loaded += OnLoaded;
         CheckBox.Tapped += OnCheckBoxTapped;
     }
 
@@ -133,8 +135,33 @@ public sealed partial class EventChipView : UserControl
     {
         if (sender is EventChipView chip)
         {
-            chip.ApplyVisual();
+            chip.RequestApply();
         }
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_visualDirty)
+        {
+            _visualDirty = false;
+            ApplyVisual();
+        }
+    }
+
+    /// <summary>
+    /// Chips are configured before they join the tree, so the visual pass is
+    /// deferred until all properties are set instead of running once per property.
+    /// </summary>
+    private void RequestApply()
+    {
+        if (!IsLoaded)
+        {
+            _visualDirty = true;
+            return;
+        }
+
+        _visualDirty = false;
+        ApplyVisual();
     }
 
     private void OnPointerEntered(object sender, PointerRoutedEventArgs args)
@@ -195,12 +222,12 @@ public sealed partial class EventChipView : UserControl
         var hasColor = ColorHelper.TryParse(ColorHex, out var color);
 
         ColorBar.Background = hasColor
-            ? new SolidColorBrush(color)
+            ? ColorHelper.FromColor(color)
             : (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
 
         if (isTickable)
         {
-            ChipBorder.Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+            ChipBorder.Background = ColorHelper.Transparent;
         }
         else if (hasColor)
         {
@@ -210,7 +237,7 @@ public sealed partial class EventChipView : UserControl
                     ? (isDark ? HoverAlphaDark : HoverAlphaLight)
                     : (isDark ? TintAlphaDark : TintAlphaLight);
 
-            ChipBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
+            ChipBorder.Background = ColorHelper.FromColor(Color.FromArgb(alpha, color.R, color.G, color.B));
         }
         else
         {
@@ -224,7 +251,7 @@ public sealed partial class EventChipView : UserControl
         }
         else
         {
-            ChipBorder.BorderBrush = new SolidColorBrush(
+            ChipBorder.BorderBrush = ColorHelper.FromColor(
                 Color.FromArgb(isDark ? (byte)0x40 : (byte)0x26, color.R, color.G, color.B));
             ChipBorder.BorderThickness = new Thickness(1);
         }

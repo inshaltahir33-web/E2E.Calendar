@@ -50,6 +50,15 @@ public partial class AgendaView : Page
         {
             Skeleton.IsActive = ViewModel.IsLoading;
         }
+        else if (e.PropertyName == nameof(AgendaViewModel.IsEmpty))
+        {
+            UpdateEmptyState();
+        }
+        else if (e.PropertyName == nameof(AgendaViewModel.Days))
+        {
+            _anchors.Clear();
+            UpdateStickyHeader();
+        }
     }
 
     private async void OnEmptyStateAction(object? sender, EventArgs e)

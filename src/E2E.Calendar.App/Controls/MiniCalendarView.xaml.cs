@@ -13,6 +13,8 @@ public sealed partial class MiniCalendarView : UserControl
     private const double HeaderHeight = 16;
 
     private readonly MiniCalendarViewModel _viewModel;
+    private readonly List<DayCell> _cells = new();
+    private IReadOnlyList<MiniCalendarDayViewModel>? _builtDays;
 
     public MiniCalendarView(MiniCalendarViewModel viewModel)
     {
@@ -21,15 +23,20 @@ public sealed partial class MiniCalendarView : UserControl
 
         InitializeComponent();
 
-        ViewModel.Days.CollectionChanged += OnDaysChanged;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         this.Loaded += OnLoaded;
     }
 
     public MiniCalendarViewModel ViewModel { get; }
 
-    private void OnDaysChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
-        BuildGrid();
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MiniCalendarViewModel.Days) or nameof(MiniCalendarViewModel.WeekdayHeaders))
+        {
+            BuildGrid();
+        }
+    }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -39,13 +46,19 @@ public sealed partial class MiniCalendarView : UserControl
 
     private void BuildGrid()
     {
+        if (ReferenceEquals(_builtDays, ViewModel.Days))
+        {
+            return;
+        }
+
+        _builtDays = ViewModel.Days;
+
         var days = ViewModel.Days;
 
         WeekdayHeader.ColumnDefinitions.Clear();
         WeekdayHeader.Children.Clear();
         DaysHost.ColumnDefinitions.Clear();
         DaysHost.RowDefinitions.Clear();
-        DaysHost.Children.Clear();
 
         for (var index = 0; index < MiniCalendarGridBuilder.DaysPerWeek; index++)
         {
@@ -82,26 +95,43 @@ public sealed partial class MiniCalendarView : UserControl
             DaysHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CellSize) });
         }
 
+        EnsureCellCount(days.Count);
+
         for (var index = 0; index < days.Count; index++)
         {
-            var day = days[index];
-            var cell = new DayCell
-            {
-                DayNumber = day.Label,
-                IsToday = day.IsToday,
-                IsInSelectedWeek = day.IsInSelectedWeek,
-                IsCurrentMonth = day.IsCurrentMonth,
-                HasEvents = day.EventCount > 0,
-                AutomationName = day.AutomationName,
-                Tag = day,
-            };
+            var cell = _cells[index];
 
-            cell.Tapped += OnDayCellTapped;
+            cell.Apply(days[index]);
+            cell.Visibility = Visibility.Visible;
 
             Grid.SetColumn(cell, index % MiniCalendarGridBuilder.DaysPerWeek);
             Grid.SetRow(cell, index / MiniCalendarGridBuilder.DaysPerWeek);
+        }
+
+        for (var index = days.Count; index < _cells.Count; index++)
+        {
+            _cells[index].Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void EnsureCellCount(int count)
+    {
+        while (_cells.Count > count)
+        {
+            var last = _cells[^1];
+            DaysHost.Children.Remove(last);
+            last.Tapped -= OnDayCellTapped;
+            _cells.RemoveAt(_cells.Count - 1);
+        }
+
+        while (_cells.Count < count)
+        {
+            var cell = new DayCell();
+
+            cell.Tapped += OnDayCellTapped;
 
             DaysHost.Children.Add(cell);
+            _cells.Add(cell);
         }
     }
 

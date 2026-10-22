@@ -2,6 +2,7 @@ using E2E.Calendar.App.Utilities;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 
 namespace E2E.Calendar.App.Controls;
@@ -89,14 +90,16 @@ public sealed partial class SkeletonView : UserControl
     {
         Visibility = IsActive ? Visibility.Visible : Visibility.Collapsed;
 
-        if (!IsActive)
-        {
-            return;
-        }
-
         foreach (var child in BarsHost.Children)
         {
-            Motion.Pulse(child);
+            if (IsActive)
+            {
+                Motion.Pulse(child);
+            }
+            else
+            {
+                ElementCompositionPreview.GetElementVisual(child).StopAnimation("Opacity");
+            }
         }
     }
 }

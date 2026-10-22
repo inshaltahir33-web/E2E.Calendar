@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -59,11 +58,14 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
     [ObservableProperty]
     private string _headerText = string.Empty;
 
-    public ObservableCollection<string> WeekdayHeaders { get; } = new();
+    [ObservableProperty]
+    private IReadOnlyList<string> _weekdayHeaders = Array.Empty<string>();
 
-    public ObservableCollection<MiniCalendarWeekViewModel> Weeks { get; } = new();
+    [ObservableProperty]
+    private IReadOnlyList<MiniCalendarWeekViewModel> _weeks = Array.Empty<MiniCalendarWeekViewModel>();
 
-    public ObservableCollection<MiniCalendarDayViewModel> Days { get; } = new();
+    [ObservableProperty]
+    private IReadOnlyList<MiniCalendarDayViewModel> _days = Array.Empty<MiniCalendarDayViewModel>();
 
     public MiniCalendarViewModel(
         CalendarStateViewModel state,
@@ -112,12 +114,7 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
 
         HeaderText = firstOfMonth.ToString("MMMM yyyy", culture);
 
-        WeekdayHeaders.Clear();
-
-        foreach (var header in BuildWeekdayHeaders(culture, _state.WeekStart))
-        {
-            WeekdayHeaders.Add(header);
-        }
+        WeekdayHeaders = BuildWeekdayHeaders(culture, _state.WeekStart);
 
         var days = new List<MiniCalendarDayViewModel>();
         var weeks = new List<MiniCalendarWeekViewModel>();
@@ -152,19 +149,8 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
             days.AddRange(weekDays);
         }
 
-        Weeks.Clear();
-
-        foreach (var week in weeks)
-        {
-            Weeks.Add(week);
-        }
-
-        Days.Clear();
-
-        foreach (var day in days)
-        {
-            Days.Add(day);
-        }
+        Weeks = weeks;
+        Days = days;
     }
 
     [RelayCommand]
@@ -214,10 +200,10 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
         VisibleMonth = date.Month;
     }
 
-    private static ObservableCollection<string> BuildWeekdayHeaders(CultureInfo culture, WeekStartDay weekStart)
+    private static IReadOnlyList<string> BuildWeekdayHeaders(CultureInfo culture, WeekStartDay weekStart)
     {
         var names = culture.DateTimeFormat.ShortestDayNames;
-        var headers = new ObservableCollection<string>();
+        var headers = new List<string>(MiniCalendarGridBuilder.DaysPerWeek);
 
         for (var index = 0; index < MiniCalendarGridBuilder.DaysPerWeek; index++)
         {

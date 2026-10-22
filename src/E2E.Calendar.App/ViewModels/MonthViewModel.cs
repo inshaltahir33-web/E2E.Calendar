@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using E2E.Calendar.Core;
@@ -17,6 +16,12 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
     [ObservableProperty]
     private bool _showWeekNumbers;
 
+    [ObservableProperty]
+    private IReadOnlyList<MonthDay> _days = Array.Empty<MonthDay>();
+
+    [ObservableProperty]
+    private IReadOnlyList<int> _weekNumbers = Array.Empty<int>();
+
     public MonthViewModel(
         CalendarStateViewModel state,
         EventQueryService query,
@@ -30,10 +35,6 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         _repository = repository;
         _clock = clock;
     }
-
-    public ObservableCollection<MonthDay> Days { get; } = new();
-
-    public ObservableCollection<int> WeekNumbers { get; } = new();
 
     public override async Task RefreshAsync()
     {
@@ -75,20 +76,16 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                 });
             }
 
-            Days.Clear();
+            var weekNumbers = new int[6];
 
-            foreach (var day in days)
-            {
-                Days.Add(day);
-            }
-
-            WeekNumbers.Clear();
-
-            for (var week = 0; week < 6; week++)
+            for (var week = 0; week < weekNumbers.Length; week++)
             {
                 var weekStart = gridStart.AddDays(week * 7);
-                WeekNumbers.Add(ISOWeek.GetWeekOfYear(weekStart.ToDateTime(TimeOnly.MinValue)));
+                weekNumbers[week] = ISOWeek.GetWeekOfYear(weekStart.ToDateTime(TimeOnly.MinValue));
             }
+
+            Days = days;
+            WeekNumbers = weekNumbers;
         });
     }
 

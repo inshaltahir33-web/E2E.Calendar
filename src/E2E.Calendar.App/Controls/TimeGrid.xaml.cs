@@ -39,7 +39,7 @@ public sealed partial class TimeGrid : UserControl
         nameof(Now),
         typeof(DateTimeOffset?),
         typeof(TimeGrid),
-        new PropertyMetadata(null, OnLayoutSourceChanged));
+        new PropertyMetadata(null, OnNowChanged));
 
     public static readonly DependencyProperty ClockFormatProperty = DependencyProperty.Register(
         nameof(ClockFormat),
@@ -91,6 +91,15 @@ public sealed partial class TimeGrid : UserControl
     private DragState? _drag;
     private double _columnWidth;
     private int _dayCount;
+    private DateTimeOffset _now = DateTimeOffset.Now;
+
+    private bool _rebuildQueued;
+    private int _columnsSignature = int.MinValue;
+    private double _layersHourHeight = -1;
+    private string? _headerSignature;
+    private string? _allDaySignature;
+    private string? _bodySignature;
+    private string? _linesSignature;
 
     public TimeGrid()
     {
@@ -98,9 +107,9 @@ public sealed partial class TimeGrid : UserControl
 
         _nowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _nowTimer.Tick += OnNowTimerTick;
-        _nowTimer.Start();
 
         SizeChanged += OnSizeChanged;
+        Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         IsTabStop = true;
     }
@@ -190,12 +199,53 @@ public sealed partial class TimeGrid : UserControl
             newCollection.CollectionChanged += grid.OnItemsCollectionChanged;
         }
 
-        grid.Rebuild();
+        grid.RequestRebuild();
+    }
+
+    private static void OnNowChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (sender is not TimeGrid grid)
+        {
+            return;
+        }
+
+        grid._now = args.NewValue is DateTimeOffset value ? value : DateTimeOffset.Now;
+        grid.RenderNowLine();
+    }
+
+    /// <summary>
+    /// Layout work is coalesced to one rebuild per dispatcher turn so a burst of
+    /// property changes or resize notifications only measures and renders once.
+    /// </summary>
+    private void RequestRebuild()
+    {
+        if (_rebuildQueued)
+        {
+            return;
+        }
+
+        _rebuildQueued = true;
+
+        if (!DispatcherQueue.TryEnqueue(() =>
+            {
+                _rebuildQueued = false;
+                Rebuild();
+            }))
+        {
+            _rebuildQueued = false;
+            Rebuild();
+        }
     }
 
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        Rebuild();
+        RequestRebuild();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        _now = Now ?? DateTimeOffset.Now;
+        _nowTimer.Start();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -205,12 +255,13 @@ public sealed partial class TimeGrid : UserControl
 
     private void OnNowTimerTick(object? sender, object e)
     {
+        _now = DateTimeOffset.Now;
         RenderNowLine();
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs args)
     {
-        Rebuild();
+        RequestRebuild();
     }
 
     private void OnViewChanged(object sender, ScrollViewerViewChangedEventArgs args)
@@ -235,14 +286,14 @@ public sealed partial class TimeGrid : UserControl
             return;
         }
 
-        if (_dayCanvases.Count != days.Count)
+        ApplySharedColumns(days.Count);
+
+        if (_dayCanvases.Count != days.Count || Math.Abs(_layersHourHeight - HourHeight) > 0.01)
         {
-            ApplySharedColumns(days.Count);
             CreateBodyLayers(days.Count);
-        }
-        else
-        {
-            ApplySharedColumns(days.Count);
+            _layersHourHeight = HourHeight;
+            _bodySignature = null;
+            _linesSignature = null;
         }
 
         _columnWidth = ComputeColumnWidth(days.Count);
@@ -254,19 +305,44 @@ public sealed partial class TimeGrid : UserControl
         UpdateEmptyHint();
         UpdateScrollIndicator();
         EnsureInitialScroll(days);
+    }
 
-        Serilog.Log.Debug(
-            "TimeGrid layout: root={RootWidth} body={BodyWidth} column={ColumnWidth} days={DayCount} scrollable={Scrollable}",
-            RootLayout.ActualWidth,
-            BodyGrid.ActualWidth,
-            _columnWidth,
-            days.Count,
-            BodyScroll.ScrollableHeight);
+    private static string DaySignature(IReadOnlyList<TimeGridDay> days)
+    {
+        var builder = new System.Text.StringBuilder(days.Count * 12);
+
+        foreach (var day in days)
+        {
+            builder
+                .Append(day.Date.DayNumber)
+                .Append(day.IsToday ? 'T' : 'n')
+                .Append(day.IsWeekend ? 'W' : 'w');
+        }
+
+        return builder.ToString();
+    }
+
+    private string ItemSignature()
+    {
+        var identity = Items is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Items);
+
+        return $"{identity}:{Items?.Count ?? 0}";
     }
 
     private void ApplySharedColumns(int dayCount)
     {
         var total = dayCount + 1 + (ShowSecondaryTimeZone ? 1 : 0);
+        var signature = (dayCount * 2) + (ShowSecondaryTimeZone ? 1 : 0);
+
+        if (_columnsSignature == signature)
+        {
+            Grid.SetColumnSpan(BodyScroll, total);
+            Grid.SetColumnSpan(EmptyHint, total);
+            Grid.SetColumn(ScrollIndicator, total - 1);
+            return;
+        }
+
+        _columnsSignature = signature;
 
         foreach (var grid in new[] { RootLayout, BodyGrid })
         {
@@ -395,6 +471,15 @@ public sealed partial class TimeGrid : UserControl
 
     private void RenderHeader(IReadOnlyList<TimeGridDay> days)
     {
+        var signature = DaySignature(days);
+
+        if (_headerCells.Count > 0 && _headerSignature == signature)
+        {
+            return;
+        }
+
+        _headerSignature = signature;
+
         foreach (var cell in _headerCells)
         {
             RootLayout.Children.Remove(cell);
@@ -479,11 +564,11 @@ public sealed partial class TimeGrid : UserControl
 
         if (day.IsToday)
         {
-            background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x0F, 0x00, 0x78, 0xD4));
+            background = ColorHelper.FromColor(Windows.UI.Color.FromArgb(0x0F, 0x00, 0x78, 0xD4));
         }
         else if (day.IsWeekend)
         {
-            background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x08, 0x00, 0x00, 0x00));
+            background = ColorHelper.FromColor(Windows.UI.Color.FromArgb(0x08, 0x00, 0x00, 0x00));
         }
 
         return new Border
@@ -497,19 +582,28 @@ public sealed partial class TimeGrid : UserControl
 
     private void RenderAllDayStrip()
     {
-        foreach (var cell in _allDayCells)
-        {
-            RootLayout.Children.Remove(cell);
-        }
-
-        _allDayCells.Clear();
-
         var days = Days ?? Array.Empty<TimeGridDay>();
 
         if (days.Count == 0)
         {
             return;
         }
+
+        var signature = $"{DaySignature(days)}|{ItemSignature()}";
+
+        if (_allDayCells.Count > 0 && _allDaySignature == signature)
+        {
+            return;
+        }
+
+        _allDaySignature = signature;
+
+        foreach (var cell in _allDayCells)
+        {
+            RootLayout.Children.Remove(cell);
+        }
+
+        _allDayCells.Clear();
 
         var label = new TextBlock
         {
@@ -604,7 +698,7 @@ public sealed partial class TimeGrid : UserControl
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var bar = new Border { Background = new SolidColorBrush(color) };
+        var bar = new Border { Background = ColorHelper.FromColor(color) };
         Grid.SetColumn(bar, 0);
         content.Children.Add(bar);
 
@@ -624,7 +718,7 @@ public sealed partial class TimeGrid : UserControl
         return new Border
         {
             Child = content,
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x2E, color.R, color.G, color.B)),
+            Background = ColorHelper.FromColor(Windows.UI.Color.FromArgb(0x2E, color.R, color.G, color.B)),
             CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
             Margin = new Thickness(2, 1, 2, 1),
         };
@@ -641,13 +735,30 @@ public sealed partial class TimeGrid : UserControl
 
         _columnWidth = ComputeColumnWidth(days.Count);
 
+        var visible = VisibleRange();
+        var signature = string.Join(
+            '|',
+            DaySignature(days),
+            ItemSignature(),
+            SelectedItemId,
+            ClockFormat,
+            Math.Round(_columnWidth, 1),
+            Math.Round(HourHeight, 1),
+            Math.Round((visible.Start - DateTimeOffset.UnixEpoch).TotalMinutes / 10),
+            Math.Round((visible.End - visible.Start).TotalMinutes, 1));
+
+        if (_bodySignature == signature)
+        {
+            return;
+        }
+
+        _bodySignature = signature;
+
         foreach (var canvas in _dayCanvases)
         {
             canvas.Children.Clear();
             canvas.Width = _columnWidth;
         }
-
-        var visible = VisibleRange();
 
         var timed = (Items ?? Array.Empty<CalendarItem>())
             .Where(item => !item.AllDay)
@@ -739,10 +850,26 @@ public sealed partial class TimeGrid : UserControl
             return;
         }
 
+        var width = BodyGrid.ActualWidth > 0 ? BodyGrid.ActualWidth : RootLayout.ActualWidth;
+        var signature = string.Join(
+            '|',
+            Math.Round(width, 1),
+            Math.Round(HourHeight, 1),
+            Days?.Count ?? 0,
+            ShowSecondaryTimeZone,
+            SecondaryTimeZoneId,
+            ClockFormat);
+
+        if (_linesSignature == signature)
+        {
+            return;
+        }
+
+        _linesSignature = signature;
+
         _linesCanvas.Children.Clear();
         _gutterCanvas.Children.Clear();
 
-        var width = BodyGrid.ActualWidth > 0 ? BodyGrid.ActualWidth : RootLayout.ActualWidth;
         var divider = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
 
         for (var hour = 0; hour <= HoursPerDay; hour++)
@@ -854,7 +981,7 @@ public sealed partial class TimeGrid : UserControl
         }
 
         var days = Days ?? Array.Empty<TimeGridDay>();
-        var now = Now ?? DateTimeOffset.Now;
+        var now = _now;
         var today = DateOnly.FromDateTime(LocalTimeZone.ToLocal(now));
         var todayIndex = days.ToList().FindIndex(day => day.Date == today);
 
@@ -936,12 +1063,6 @@ public sealed partial class TimeGrid : UserControl
         var today = DateOnly.FromDateTime(LocalTimeZone.ToLocal(now));
         var isTodayVisible = days.Any(day => day.Date == today);
 
-        Serilog.Log.Information(
-            "TimeGrid initial scroll: now={Now} today={Today} visible={Visible} days={Days}",
-            now,
-            today,
-            isTodayVisible,
-            string.Join(",", days.Select(day => day.Date.ToString("yyyy-MM-dd"))));
 
         var offset = isTodayVisible
             ? ((now.AddMinutes(-90) - DayStartUtc(today)).TotalMinutes / 60 * HourHeight)
@@ -952,11 +1073,6 @@ public sealed partial class TimeGrid : UserControl
 
     private void ApplyScroll(double offset)
     {
-        Serilog.Log.Debug(
-            "TimeGrid scroll requested: offset={Offset} scrollable={Scrollable} viewport={Viewport}",
-            offset,
-            BodyScroll.ScrollableHeight,
-            BodyScroll.ViewportHeight);
 
         if (BodyScroll.ScrollableHeight <= 0)
         {
@@ -998,10 +1114,23 @@ public sealed partial class TimeGrid : UserControl
 
         chip.Tag = item;
         chip.PointerPressed += OnChipPointerPressed;
+        chip.RightTapped += OnChipRightTapped;
         chip.CheckToggled += OnChipCheckToggled;
-        chip.ContextFlyout = BuildContextMenu(item);
 
         return chip;
+    }
+
+    private void OnChipRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not EventChipView chip || chip.Tag is not CalendarItem item)
+        {
+            return;
+        }
+
+        var flyout = BuildContextMenu(item);
+
+        flyout.ShowAt(chip, new FlyoutShowOptions { Position = e.GetPosition(chip) });
+        e.Handled = true;
     }
 
     private string BuildTooltip(CalendarItem item)
