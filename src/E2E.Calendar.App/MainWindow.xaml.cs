@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
     private readonly IClock _clock;
     private readonly ILogger<MainWindow> _logger;
     private readonly EventEditorViewModel _editor;
+    private readonly SettingsService _settings;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -61,7 +62,8 @@ public sealed partial class MainWindow : Window
         WeekViewModel weekViewModel,
         MonthViewModel monthViewModel,
         MiniCalendarViewModel miniCalendar,
-        IReminderRepository reminders)
+        IReminderRepository reminders,
+        SettingsService settings)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -76,6 +78,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(monthViewModel);
         ArgumentNullException.ThrowIfNull(miniCalendar);
         ArgumentNullException.ThrowIfNull(reminders);
+        ArgumentNullException.ThrowIfNull(settings);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -90,6 +93,7 @@ public sealed partial class MainWindow : Window
         MonthViewModel = monthViewModel;
         MiniCalendar = miniCalendar;
         _reminders = reminders;
+        _settings = settings;
 
         this.InitializeComponent();
 
@@ -142,6 +146,11 @@ public sealed partial class MainWindow : Window
     {
         await RefreshCalendarsAsync();
         _navigation.NavigateTo(NavigationKeys.Week);
+
+        if (!_settings.Current.OnboardingComplete)
+        {
+            await Views.OnboardingView.ShowAsync(RootGrid.XamlRoot, _settings);
+        }
     }
 
     private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
