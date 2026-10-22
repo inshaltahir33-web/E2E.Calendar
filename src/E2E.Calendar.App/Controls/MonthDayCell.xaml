@@ -5,7 +5,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="Transparent">
+    <Grid x:Name="CellRoot" Background="Transparent">
 
         <Border
             x:Name="WeekendTint"

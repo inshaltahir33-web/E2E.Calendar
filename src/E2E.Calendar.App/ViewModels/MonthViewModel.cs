@@ -41,15 +41,22 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         await LoadPeriodAsync(async () =>
         {
             var period = State.Period;
-            var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
             var timeZone = _clock.LocalTimeZone;
+            var firstOfMonth = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
+            var gridStart = CalendarPeriod.StartOfWeek(firstOfMonth, State.WeekStart);
+
+            // The month view always renders six full weeks, so query the whole
+            // 42-day grid — otherwise the leading/trailing adjacent-month cells
+            // never receive their events.
+            var gridEnd = gridStart.AddDays(42);
+            var items = await Query.GetItemsAsync(
+                timeZone.ToUtc(gridStart.ToDateTime(TimeOnly.MinValue)),
+                timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)));
 
             var byDay = items
                 .GroupBy(item => DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)))
                 .ToDictionary(group => group.Key, group => group.OrderBy(item => item.StartUtc).ToList());
 
-            var firstOfMonth = DateOnly.FromDateTime(timeZone.ToLocal(period.FromUtc));
-            var gridStart = CalendarPeriod.StartOfWeek(firstOfMonth, State.WeekStart);
             var today = DateOnly.FromDateTime(timeZone.ToLocal(State.CurrentDate));
 
             var days = new List<MonthDay>(42);

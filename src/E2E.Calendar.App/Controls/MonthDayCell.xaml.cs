@@ -224,6 +224,18 @@ public sealed partial class MonthDayCell : UserControl
         TodayText.Opacity = opacity;
         TodayCircle.Opacity = opacity;
         HeatDots.Opacity = opacity;
+
+        var dateText = Date == default ? string.Empty : Date.ToString("d MMMM yyyy");
+        var countText = EventCount switch
+        {
+            0 => "no events",
+            1 => "1 event",
+            _ => $"{EventCount} events",
+        };
+
+        var automationName = Date == default ? countText : $"{dateText}, {countText}";
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CellRoot, automationName);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(this, automationName);
     }
 
     public void SetChips(IReadOnlyList<MonthChip> chips)
@@ -240,15 +252,8 @@ public sealed partial class MonthDayCell : UserControl
                 ItemId = chip.Id,
             };
 
-            view.DragStarting += (_, args) =>
-            {
-                if (args.Data is not null)
-                {
-                    args.Data.SetText(chip.Id);
-                    args.Data.RequestedOperation = DataPackageOperation.Move;
-                }
-            };
-
+            // MonthChipView already installs its own DragStarting handler and
+            // sets the payload from ItemId, so no extra handler is needed here.
             ChipsHost.Children.Add(view);
         }
     }
