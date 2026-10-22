@@ -6,7 +6,6 @@ using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -43,9 +42,8 @@ public sealed partial class MainWindow : Window
     {
         _hotkey = hotkey;
 
-        var app = App.Current;
-        hotkey.Pressed += (_, _) => app.ShowQuickAdd();
-
+        // App owns the hotkey subscription; the window only ensures the native
+        // registration is released when the window closes.
         this.AppWindow.Closing += (_, _) => _hotkey?.Dispose();
     }
 
@@ -144,6 +142,8 @@ public sealed partial class MainWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Motion.Refresh();
+
         await RefreshCalendarsAsync();
         _navigation.NavigateTo(NavigationKeys.Week);
 
@@ -180,24 +180,17 @@ public sealed partial class MainWindow : Window
         SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
 
-        if (!Motion.IsEnabled)
+        // Apply the final layout width in a single step. Animating the layout
+        // Width would reflow the time grid on every frame and trigger a full
+        // chip rebuild, so only the sidebar's own visual is animated instead.
+        SidebarHost.Width = targetWidth;
+
+        if (Motion.IsEnabled)
         {
-            SidebarHost.Width = targetWidth;
-            return;
+            Motion.SlideInFromLeftAsync(
+                collapsed ? (UIElement)SidebarIconRail : SidebarHost,
+                SidebarCollapseDurationMs);
         }
-
-        var storyboard = new Storyboard();
-        var animation = new DoubleAnimation
-        {
-            To = targetWidth,
-            Duration = new Duration(TimeSpan.FromMilliseconds(SidebarCollapseDurationMs)),
-            EnableDependentAnimation = true,
-        };
-
-        Storyboard.SetTarget(animation, SidebarHost);
-        Storyboard.SetTargetProperty(animation, "Width");
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
     }
 
     private void OnSidebarRowClicked(object sender, RoutedEventArgs e)
