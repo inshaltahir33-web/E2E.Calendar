@@ -118,6 +118,21 @@ public sealed partial class EventEditorViewModel : ObservableObject
     [ObservableProperty]
     private MeetingLink? _detectedMeeting;
 
+    [ObservableProperty]
+    private bool _isDirty;
+
+    [ObservableProperty]
+    private string? _titleError;
+
+    [ObservableProperty]
+    private string? _timeError;
+
+    [ObservableProperty]
+    private string? _linkError;
+
+    private bool _suspendDirtyTracking = true;
+    private string _cleanSnapshot = string.Empty;
+
     public EventEditorViewModel(
         EventService events,
         RecurrenceEditService recurrenceEdit,
@@ -154,6 +169,133 @@ public sealed partial class EventEditorViewModel : ObservableObject
         ]);
 
         Templates = new ObservableCollection<EventTemplate>(templates.GetAvailable());
+
+        PropertyChanged += OnEditorPropertyChanged;
+    }
+
+    public bool HasTitleError => !string.IsNullOrEmpty(TitleError);
+
+    public bool HasTimeError => !string.IsNullOrEmpty(TimeError);
+
+    public bool HasLinkError => !string.IsNullOrEmpty(LinkError);
+
+    public string AlertSummary => AlertRows.Count == 0
+        ? "No alerts"
+        : string.Join(" · ", AlertRows.Select(row => row.Option.Label));
+
+    private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_suspendDirtyTracking ||
+            e.PropertyName is nameof(IsDirty) or nameof(TitleError) or nameof(TimeError) or nameof(LinkError) or nameof(AlertSummary))
+        {
+            return;
+        }
+
+        IsDirty = !string.Equals(CaptureSnapshot(), _cleanSnapshot, StringComparison.Ordinal);
+    }
+
+    private string CaptureSnapshot() => string.Join(
+        '\u001f',
+        Title,
+        IsAllDay,
+        StartUtc.UtcTicks,
+        EndUtc.UtcTicks,
+        TimeZoneId,
+        Location,
+        MeetingUrl,
+        Notes,
+        CalendarId,
+        Color,
+        Url,
+        Frequency,
+        Interval,
+        string.Join(',', WeeklyDays.OrderBy(day => day)),
+        MonthlyPattern,
+        MonthlyDay,
+        MonthlyWeekdayOrdinal,
+        MonthlyWeekday,
+        YearlyMonth,
+        RecurrenceEnd,
+        RepeatEndDate?.UtcTicks ?? 0,
+        OccurrenceCount,
+        string.Join(',', AlertRows.Select(row => row.OffsetMinutes)));
+
+    private void SetCleanBaseline()
+    {
+        _cleanSnapshot = CaptureSnapshot();
+        IsDirty = false;
+        _suspendDirtyTracking = false;
+    }
+
+    public void DiscardChanges()
+    {
+        IsDirty = false;
+        _suspendDirtyTracking = true;
+        _cleanSnapshot = CaptureSnapshot();
+        _suspendDirtyTracking = false;
+    }
+
+    public bool ValidateFields()
+    {
+        TitleError = string.IsNullOrWhiteSpace(Title) ? "Add a title." : null;
+        TimeError = EndUtc < StartUtc ? "The end must be after the start." : null;
+
+        var linkError = (string?)null;
+
+        if (!string.IsNullOrWhiteSpace(Url) && !UrlPolicy.IsAllowed(Url))
+        {
+            linkError = "Use an http or https link.";
+        }
+        else if (!string.IsNullOrWhiteSpace(MeetingUrl) && !UrlPolicy.IsAllowed(MeetingUrl))
+        {
+            linkError = "Use an http or https meeting link.";
+        }
+
+        LinkError = linkError;
+
+        var errors = EventValidator.Validate(Title, StartUtc, EndUtc, Url, MeetingUrl);
+
+        ErrorMessage = errors.Count == 0 ? null : string.Join(" ", errors);
+
+        return errors.Count == 0;
+    }
+
+    public void AddAlert(int minutes)
+    {
+        var row = new AlertRow
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            OwnerType = OwnerType.Event,
+            OwnerId = EventId,
+            Option = AlertOption.All.FirstOrDefault(option => option.Minutes == minutes)
+                ?? new AlertOption($"{minutes} minutes before", minutes),
+        };
+
+        AttachAlert(row);
+        AlertRows.Add(row);
+        OnPropertyChanged(nameof(AlertSummary));
+        UpdateDirty();
+    }
+
+    private void AttachAlert(AlertRow row)
+    {
+        row.PropertyChanged += OnAlertChanged;
+    }
+
+    private void OnAlertChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(AlertSummary));
+        UpdateDirty();
+    }
+
+    private void UpdateDirty()
+    {
+        if (_suspendDirtyTracking)
+        {
+            return;
+        }
+
+        IsDirty = !string.Equals(CaptureSnapshot(), _cleanSnapshot, StringComparison.Ordinal);
     }
 
     public DateTimeOffset? OccurrenceStartUtc { get; set; }
@@ -380,6 +522,10 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public async Task LoadNewAsync(DateTimeOffset? slotStartUtc = null, DateTimeOffset? slotEndUtc = null)
     {
+        _suspendDirtyTracking = true;
+        TitleError = null;
+        TimeError = null;
+        LinkError = null;
         IsNew = true;
         _master = null;
         EventId = string.Empty;
@@ -405,10 +551,15 @@ public sealed partial class EventEditorViewModel : ObservableObject
         EndUtc = end;
 
         await LoadCalendarsAsync();
+        SetCleanBaseline();
     }
 
     public async Task LoadAsync(CalendarEvent calendarEvent, DateTimeOffset? occurrenceStartUtc = null)
     {
+        _suspendDirtyTracking = true;
+        TitleError = null;
+        TimeError = null;
+        LinkError = null;
         IsNew = false;
         _master = calendarEvent;
         EventId = calendarEvent.Id;
@@ -447,6 +598,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         await LoadCalendarsAsync();
         await LoadAlertsAsync(calendarEvent.Id);
+        SetCleanBaseline();
     }
 
     public async Task LoadByIdAsync(string id, DateTimeOffset? occurrenceStartUtc = null)
@@ -594,26 +746,14 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         if (AlertRows.Count == 0)
         {
-            AlertRows.Add(new AlertRow
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                OwnerType = OwnerType.Event,
-                OwnerId = EventId,
-                Option = AlertOption.All.FirstOrDefault(option => option.Minutes == template.LeadTimeMinutes)
-                    ?? AlertOption.All[0],
-            });
+            AddAlert(template.LeadTimeMinutes);
         }
     }
 
     [RelayCommand]
     public void AddAlert()
     {
-        AlertRows.Add(new AlertRow
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            OwnerType = OwnerType.Event,
-            OwnerId = EventId,
-        });
+        AddAlert(AlertOption.All[3].Minutes);
     }
 
     [RelayCommand]
@@ -621,7 +761,10 @@ public sealed partial class EventEditorViewModel : ObservableObject
     {
         if (row is not null)
         {
+            row.PropertyChanged -= OnAlertChanged;
             AlertRows.Remove(row);
+            OnPropertyChanged(nameof(AlertSummary));
+            UpdateDirty();
         }
     }
 
@@ -640,15 +783,10 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public async Task<bool> SaveAsync(RecurrenceEditScope? scope = null)
     {
-        var errors = EventValidator.Validate(Title, StartUtc, EndUtc, Url, MeetingUrl);
-
-        if (errors.Count > 0)
+        if (!ValidateFields())
         {
-            ErrorMessage = string.Join(" ", errors);
             return false;
         }
-
-        ErrorMessage = null;
 
         var rule = Frequency == RecurrenceFrequency.None ? null : BuildRecurrenceRule();
 
@@ -703,6 +841,9 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         await SaveAlertsAsync(saved.Id);
 
+        OnPropertyChanged(nameof(AlertSummary));
+        SetCleanBaseline();
+
         return true;
     }
 
@@ -733,14 +874,22 @@ public sealed partial class EventEditorViewModel : ObservableObject
     {
         var alerts = await _alerts.GetAlertsForOwnerAsync(OwnerType.Event, ownerId);
 
-        AlertRows = new ObservableCollection<AlertRow>(alerts.Select(alert => new AlertRow
+        var rows = alerts.Select(alert => new AlertRow
         {
             Id = alert.Id,
             OwnerType = alert.OwnerType,
             OwnerId = alert.OwnerId,
             Option = AlertOption.All.FirstOrDefault(option => option.Minutes == alert.TriggerOffsetMinutes)
                 ?? new AlertOption($"{alert.TriggerOffsetMinutes} minutes before", alert.TriggerOffsetMinutes ?? 0),
-        }));
+        }).ToList();
+
+        foreach (var row in rows)
+        {
+            AttachAlert(row);
+        }
+
+        AlertRows = new ObservableCollection<AlertRow>(rows);
+        OnPropertyChanged(nameof(AlertSummary));
     }
 
     private async Task SaveAlertsAsync(string ownerId)
@@ -789,6 +938,52 @@ public sealed partial class EventEditorViewModel : ObservableObject
     }
 
     partial void OnColorChanged(string? value) => OnPropertyChanged(nameof(ColorLabel));
+
+    partial void OnTitleChanged(string value)
+    {
+        if (TitleError is not null)
+        {
+            TitleError = null;
+        }
+    }
+
+    partial void OnStartUtcChanged(DateTimeOffset value)
+    {
+        if (TimeError is not null)
+        {
+            TimeError = null;
+        }
+    }
+
+    partial void OnEndUtcChanged(DateTimeOffset value)
+    {
+        if (TimeError is not null)
+        {
+            TimeError = null;
+        }
+    }
+
+    partial void OnUrlChanged(string? value)
+    {
+        if (LinkError is not null)
+        {
+            LinkError = null;
+        }
+    }
+
+    partial void OnMeetingUrlChanged(string? value)
+    {
+        if (LinkError is not null)
+        {
+            LinkError = null;
+        }
+    }
+
+    partial void OnTitleErrorChanged(string? value) => OnPropertyChanged(nameof(HasTitleError));
+
+    partial void OnTimeErrorChanged(string? value) => OnPropertyChanged(nameof(HasTimeError));
+
+    partial void OnLinkErrorChanged(string? value) => OnPropertyChanged(nameof(HasLinkError));
 
     partial void OnTimeZoneIdChanged(string value)
     {

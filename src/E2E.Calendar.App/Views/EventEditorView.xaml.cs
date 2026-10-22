@@ -1,7 +1,10 @@
+using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace E2E.Calendar.App.Views;
 
@@ -12,9 +15,58 @@ public partial class EventEditorView : UserControl
         ViewModel = viewModel;
 
         InitializeComponent();
+
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ViewModel.Opened += OnOpened;
+
+        UpdateAllDayVisibility();
+        UpdateColorSwatch();
+        UpdateHeader();
     }
 
     public EventEditorViewModel ViewModel { get; }
+
+    private void OnOpened(object? sender, EventArgs e)
+    {
+        UpdateAllDayVisibility();
+        UpdateColorSwatch();
+        UpdateHeader();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(EventEditorViewModel.IsAllDay):
+                UpdateAllDayVisibility();
+                break;
+            case nameof(EventEditorViewModel.Color):
+            case nameof(EventEditorViewModel.ColorLabel):
+                UpdateColorSwatch();
+                break;
+            case nameof(EventEditorViewModel.IsNew):
+                UpdateHeader();
+                break;
+        }
+    }
+
+    private void UpdateAllDayVisibility()
+    {
+        TimedPickers.Visibility = ViewModel.IsAllDay ? Visibility.Collapsed : Visibility.Visible;
+        AllDayPickers.Visibility = ViewModel.IsAllDay ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateColorSwatch()
+    {
+        ColorSwatch.Background = string.IsNullOrWhiteSpace(ViewModel.Color)
+            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlFillColorDefaultBrush"]
+            : ColorHelper.FromHex(ViewModel.Color);
+    }
+
+    private void UpdateHeader()
+    {
+        HeaderText.Text = ViewModel.IsNew ? "New event" : "Edit event";
+    }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => ViewModel.RequestCloseCommand.Execute(null);
 
@@ -31,8 +83,6 @@ public partial class EventEditorView : UserControl
             ViewModel.RemoveAlertCommand.Execute(row);
         }
     }
-
-    private void OnDetectMeetingClick(object sender, RoutedEventArgs e) => ViewModel.DetectMeetingLinkCommand.Execute(null);
 
     private void OnClearMeetingClick(object sender, RoutedEventArgs e) => ViewModel.ClearMeetingLinkCommand.Execute(null);
 

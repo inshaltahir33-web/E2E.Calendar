@@ -19,6 +19,9 @@ public partial class App : Application
 {
     private IHost? _host;
     private Window? _window;
+    private MainWindow? _mainWindow;
+    private Views.QuickAddView? _quickAddWindow;
+    private Services.HotkeyService? _hotkey;
 
     public App()
     {
@@ -27,6 +30,10 @@ public partial class App : Application
 
         RespectReducedMotion();
     }
+
+    public static new App Current => (App)Application.Current;
+
+    public MainWindow? MainWindow => _mainWindow;
 
     private void RespectReducedMotion()
     {
@@ -49,8 +56,46 @@ public partial class App : Application
         _host = BuildHost();
         await _host.StartAsync();
 
-        _window = _host.Services.GetRequiredService<MainWindow>();
-        _window.Activate();
+        _mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        _window = _mainWindow;
+        _mainWindow.Activate();
+
+        _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
+        _hotkey.Pressed += OnQuickAddHotkey;
+
+        _mainWindow.InitializeQuickAddHotkey(_hotkey);
+
+        if (Environment.GetEnvironmentVariable("E2E_QUICKADD_SELFTEST") == "1")
+        {
+            _mainWindow.DispatcherQueue.TryEnqueue(ShowQuickAdd);
+        }
+    }
+
+    private void OnQuickAddHotkey(object? sender, EventArgs e) => ShowQuickAdd();
+
+    public void ShowQuickAdd()
+    {
+        ArgumentNullException.ThrowIfNull(_host);
+
+        if (_quickAddWindow is not null)
+        {
+            _quickAddWindow.Activate();
+
+            return;
+        }
+
+        var view = _host.Services.GetRequiredService<Views.QuickAddView>();
+
+        _quickAddWindow = view;
+
+        view.Activate();
+    }
+
+    internal Task OnQuickAddClosedAsync()
+    {
+        _quickAddWindow = null;
+
+        return Task.CompletedTask;
     }
 
     internal static IHost BuildHost() =>
@@ -89,9 +134,14 @@ public partial class App : Application
                     serviceProvider.GetRequiredService<IOutbox>(),
                     serviceProvider.GetRequiredService<IClock>(),
                     null,
-                    serviceProvider.GetRequiredService<IEventQueryCache>()));
+                    serviceProvider.GetRequiredService<IEventQueryCache>(),
+                    serviceProvider.GetRequiredService<IAlertRepository>()));
 
                 services.AddSingleton<IEventService>(serviceProvider => serviceProvider.GetRequiredService<EventService>());
+                services.AddSingleton<Services.HotkeyService>(serviceProvider => new Services.HotkeyService(
+                    Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()));
+                services.AddSingleton<ViewModels.QuickAddViewModel>();
+                services.AddTransient<Views.QuickAddView>();
 
                 services.AddSingleton<CalendarService>();
                 services.AddSingleton<AgendaService>();

@@ -12,18 +12,21 @@ public sealed class EventService : IEventService
     private readonly IOutbox _outbox;
     private readonly IClock _clock;
     private readonly IEventQueryCache? _queryCache;
+    private readonly IAlertRepository? _alertRepository;
 
     public EventService(
         IEventRepository events,
         IOutbox outbox,
         IClock clock,
         TimeSpan? undoWindow = null,
-        IEventQueryCache? queryCache = null)
+        IEventQueryCache? queryCache = null,
+        IAlertRepository? alertRepository = null)
     {
         _events = events;
         _outbox = outbox;
         _clock = clock;
         _queryCache = queryCache;
+        _alertRepository = alertRepository;
         UndoWindow = undoWindow ?? DefaultUndoWindow;
     }
 
@@ -70,6 +73,34 @@ public sealed class EventService : IEventService
         await EnqueueAsync(calendarEvent, OutboxOp.Upsert, cancellationToken);
 
         return calendarEvent;
+    }
+
+    public async Task AddAlertsAsync(
+        string eventId,
+        IReadOnlyList<int> offsetMinutes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentNullException.ThrowIfNull(offsetMinutes);
+
+        if (_alertRepository is null || offsetMinutes.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var minutes in offsetMinutes.Distinct())
+        {
+            await _alertRepository.UpsertAlertAsync(
+                new Alert
+                {
+                    Id = NewId(),
+                    OwnerType = OwnerType.Event,
+                    OwnerId = eventId,
+                    TriggerOffsetMinutes = minutes,
+                    Priority = Priority.Normal,
+                },
+                cancellationToken);
+        }
     }
 
     public async Task<CalendarEvent> UpdateAsync(CalendarEvent calendarEvent, CancellationToken cancellationToken = default)

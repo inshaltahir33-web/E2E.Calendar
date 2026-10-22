@@ -36,6 +36,17 @@ public sealed partial class MainWindow : Window
     private CancellationTokenSource? _searchCts;
 
     private bool _lastAutoCollapsed;
+    private HotkeyService? _hotkey;
+
+    public void InitializeQuickAddHotkey(HotkeyService hotkey)
+    {
+        _hotkey = hotkey;
+
+        var app = App.Current;
+        hotkey.Pressed += (_, _) => app.ShowQuickAdd();
+
+        this.AppWindow.Closing += (_, _) => _hotkey?.Dispose();
+    }
 
     public MainWindow(
         MainWindowViewModel viewModel,
@@ -99,6 +110,8 @@ public sealed partial class MainWindow : Window
         editor.CloseRequested += OnEditorCloseRequested;
         editor.SaveRequested += OnEditorSaveRequested;
         editor.DeleteRequested += OnEditorDeleteRequested;
+
+        EditorHost.KeyDown += OnEditorKeyDown;
 
         Snackbar.ActionInvoked += OnSnackbarAction;
         PlaceholderState.ActionInvoked += OnPlaceholderAction;
@@ -208,16 +221,22 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnNewSplitButtonClick(SplitButton sender, SplitButtonClickEventArgs args) =>
-        _navigation.NavigateTo(NavigationKeys.NewEvent);
+    private void OnNewSplitButtonClick(SplitButton sender, SplitButtonClickEventArgs args) => OpenNewEvent();
 
-    private void OnNewSplitButtonClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
+    private void OnNewSplitButtonClick(object sender, RoutedEventArgs e) => OpenNewEvent();
 
-    private void OnNewEventClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewEvent);
+    private void OnNewEventClick(object sender, RoutedEventArgs e) => OpenNewEvent();
 
-    private void OnNewReminderClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewReminder);
+    private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
 
-    private void OnNewTaskClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.NewTask);
+    private void OnNewTaskClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Tasks);
+
+    private async void OpenNewEvent()
+    {
+        var now = _clock.UtcNow;
+        var start = now.AddMinutes(30 - (now.Minute % 30));
+        await _editor.OpenNewAsync(start, start.AddHours(1));
+    }
 
     private void OnDayViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Day, NavigationKeys.Day);
 
@@ -345,11 +364,59 @@ public sealed partial class MainWindow : Window
     private void OnEditorOpened(object? sender, EventArgs e)
     {
         EditorHost.Visibility = Visibility.Visible;
+        _ = Motion.SlideAndFadeInAsync(EditorHost, 8);
     }
 
-    private void OnEditorCloseRequested(object? sender, EventArgs e)
+    private async void OnEditorCloseRequested(object? sender, EventArgs e)
     {
+        if (_editor.IsDirty && !await ConfirmDiscardAsync())
+        {
+            return;
+        }
+
+        _editor.DiscardChanges();
         EditorHost.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnEditorKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            e.Handled = true;
+            _editor.RequestCloseCommand.Execute(null);
+
+            return;
+        }
+
+        if (e.Key == Windows.System.VirtualKey.Enter &&
+            Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+        {
+            e.Handled = true;
+            _editor.RequestSaveCommand.Execute(null);
+        }
+    }
+
+    private async Task<bool> ConfirmDiscardAsync()
+    {
+        if (RootGrid.XamlRoot is null)
+        {
+            return true;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = RootGrid.XamlRoot,
+            Title = "Discard changes?",
+            Content = "You have unsaved changes to this event.",
+            PrimaryButtonText = "Discard",
+            CloseButtonText = "Keep editing",
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        AutomationProperties.SetName(dialog, "Discard changes");
+
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     private async void OnEditorSaveRequested(object? sender, EventArgs e)
@@ -409,7 +476,7 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnPlaceholderAction(object? sender, EventArgs e) =>
-        _navigation.NavigateTo(NavigationKeys.NewEvent);
+        OpenNewEvent();
 
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
@@ -650,7 +717,7 @@ public sealed partial class MainWindow : Window
         }
 
         args.Handled = true;
-        _navigation.NavigateTo(NavigationKeys.NewEvent);
+        OpenNewEvent();
     }
 
     private void OnNewReminderAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -661,7 +728,7 @@ public sealed partial class MainWindow : Window
         }
 
         args.Handled = true;
-        _navigation.NavigateTo(NavigationKeys.NewReminder);
+        App.Current.ShowQuickAdd();
     }
 
     private void OnTodayAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -735,8 +802,9 @@ public sealed partial class MainWindow : Window
     {
         var commands = new List<PaletteCommand>
         {
-            new("New event", () => _navigation.NavigateTo(NavigationKeys.NewEvent)),
-            new("New reminder", () => _navigation.NavigateTo(NavigationKeys.NewReminder)),
+            new("Quick add (Win+Alt+C)", () => App.Current.ShowQuickAdd()),
+            new("New event", OpenNewEvent),
+            new("New reminder", () => App.Current.ShowQuickAdd()),
             new("Go to today", () => StateViewModel.GoToTodayCommand.Execute(null)),
             new("Day view", () => ShowView(CalendarViewMode.Day, NavigationKeys.Day)),
             new("Week view", () => ShowView(CalendarViewMode.Week, NavigationKeys.Week)),
