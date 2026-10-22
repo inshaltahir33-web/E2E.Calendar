@@ -1,0 +1,482 @@
+<UserControl
+    x:Class="E2E.Calendar.App.Views.SettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:E2E.Calendar.App.ViewModels">
+
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="248" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!--  Section list  -->
+        <Grid Grid.Column="0" Padding="12,16,8,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                Margin="8,0,0,8"
+                Style="{StaticResource SettingsSectionHeaderStyle}"
+                AutomationProperties.Name="Settings"
+                Text="Settings" />
+
+            <ListView
+                x:Name="SectionList"
+                Grid.Row="1"
+                Background="Transparent"
+                SelectionChanged="OnSectionSelectionChanged"
+                SelectionMode="Single"
+                AutomationProperties.Name="Settings sections">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceMD}">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource IconSizeLarge}"
+                                Glyph="{Binding Glyph}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource SettingsCardTitleStyle}"
+                                Text="{Binding Title}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
+        <!--  Section content  -->
+        <ScrollViewer
+            x:Name="ContentScroll"
+            Grid.Column="1"
+            Padding="24,16,24,24"
+            AutomationProperties.Name="Settings content"
+            VerticalScrollBarVisibility="Auto">
+
+            <StackPanel Spacing="{StaticResource SpaceLG}">
+
+                <!--  General  -->
+                <StackPanel x:Name="SectionGeneral" Spacing="{StaticResource SpaceMD}">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="General" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Clock format" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="How times are shown across the calendar." />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="150"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.ClockFormatLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.ClockFormatIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Clock format" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Week starts on" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="First day of the week in the mini calendar and week view." />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="150"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.WeekStartLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.WeekStartIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Week start day" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Show weekends" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Include Saturday and Sunday in the week view." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsOn="{x:Bind ViewModel.ShowWeekends, Mode=TwoWay}"
+                                AutomationProperties.Name="Show weekends" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Show week numbers" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Display ISO week numbers beside the date." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsOn="{x:Bind ViewModel.ShowWeekNumbers, Mode=TwoWay}"
+                                AutomationProperties.Name="Show week numbers" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Secondary time zone" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Add a second time zone column to the time grid." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsOn="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
+                                AutomationProperties.Name="Show secondary time zone" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!--  Accounts  -->
+                <StackPanel x:Name="SectionAccounts" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Accounts" />
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Accounts, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,8" Style="{StaticResource SettingsCardStyle}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                                        <FontIcon
+                                            VerticalAlignment="Center"
+                                            FontSize="{StaticResource IconSizeLarge}"
+                                            Glyph="&#xE77B;" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{Binding DisplayName}" />
+                                            <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{Binding Detail}" />
+                                        </StackPanel>
+                                        <Button
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            Content="Manage"
+                                            IsEnabled="False"
+                                            AutomationProperties.Name="Manage account" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Add an account" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Google, Microsoft and CalDAV sync will appear here. The free plan includes one account." />
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                <Button Content="Google" IsEnabled="False" AutomationProperties.Name="Add Google account" />
+                                <Button Content="Microsoft" IsEnabled="False" AutomationProperties.Name="Add Microsoft account" />
+                                <Button Content="CalDAV" IsEnabled="False" AutomationProperties.Name="Add CalDAV account" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!--  Calendars  -->
+                <StackPanel x:Name="SectionCalendars" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Calendars" />
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Calendars, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,8" Style="{StaticResource SettingsCardStyle}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                                        <Border
+                                            Width="{StaticResource CalendarSwatchSize}"
+                                            Height="{StaticResource CalendarSwatchSize}"
+                                            VerticalAlignment="Center"
+                                            Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
+                                            CornerRadius="{StaticResource RadiusSwatch}" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource SettingsCardTitleStyle}"
+                                            Text="{Binding Name}" />
+                                        <ToggleSwitch
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="{Binding Name}"
+                                            IsOn="{Binding IsVisible, Mode=TwoWay}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!--  Notifications & sounds  -->
+                <StackPanel x:Name="SectionNotifications" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Notifications &amp; sounds" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Reminder notifications" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Show toasts and alarms even when the app is closed." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsOn="True"
+                                AutomationProperties.Name="Reminder notifications" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Play a sound" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Play a sound with alarms and reminders." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsOn="True"
+                                AutomationProperties.Name="Play a sound" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Daily agenda" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Get a morning summary of today's schedule." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsOn="False"
+                                AutomationProperties.Name="Daily agenda" />
+                        </Grid>
+                    </Border>
+
+                    <Button
+                        HorizontalAlignment="Left"
+                        Content="Open Windows notification settings"
+                        AutomationProperties.Name="Open Windows notification settings" />
+                </StackPanel>
+
+                <!--  Appearance  -->
+                <StackPanel x:Name="SectionAppearance" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Appearance" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Theme" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Choose light, dark, or follow Windows." />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="180"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.ThemeLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Theme" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Accent colour" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Use the Windows accent, match a calendar, or pick your own." />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="180"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.AccentLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.AccentIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Accent colour source" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Hour height" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="How tall each hour is in the day and week views." />
+                            </StackPanel>
+                            <Slider
+                                Grid.Column="1"
+                                Width="180"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Hour height"
+                                Maximum="{x:Bind ViewModel.MaxHourHeight, Mode=OneTime}"
+                                Minimum="{x:Bind ViewModel.MinHourHeight, Mode=OneTime}"
+                                StepFrequency="4"
+                                Value="{x:Bind ViewModel.HourHeight, Mode=TwoWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Density" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Comfortable spacing or a tighter, compact layout." />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="180"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.DensityLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.DensityIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Density" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!--  Shortcuts  -->
+                <StackPanel x:Name="SectionShortcuts" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Shortcuts" />
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel AutomationProperties.Name="Keyboard shortcuts" Spacing="{StaticResource SpaceXS}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="New event" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="N" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="New reminder" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="R" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Quick add" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Win + Alt + C" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Search" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Ctrl + F" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Command palette" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Ctrl + K" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Day / Week / Month / Agenda" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="D / W / M / A" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!--  Premium  -->
+                <StackPanel x:Name="SectionPremium" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Premium" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE735;" />
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="E2E Calendar Premium" />
+                            </StackPanel>
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Unlock multiple accounts, unlimited alarms, task lists, templates, calendar sets and the free-slot finder." />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Free plan: 1 account · 3 alarms · 1 task list · 2 templates." />
+                            <Button
+                                HorizontalAlignment="Left"
+                                AutomationProperties.Name="View premium plans"
+                                Content="View plans"
+                                Style="{StaticResource AccentButtonStyle}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!--  Privacy & data  -->
+                <StackPanel x:Name="SectionPrivacy" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Privacy &amp; data" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceXS}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Your data stays on this device" />
+                            <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind ViewModel.DatabaseSummary, Mode=OneTime}" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="No account required. Tokens are kept in Windows Credential Manager." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Delete all data" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Remove every calendar, event, reminder and setting from this device." />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Delete all data"
+                                Content="Delete…" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!--  Developer  -->
+                <StackPanel x:Name="SectionDeveloper" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Developer" />
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceXS}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Demo data" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Sample calendars and events are only loaded when E2E_DEMO=1." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!--  About  -->
+                <StackPanel x:Name="SectionAbout" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="About" />
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceXS}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="E2E Calendar" />
+                            <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind ViewModel.AppVersion, Mode=OneTime}" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Offline-first calendar, reminders and tasks for Windows." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

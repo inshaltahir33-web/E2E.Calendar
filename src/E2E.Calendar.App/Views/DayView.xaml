@@ -13,7 +13,9 @@
             Items="{x:Bind ViewModel.Items, Mode=OneWay}"
             Now="{x:Bind ViewModel.Now, Mode=OneWay}"
             ClockFormat="{x:Bind ViewModel.ClockFormat, Mode=OneWay}"
-            SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}" />
+            HourHeight="{x:Bind ViewModel.HourHeight, Mode=OneWay}"
+            SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}"
+            ShowSecondaryTimeZone="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=OneWay}" />
 
         <ctrl:SkeletonView
             x:Name="Skeleton"

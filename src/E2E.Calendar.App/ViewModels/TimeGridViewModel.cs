@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using E2E.Calendar.App.Controls;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
@@ -7,11 +8,22 @@ using E2E.Calendar.Core.Services;
 
 namespace E2E.Calendar.App.ViewModels;
 
-public abstract class TimeGridViewModel : CalendarPageViewModel
+public abstract partial class TimeGridViewModel : CalendarPageViewModel
 {
-    protected TimeGridViewModel(CalendarStateViewModel state, EventQueryService query, IEventQueryCache cache)
+    private readonly SettingsService _settings;
+
+    protected TimeGridViewModel(
+        CalendarStateViewModel state,
+        EventQueryService query,
+        IEventQueryCache cache,
+        SettingsService settings)
         : base(state, query, cache)
     {
+        _settings = settings;
+
+        ApplySettings(_settings.Current);
+
+        _settings.Changed += (_, updated) => ApplySettings(updated);
     }
 
     public IReadOnlyList<TimeGridDay> Days { get; private set; } = Array.Empty<TimeGridDay>();
@@ -22,9 +34,20 @@ public abstract class TimeGridViewModel : CalendarPageViewModel
 
     public DateTimeOffset? Now => State.UtcNow;
 
-    public ClockFormat ClockFormat { get; set; } = ClockFormat.TwentyFourHour;
+    [ObservableProperty]
+    private ClockFormat _clockFormat = ClockFormat.TwelveHour;
 
-    public string? SecondaryTimeZoneId { get; set; } = "UTC";
+    [ObservableProperty]
+    private bool _showSecondaryTimeZone;
+
+    [ObservableProperty]
+    private string? _secondaryTimeZoneId = "UTC";
+
+    [ObservableProperty]
+    private double _hourHeight = AppSettings.DefaultHourHeight;
+
+    [ObservableProperty]
+    private WeekStartDay _weekStart = WeekStartDay.Monday;
 
     public override async Task RefreshAsync()
     {
@@ -65,5 +88,20 @@ public abstract class TimeGridViewModel : CalendarPageViewModel
             OnPropertyChanged(nameof(Days));
             OnPropertyChanged(nameof(Items));
         });
+    }
+
+    private void ApplySettings(AppSettings settings)
+    {
+        ClockFormat = settings.ClockFormat;
+        ShowSecondaryTimeZone = settings.ShowSecondaryTimeZone;
+        SecondaryTimeZoneId = settings.SecondaryTimeZoneId ?? State.LocalTimeZoneId;
+        HourHeight = settings.HourHeight;
+        WeekStart = settings.WeekStart;
+
+        OnSettingsApplied(settings);
+    }
+
+    protected virtual void OnSettingsApplied(AppSettings settings)
+    {
     }
 }

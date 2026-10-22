@@ -51,6 +51,11 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<AgendaViewModel>(),
                 _services.GetRequiredService<EventEditorViewModel>()));
 
+        _navigation.RegisterFactory(
+            NavigationKeys.Settings,
+            _ => new SettingsView(
+                _services.GetRequiredService<SettingsViewModel>()));
+
         return Task.CompletedTask;
     }
 

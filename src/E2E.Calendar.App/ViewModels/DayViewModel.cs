@@ -5,8 +5,12 @@ namespace E2E.Calendar.App.ViewModels;
 
 public sealed class DayViewModel : TimeGridViewModel
 {
-    public DayViewModel(CalendarStateViewModel state, EventQueryService query, IEventQueryCache cache)
-        : base(state, query, cache)
+    public DayViewModel(
+        CalendarStateViewModel state,
+        EventQueryService query,
+        IEventQueryCache cache,
+        SettingsService settings)
+        : base(state, query, cache, settings)
     {
     }
 

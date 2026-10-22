@@ -56,8 +56,19 @@ public partial class App : Application
         _host = BuildHost();
         await _host.StartAsync();
 
+        var settings = _host.Services.GetRequiredService<SettingsService>();
+        var appearance = _host.Services.GetRequiredService<AppearanceService>();
+
+        await settings.LoadAsync();
+
         _mainWindow = _host.Services.GetRequiredService<MainWindow>();
         _window = _mainWindow;
+
+        if (_mainWindow.Content is Microsoft.UI.Xaml.FrameworkElement root)
+        {
+            appearance.Attach(root);
+        }
+
         _mainWindow.Activate();
 
         _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
@@ -124,6 +135,7 @@ public partial class App : Application
                 services.AddSingleton<IReminderRepository, ReminderRepository>();
                 services.AddSingleton<ITaskRepository, TaskRepository>();
                 services.AddSingleton<IAlertRepository, AlertRepository>();
+                services.AddSingleton<ISettingsRepository, SettingsRepository>();
                 services.AddSingleton<IOutbox, Outbox>();
 
                 services.AddSingleton<IRecurrenceExpander, RecurrenceExpander>();
@@ -143,6 +155,9 @@ public partial class App : Application
                 services.AddSingleton<ViewModels.QuickAddViewModel>();
                 services.AddTransient<Views.QuickAddView>();
 
+                services.AddSingleton<SettingsService>();
+                services.AddSingleton<ViewModels.SettingsViewModel>();
+                services.AddSingleton<AppearanceService>();
                 services.AddSingleton<CalendarService>();
                 services.AddSingleton<AgendaService>();
                 services.AddSingleton<RecurrenceEditService>();
