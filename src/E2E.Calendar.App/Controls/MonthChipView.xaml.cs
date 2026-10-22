@@ -1,6 +1,5 @@
 using E2E.Calendar.App.Utilities;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -62,8 +61,6 @@ public sealed partial class MonthChipView : UserControl
         if (sender is MonthChipView chip)
         {
             chip.TitleText.Text = chip.Title;
-            AutomationProperties.SetName(chip, chip.Title);
-            AutomationProperties.SetItemStatus(chip, "Calendar event");
         }
     }
 

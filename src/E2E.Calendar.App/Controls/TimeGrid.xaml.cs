@@ -540,7 +540,7 @@ public sealed partial class TimeGrid : UserControl
         var dateText = new TextBlock
         {
             Text = day.Date.Day.ToString(System.Globalization.CultureInfo.CurrentCulture),
-            FontSize = 15,
+            FontSize = Tokens.Double("FontSizeSubtitle", 20d) - 6,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
@@ -564,11 +564,13 @@ public sealed partial class TimeGrid : UserControl
 
         if (day.IsToday)
         {
-            background = ColorHelper.FromColor(Windows.UI.Color.FromArgb(0x0F, 0x00, 0x78, 0xD4));
+            background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+            background.Opacity = 0.06;
         }
         else if (day.IsWeekend)
         {
-            background = ColorHelper.FromColor(Windows.UI.Color.FromArgb(0x08, 0x00, 0x00, 0x00));
+            background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+            background.Opacity = 0.4;
         }
 
         return new Border

@@ -99,11 +99,6 @@ public partial class App : Application
 
         _quickAddWindow = view;
 
-        if (view.Content is Microsoft.UI.Xaml.FrameworkElement content)
-        {
-            _host.Services.GetRequiredService<AppearanceService>().Attach(content);
-        }
-
         view.Activate();
     }
 
