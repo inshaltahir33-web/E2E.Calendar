@@ -50,7 +50,7 @@
 
             <StackPanel
                 Grid.Column="1"
-                Margin="{StaticResource MarginStartMedium}"
+                Margin="8,0,12,0"
                 Orientation="Horizontal"
                 Spacing="{StaticResource SpaceXS}">
                 <FontIcon
@@ -385,7 +385,9 @@
 
                 <Grid
                     Grid.Row="3"
-                    Padding="{StaticResource PaddingStatusBar}"
+                    Padding="12"
+                    BorderBrush="{ThemeResource App.DividerBrush}"
+                    BorderThickness="0,1,0,0"
                     Background="Transparent"
                     ColumnDefinitions="*,Auto">
                     <StackPanel

@@ -275,6 +275,7 @@ public sealed partial class MonthDayCell : UserControl
             ItemsSource = Items,
             SelectionMode = ListViewSelectionMode.None,
             MaxHeight = 320,
+            DisplayMemberPath = "Title",
         };
 
         var flyout = new Flyout
