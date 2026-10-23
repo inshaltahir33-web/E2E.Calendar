@@ -1,6 +1,7 @@
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 
 namespace E2E.Calendar.App.Services;
 
@@ -55,6 +56,34 @@ public sealed class DemoDataSeeder : IDemoDataSeeder
             var weekStart = monday.AddDays(week * 7);
 
             await SeedWeekAsync(weekStart, personalId, workId, familyId, now, cancellationToken);
+        }
+
+        // Recurring series are seeded once. Seeding one master per demo week
+        // made every weekly occurrence expand once per master, which showed the
+        // same standup/gym slot two or three times in Day, Week and Agenda.
+        var seriesStart = monday.AddDays(-7);
+
+        foreach (var series in DemoSchedule.Recurring(seriesStart))
+        {
+            var calendarId = series.Calendar switch
+            {
+                "Work" => workId,
+                "Personal" => personalId,
+                "Family" => familyId,
+                _ => personalId,
+            };
+
+            await AddRecurringEventAsync(
+                calendarId,
+                series.Title,
+                series.Date,
+                series.Hour,
+                series.Minute,
+                series.DurationMinutes,
+                series.RRule!,
+                series.Color,
+                now,
+                cancellationToken);
         }
 
         await SeedRemindersAsync(now, localZone, cancellationToken);
@@ -119,31 +148,6 @@ public sealed class DemoDataSeeder : IDemoDataSeeder
         await AddAllDayEventAsync(family, "Birthday party", weekStart.AddDays(5), 1, CalendarPalette.Birthday, now, cancellationToken);
         await AddAllDayEventAsync(family, "School trip", weekStart.AddDays(1), 3, CalendarPalette.Holiday, now, cancellationToken);
         await AddAllDayEventAsync(personal, "Public holiday", weekStart.AddDays(0), 1, CalendarPalette.Holiday, now, cancellationToken);
-
-        // Recurring daily standup and weekly gym.
-        await AddRecurringEventAsync(
-            work,
-            "Daily standup",
-            weekStart.AddDays(0),
-            9,
-            30,
-            15,
-            "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
-            CalendarPalette.Work,
-            now,
-            cancellationToken);
-
-        await AddRecurringEventAsync(
-            personal,
-            "Gym",
-            weekStart.AddDays(1),
-            18,
-            0,
-            60,
-            "FREQ=WEEKLY;BYDAY=TU,TH",
-            CalendarPalette.Health,
-            now,
-            cancellationToken);
 
         // Meeting link event.
         await AddEventAsync(
