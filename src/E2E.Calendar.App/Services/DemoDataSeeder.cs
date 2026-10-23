@@ -269,14 +269,16 @@ public sealed class DemoDataSeeder : IDemoDataSeeder
         TimeZoneInfo zone,
         CancellationToken cancellationToken)
     {
-        var reminders = new (string Title, int OffsetMinutes, Priority Priority, string? RRule, bool Flagged)[]
+        var today = DateOnly.FromDateTime(zone.ToLocal(now));
+
+        var reminders = new (string Title, DateOnly Date, int Hour, int Minute, Priority Priority, string? RRule, bool Flagged)[]
         {
-            ("Pay the rent", 2880, Priority.High, "FREQ=MONTHLY;BYMONTHDAY=1", true),
-            ("Take medicine", -120, Priority.Normal, "FREQ=DAILY", true),
-            ("Call the dentist", 60, Priority.Normal, null, false),
-            ("Submit timesheet", -60, Priority.High, null, true),
-            ("Water the plants", 180, Priority.Low, "FREQ=WEEKLY", false),
-            ("Renew passport", 600, Priority.Normal, null, false),
+            ("Pay the rent", today.AddDays(1), 9, 0, Priority.High, "FREQ=MONTHLY;BYMONTHDAY=1", true),
+            ("Take medicine", today, 8, 0, Priority.Normal, "FREQ=DAILY", true),
+            ("Call the dentist", today, 16, 0, Priority.Normal, null, false),
+            ("Submit timesheet", today, 17, 30, Priority.High, null, true),
+            ("Water the plants", today.AddDays(1), 18, 0, Priority.Low, "FREQ=WEEKLY", false),
+            ("Renew passport", today.AddDays(3), 11, 0, Priority.Normal, null, false),
         };
 
         foreach (var reminder in reminders)
@@ -285,7 +287,7 @@ public sealed class DemoDataSeeder : IDemoDataSeeder
             {
                 Id = IdPrefix + Guid.NewGuid().ToString("N")[..8],
                 Title = reminder.Title,
-                DueUtc = now.AddMinutes(reminder.OffsetMinutes),
+                DueUtc = At(reminder.Date, reminder.Hour, reminder.Minute, zone),
                 TimeZoneId = zone.ToIanaId(),
                 RRule = reminder.RRule,
                 Priority = reminder.Priority,
@@ -301,16 +303,18 @@ public sealed class DemoDataSeeder : IDemoDataSeeder
         TimeZoneInfo zone,
         CancellationToken cancellationToken)
     {
-        var tasks = new (string Title, int OffsetHours, bool HasTime, bool Done)[]
+        var today = DateOnly.FromDateTime(zone.ToLocal(now));
+
+        var tasks = new (string Title, DateOnly Date, int Hour, int Minute, bool HasTime, bool Done)[]
         {
-            ("Write weekly report", 4, true, false),
-            ("Review PR backlog", 8, true, false),
-            ("Book dentist appointment", 24, false, false),
-            ("Update onboarding docs", 30, false, true),
-            ("Send invoice", 2, true, false),
-            ("Plan weekend trip", 48, false, false),
-            ("Reply to Sam", 0, false, true),
-            ("Renew parking permit", 72, false, false),
+            ("Write weekly report", today, 17, 0, true, false),
+            ("Review PR backlog", today.AddDays(1), 10, 0, true, false),
+            ("Book dentist appointment", today.AddDays(1), 9, 0, false, false),
+            ("Update onboarding docs", today.AddDays(-1), 9, 0, false, true),
+            ("Send invoice", today, 15, 0, true, false),
+            ("Plan weekend trip", today.AddDays(4), 9, 0, false, false),
+            ("Reply to Sam", today, 12, 0, false, true),
+            ("Renew parking permit", today.AddDays(7), 9, 0, false, false),
         };
 
         foreach (var task in tasks)
@@ -319,13 +323,15 @@ public sealed class DemoDataSeeder : IDemoDataSeeder
             {
                 Id = IdPrefix + Guid.NewGuid().ToString("N")[..8],
                 Title = task.Title,
-                DueUtc = now.AddHours(task.OffsetHours),
+                DueUtc = At(task.Date, task.Hour, task.Minute, zone),
                 HasTime = task.HasTime,
                 DoneUtc = task.Done ? now.AddHours(-1) : null,
             }, cancellationToken);
         }
     }
 
+    private static DateTimeOffset At(DateOnly date, int hour, int minute, TimeZoneInfo zone) =>
+        zone.ToUtc(date.ToDateTime(new TimeOnly(hour, minute)));
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         var now = _clock.UtcNow;

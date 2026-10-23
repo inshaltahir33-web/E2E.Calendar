@@ -721,9 +721,9 @@ public sealed partial class MainWindow : Window
 
     private async Task SyncMiniCalendarAsync()
     {
-        var date = StateViewModel.SelectedDate == default
-            ? StateViewModel.LocalDate
-            : StateViewModel.SelectedDate;
+          var date = StateViewModel.LocalDate;
+
+
 
         if (MiniCalendar.VisibleYear != date.Year || MiniCalendar.VisibleMonth != date.Month)
         {

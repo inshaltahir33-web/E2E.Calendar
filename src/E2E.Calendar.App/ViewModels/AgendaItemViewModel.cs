@@ -41,6 +41,10 @@ public sealed partial class AgendaItemViewModel : ObservableObject
 
     public double CompletedOpacity => IsCompleted ? 0.55 : 1;
 
+    public Visibility NotCompletedVisibility => IsCompleted ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility CompletedVisibility => IsCompleted ? Visibility.Visible : Visibility.Collapsed;
+
     public string CompletionGlyph => IsCompleted ? "\uE73E" : string.Empty;
 
     public Visibility CompletionVisibility => IsCompleted ? Visibility.Visible : Visibility.Collapsed;
@@ -48,6 +52,8 @@ public sealed partial class AgendaItemViewModel : ObservableObject
     partial void OnIsCompletedChanged(bool value)
     {
         OnPropertyChanged(nameof(CompletedOpacity));
+        OnPropertyChanged(nameof(NotCompletedVisibility));
+        OnPropertyChanged(nameof(CompletedVisibility));
         OnPropertyChanged(nameof(CompletionGlyph));
         OnPropertyChanged(nameof(CompletionVisibility));
     }
@@ -62,6 +68,8 @@ public sealed class AgendaDayViewModel : ObservableObject
     public required string DayText { get; init; }
 
     public required bool IsToday { get; init; }
+
+    public string CountLabel => Items.Count == 1 ? "1 item" : $"{Items.Count} items";
 
     public required IReadOnlyList<AgendaItemViewModel> Items { get; init; }
 }

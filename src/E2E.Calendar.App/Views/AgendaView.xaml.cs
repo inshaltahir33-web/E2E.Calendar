@@ -143,8 +143,8 @@ public partial class AgendaView : Page
         current ??= _anchors[0].Day;
 
         ViewModel.StickyHeader = current.IsToday
-            ? $"Today · {current.DayText}"
-            : $"{current.DayText}";
+            ? $"Today \u00B7 {current.DayText} \u00B7 {current.CountLabel}"
+            : $"{current.DayText} \u00B7 {current.CountLabel}";
 
         var showSticky = AgendaScroll.VerticalOffset > 2;
 

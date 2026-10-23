@@ -16,11 +16,13 @@
             BorderThickness="0,0,0,1"
             Padding="12,6"
             Visibility="Collapsed">
-            <TextBlock
-                x:Name="StickyHeaderText"
-                Style="{ThemeResource BodyStrongTextBlockStyle}"
-                Text="{x:Bind ViewModel.StickyHeader, Mode=OneWay}"
-                AutomationProperties.Name="Current agenda day" />
+            <Grid MaxWidth="720" HorizontalAlignment="Center">
+                <TextBlock
+                    x:Name="StickyHeaderText"
+                    Style="{ThemeResource BodyStrongTextBlockStyle}"
+                    Text="{x:Bind ViewModel.StickyHeader, Mode=OneWay}"
+                    AutomationProperties.Name="Current agenda day" />
+            </Grid>
         </Border>
 
         <ScrollViewer
@@ -32,6 +34,8 @@
 
             <muxc:ItemsRepeater
                 x:Name="DaysRepeater"
+                MaxWidth="720"
+                HorizontalAlignment="Center"
                 ItemsSource="{x:Bind ViewModel.Days, Mode=OneWay}"
                 ElementPrepared="OnDayElementPrepared">
                 <muxc:ItemsRepeater.Layout>
@@ -40,7 +44,7 @@
                 <muxc:ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="vm:AgendaDayViewModel">
                             <StackPanel>
-                                <Grid Margin="12,14,12,2" ColumnDefinitions="Auto,Auto,*">
+                                <Grid Margin="12,14,12,2" ColumnDefinitions="Auto,Auto,Auto,*">
                                     <TextBlock
                                         x:Name="AgendaDayHeader"
                                         Grid.Column="0"
@@ -54,6 +58,13 @@
                                         VerticalAlignment="Center"
                                         Style="{ThemeResource BodyStrongTextBlockStyle}"
                                         Text="{x:Bind DayText, Mode=OneTime}" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Style="{ThemeResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource App.TextTertiaryBrush}"
+                                        Text="{x:Bind CountLabel, Mode=OneTime}" />
                                 </Grid>
                                 <ItemsControl ItemsSource="{x:Bind Items, Mode=OneTime}">
                                     <ItemsControl.ItemTemplate>
@@ -100,9 +111,16 @@
                                                 <StackPanel Grid.Column="3" VerticalAlignment="Center">
                                                     <TextBlock
                                                         FontSize="{StaticResource FontSizeBody}"
-                                                        Opacity="{x:Bind CompletedOpacity, Mode=OneWay}"
                                                         Text="{x:Bind Title, Mode=OneTime}"
-                                                        TextTrimming="CharacterEllipsis" />
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Visibility="{x:Bind NotCompletedVisibility, Mode=OneWay}" />
+                                                    <TextBlock
+                                                        FontSize="{StaticResource FontSizeBody}"
+                                                        Foreground="{ThemeResource App.TextTertiaryBrush}"
+                                                        Text="{x:Bind Title, Mode=OneTime}"
+                                                        TextDecorations="Strikethrough"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Visibility="{x:Bind CompletedVisibility, Mode=OneWay}" />
                                                     <TextBlock
                                                         FontSize="{StaticResource FontSizeCaption}"
                                                         Opacity="0.7"

@@ -76,6 +76,15 @@ public sealed class EventQueryService : IEventQueryCache
 
         foreach (var calendarEvent in events)
         {
+            // Exception rows (edited single occurrences) are applied through their
+            // master's expansion. Treating them as standalone events as well would
+            // render the same occurrence twice.
+            if (!string.IsNullOrWhiteSpace(calendarEvent.RecurrenceMasterId) &&
+                events.Any(candidate => string.Equals(candidate.Id, calendarEvent.RecurrenceMasterId, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
             sources[calendarEvent.Id] = calendarEvent;
 
             if (string.IsNullOrWhiteSpace(calendarEvent.RRule))

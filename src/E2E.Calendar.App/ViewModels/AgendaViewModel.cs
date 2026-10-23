@@ -223,7 +223,7 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
         Days = agendaDays;
 
         StickyHeader = agendaDays.Count > 0
-            ? agendaDays[0].Header + " · " + agendaDays[0].DayText
+            ? $"{agendaDays[0].Header} \u00B7 {agendaDays[0].DayText} \u00B7 {agendaDays[0].CountLabel}"
             : string.Empty;
     }
 

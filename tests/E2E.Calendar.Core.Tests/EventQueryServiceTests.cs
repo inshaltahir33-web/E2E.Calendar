@@ -102,6 +102,29 @@ public sealed class EventQueryServiceTests
     }
 
     [Fact]
+    public async Task An_exception_row_in_range_is_not_duplicated()
+    {
+        var master = RecurringEvent();
+        var exception = PlainEvent("child-1", 7) with
+        {
+            RecurrenceMasterId = "master-1",
+            RecurrenceIdUtc = new DateTimeOffset(2026, 1, 7, 9, 0, 0, TimeSpan.Zero),
+        };
+
+        _events.GetInRangeAsync("cal-local", From, To, Arg.Any<CancellationToken>())
+            .Returns(new[] { master, exception });
+
+        _events.GetExceptionsAsync("master-1", From, To, Arg.Any<CancellationToken>())
+            .Returns(new[] { exception });
+
+        var service = new EventQueryService(_events, _expander);
+        var occurrences = await service.GetOccurrencesAsync(From, To, "cal-local");
+
+        occurrences.Should().HaveCount(5);
+        occurrences.Single(o => o.IsException).EventId.Should().Be("child-1");
+        occurrences.Select(o => o.StartUtc).Should().OnlyHaveUniqueItems();
+    }
+    [Fact]
     public async Task The_result_of_a_range_is_cached()
     {
         _events.GetInRangeAsync("cal-local", From, To, Arg.Any<CancellationToken>())

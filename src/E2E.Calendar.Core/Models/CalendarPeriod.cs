@@ -72,12 +72,12 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
 
         if (start.Month == end.Month && start.Year == end.Year)
         {
-            return string.Format(culture, "{0} – {1}", start.Day, end.ToString("d MMM yyyy", culture));
+            return string.Format(culture, "{0} \u2013 {1}", start.Day, end.ToString("d MMM yyyy", culture));
         }
 
         return string.Format(
             culture,
-            "{0} – {1}",
+            "{0} \u2013 {1}",
             start.ToString("d MMM", culture),
             end.ToString("d MMM yyyy", culture));
     }
