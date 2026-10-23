@@ -40,6 +40,8 @@ public sealed class EventRow
 
     public string? MeetingUrl { get; init; }
 
+    public string? Attendees { get; init; }
+
     public long? TravelMinutes { get; init; }
 
     public string CreatedUtc { get; init; } = string.Empty;
@@ -72,6 +74,7 @@ public sealed class EventRow
             : SqliteTime.ToUtcText(model.RecurrenceIdUtc.Value),
         Color = model.Color,
         MeetingUrl = model.MeetingUrl,
+        Attendees = model.Attendees,
         TravelMinutes = model.TravelMinutes,
         CreatedUtc = SqliteTime.ToUtcText(model.CreatedUtc),
         UpdatedUtc = SqliteTime.ToUtcText(model.UpdatedUtc),

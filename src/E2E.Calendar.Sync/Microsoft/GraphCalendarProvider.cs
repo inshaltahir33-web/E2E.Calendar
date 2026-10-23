@@ -545,6 +545,83 @@ public sealed class GraphCalendarProvider : ISyncProvider
     private static string Base64UrlEncode(byte[] input) =>
         Convert.ToBase64String(input).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
+    public async Task RespondToInvitationAsync(E2E.Calendar.Core.Models.Calendar calendar, CalendarEvent ev, RsvpStatus status, CancellationToken cancellationToken = default)
+    {
+        var accessToken = await GetAccessTokenAsync(calendar.AccountId ?? string.Empty, cancellationToken);
+        var calendarId = string.IsNullOrWhiteSpace(calendar.RemoteId) ? "primary" : calendar.RemoteId!;
+        var remoteId = ev.RemoteId ?? ev.Id;
+
+        var endpoint = status switch
+        {
+            RsvpStatus.Accepted => "accept",
+            RsvpStatus.Tentative => "tentativelyAccept",
+            RsvpStatus.Declined => "decline",
+            _ => "accept",
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{GraphBase}/me/calendars/{Uri.EscapeDataString(calendarId)}/events/{Uri.EscapeDataString(remoteId)}/{endpoint}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var response = await _http.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<CalendarEvent>> ImportBirthdaysAsync(Account account, CancellationToken cancellationToken = default)
+    {
+        var accessToken = await GetAccessTokenAsync(account.Id, cancellationToken);
+        var result = new List<CalendarEvent>();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{GraphBase}/me/contacts?$select=displayName,birthday&$top=1000");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return result;
+        }
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        if (!doc.RootElement.TryGetProperty("value", out var values))
+        {
+            return result;
+        }
+
+        foreach (var contact in values.EnumerateArray())
+        {
+            var name = contact.TryGetProperty("displayName", out var dn) ? dn.GetString() : null;
+            if (!contact.TryGetProperty("birthday", out var birthday) || birthday.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            if (!DateTimeOffset.TryParse(birthday.GetString(), out var bday))
+            {
+                continue;
+            }
+
+            var month = bday.Month;
+            var day = bday.Day;
+            var year = DateTime.UtcNow.Year;
+            var start = new DateTimeOffset(year, month, day, 0, 0, 0, TimeSpan.Zero);
+
+            result.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                CalendarId = string.Empty,
+                Title = $"{name ?? "Contact"}'s birthday",
+                StartUtc = start,
+                EndUtc = start.AddDays(1),
+                AllDay = true,
+                TimeZoneId = "UTC",
+                RRule = $"FREQ=YEARLY;BYMONTH={month};BYMONTHDAY={day}",
+                Color = "Red",
+                CreatedUtc = DateTimeOffset.UtcNow,
+                UpdatedUtc = DateTimeOffset.UtcNow,
+            });
+        }
+
+        return result;
+    }
+
     private static int GetFreePort()
     {
         var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);

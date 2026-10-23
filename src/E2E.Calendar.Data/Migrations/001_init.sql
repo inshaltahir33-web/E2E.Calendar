@@ -38,6 +38,7 @@ CREATE TABLE event(
   recurrence_id_utc TEXT NULL,
   color TEXT,
   meeting_url TEXT,
+  attendees TEXT,
   travel_minutes INT,
   created_utc TEXT,
   updated_utc TEXT,
@@ -130,3 +131,4 @@ CREATE TABLE settings(
 );
 
 CREATE VIRTUAL TABLE event_fts USING fts5(title, notes, location, attendees, content='');
+

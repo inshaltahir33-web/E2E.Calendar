@@ -38,6 +38,8 @@ public sealed record CalendarEvent
 
     public string? MeetingUrl { get; init; }
 
+    public string? Attendees { get; init; }
+
     public int? TravelMinutes { get; init; }
 
     public required DateTimeOffset CreatedUtc { get; init; }

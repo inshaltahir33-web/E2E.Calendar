@@ -15,4 +15,8 @@ public interface ISyncProvider
     Task<PullResult> PullAsync(E2E.Calendar.Core.Models.Calendar calendar, CancellationToken cancellationToken = default);
 
     Task PushAsync(E2E.Calendar.Core.Models.Calendar calendar, OutboxItem item, CancellationToken cancellationToken = default);
+
+    Task RespondToInvitationAsync(E2E.Calendar.Core.Models.Calendar calendar, CalendarEvent ev, RsvpStatus status, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<CalendarEvent>> ImportBirthdaysAsync(Account account, CancellationToken cancellationToken = default);
 }

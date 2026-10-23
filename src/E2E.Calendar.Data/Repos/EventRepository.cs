@@ -26,6 +26,7 @@ public sealed class EventRepository : IEventRepository
         recurrence_id_utc AS RecurrenceIdUtc,
         color AS Color,
         meeting_url AS MeetingUrl,
+        attendees AS Attendees,
         travel_minutes AS TravelMinutes,
         created_utc AS CreatedUtc,
         updated_utc AS UpdatedUtc,
@@ -37,12 +38,12 @@ public sealed class EventRepository : IEventRepository
         INSERT INTO event (
             id, calendar_id, remote_id, etag, title, notes, location, url,
             start_utc, end_utc, all_day, tz_id, rrule, exdates,
-            recurrence_master_id, recurrence_id_utc, color, meeting_url, travel_minutes,
+            recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, travel_minutes,
             created_utc, updated_utc, deleted, dirty)
         VALUES (
             @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Url,
             @StartUtc, @EndUtc, @AllDay, @TimeZoneId, @RRule, @ExDates,
-            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @TravelMinutes,
+            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @TravelMinutes,
             @CreatedUtc, @UpdatedUtc, @Deleted, @Dirty)
         ON CONFLICT(id) DO UPDATE SET
             calendar_id = excluded.calendar_id,
@@ -62,6 +63,7 @@ public sealed class EventRepository : IEventRepository
             recurrence_id_utc = excluded.recurrence_id_utc,
             color = excluded.color,
             meeting_url = excluded.meeting_url,
+            attendees = excluded.attendees,
             travel_minutes = excluded.travel_minutes,
             created_utc = excluded.created_utc,
             updated_utc = excluded.updated_utc,
@@ -73,12 +75,12 @@ public sealed class EventRepository : IEventRepository
         INSERT INTO event (
             id, calendar_id, remote_id, etag, title, notes, location, url,
             start_utc, end_utc, all_day, tz_id, rrule, exdates,
-            recurrence_master_id, recurrence_id_utc, color, meeting_url, travel_minutes,
+            recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, travel_minutes,
             created_utc, updated_utc, deleted, dirty)
         VALUES (
             @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Url,
             @StartUtc, @EndUtc, @AllDay, @TimeZoneId, @RRule, @ExDates,
-            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @TravelMinutes,
+            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @TravelMinutes,
             @CreatedUtc, @UpdatedUtc, @Deleted, @Dirty)
         """;
 
@@ -220,3 +222,4 @@ public sealed class EventRepository : IEventRepository
         await transaction.CommitAsync(cancellationToken);
     }
 }
+

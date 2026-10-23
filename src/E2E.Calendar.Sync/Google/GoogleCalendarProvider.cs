@@ -524,6 +524,122 @@ public sealed class GoogleCalendarProvider : ISyncProvider
     private static string Base64UrlEncode(byte[] input) =>
         Convert.ToBase64String(input).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
+    public async Task RespondToInvitationAsync(E2E.Calendar.Core.Models.Calendar calendar, CalendarEvent ev, RsvpStatus status, CancellationToken cancellationToken = default)
+    {
+        var accessToken = await GetAccessTokenAsync(calendar.AccountId ?? string.Empty, cancellationToken);
+        var calendarId = string.IsNullOrWhiteSpace(calendar.RemoteId) ? "primary" : calendar.RemoteId!;
+        var remoteId = ev.RemoteId ?? ev.Id;
+
+        var responseStatus = status switch
+        {
+            RsvpStatus.Accepted => "accepted",
+            RsvpStatus.Tentative => "tentative",
+            RsvpStatus.Declined => "declined",
+            _ => "needsAction",
+        };
+
+        using var getRequest = new HttpRequestMessage(HttpMethod.Get, $"{CalendarApiBase}/{Uri.EscapeDataString(calendarId)}/events/{Uri.EscapeDataString(remoteId)}");
+        getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var getResponse = await _http.SendAsync(getRequest, cancellationToken);
+        getResponse.EnsureSuccessStatusCode();
+
+        using var doc = JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync(cancellationToken));
+        var attendees = new List<Dictionary<string, object?>>();
+        if (doc.RootElement.TryGetProperty("attendees", out var atts) && atts.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var a in atts.EnumerateArray())
+            {
+                var email = a.TryGetProperty("email", out var e) ? e.GetString() : null;
+                var self = a.TryGetProperty("self", out var s) && s.GetBoolean();
+                var entry = new Dictionary<string, object?>
+                {
+                    ["email"] = email,
+                    ["responseStatus"] = self ? responseStatus : (a.TryGetProperty("responseStatus", out var rs) ? rs.GetString() : "needsAction"),
+                };
+                attendees.Add(entry);
+            }
+        }
+
+        if (!attendees.Any(a => a.TryGetValue("self", out _) ))
+        {
+            // Best effort: mark first attendee? Google identifies self server-side.
+        }
+
+        var payload = JsonSerializer.Serialize(new { attendees });
+        using var patchRequest = new HttpRequestMessage(new HttpMethod("PATCH"), $"{CalendarApiBase}/{Uri.EscapeDataString(calendarId)}/events/{Uri.EscapeDataString(remoteId)}")
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        };
+        patchRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var patchResponse = await _http.SendAsync(patchRequest, cancellationToken);
+        patchResponse.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<CalendarEvent>> ImportBirthdaysAsync(Account account, CancellationToken cancellationToken = default)
+    {
+        var accessToken = await GetAccessTokenAsync(account.Id, cancellationToken);
+        var result = new List<CalendarEvent>();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://people.googleapis.com/v1/people/me/connections?personFields=names,birthdays&pageSize=1000");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return result;
+        }
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        if (!doc.RootElement.TryGetProperty("connections", out var connections))
+        {
+            return result;
+        }
+
+        foreach (var person in connections.EnumerateArray())
+        {
+            var name = person.TryGetProperty("names", out var names) && names.GetArrayLength() > 0
+                ? names[0].TryGetProperty("displayName", out var dn) ? dn.GetString() : null
+                : null;
+
+            if (!person.TryGetProperty("birthdays", out var birthdays) || birthdays.GetArrayLength() == 0)
+            {
+                continue;
+            }
+
+            var bday = birthdays[0].TryGetProperty("date", out var dateEl) ? dateEl : default;
+            if (!bday.TryGetProperty("month", out var monthEl) || !bday.TryGetProperty("day", out var dayEl))
+            {
+                continue;
+            }
+
+            var month = monthEl.GetInt32();
+            var day = dayEl.GetInt32();
+            var year = DateTime.UtcNow.Year;
+
+            if (bday.TryGetProperty("year", out var yearEl))
+            {
+                year = yearEl.GetInt32();
+            }
+
+            var start = new DateTimeOffset(year, month, day, 0, 0, 0, TimeSpan.Zero);
+            result.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                CalendarId = string.Empty,
+                Title = $"{name ?? "Contact"}'s birthday",
+                StartUtc = start,
+                EndUtc = start.AddDays(1),
+                AllDay = true,
+                TimeZoneId = "UTC",
+                RRule = $"FREQ=YEARLY;BYMONTH={month};BYMONTHDAY={day}",
+                Color = "Red",
+                CreatedUtc = DateTimeOffset.UtcNow,
+                UpdatedUtc = DateTimeOffset.UtcNow,
+            });
+        }
+
+        return result;
+    }
+
     private static int GetFreePort()
     {
         var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
