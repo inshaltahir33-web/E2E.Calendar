@@ -71,6 +71,88 @@ public static class CalendarPalette
         ["#767676"] = Slate,
     };
 
+    /// <summary>
+    /// Maps an arbitrary colour (typically a provider's hex) to the nearest
+    /// palette name using squared RGB distance.
+    /// </summary>
+    public static string Nearest(string? value)
+    {
+        if (IsKnown(value))
+        {
+            return Normalize(value);
+        }
+
+        if (!TryParseHex(value, out var r, out var g, out var b))
+        {
+            return Fallback;
+        }
+
+        var best = Fallback;
+        var bestDistance = long.MaxValue;
+
+        foreach (var (name, hex) in PaletteHex)
+        {
+            if (!TryParseHex(hex, out var pr, out var pg, out var pb))
+            {
+                continue;
+            }
+
+            var distance = (long)(r - pr) * (r - pr) +
+                           (long)(g - pg) * (g - pg) +
+                           (long)(b - pb) * (b - pb);
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = name;
+            }
+        }
+
+        return best;
+    }
+
+    private static readonly Dictionary<string, string> PaletteHex = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [Indigo] = "#4F5BD5",
+        [Blue] = "#2B7DE9",
+        [Teal] = "#0E9F9A",
+        [Green] = "#2E9E5B",
+        [Lime] = "#7FA52A",
+        [Amber] = "#D98A00",
+        [Orange] = "#E8590C",
+        [Red] = "#E5484D",
+        [Pink] = "#D6409F",
+        [Purple] = "#8E4EC6",
+        [Slate] = "#5F6B7A",
+        [Brown] = "#8B6B4A",
+    };
+
+    private static bool TryParseHex(string? value, out int r, out int g, out int b)
+    {
+        r = g = b = 0;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var hex = value.Trim().TrimStart('#');
+
+        if (hex.Length == 3)
+        {
+            hex = string.Concat(hex.Select(c => new string(c, 2)));
+        }
+
+        if (hex.Length != 6 || !uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var rgb))
+        {
+            return false;
+        }
+
+        r = (int)((rgb >> 16) & 0xFF);
+        g = (int)((rgb >> 8) & 0xFF);
+        b = (int)(rgb & 0xFF);
+        return true;
+    }
     public static bool IsKnown(string? value) =>
         !string.IsNullOrWhiteSpace(value) &&
         All.Any(name => string.Equals(name, value.Trim(), StringComparison.OrdinalIgnoreCase));
