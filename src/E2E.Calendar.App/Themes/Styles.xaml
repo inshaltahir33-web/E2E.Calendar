@@ -3,16 +3,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Style x:Key="CardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="Background" Value="{ThemeResource App.CardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8,0,0,0" />
+        <Setter Property="CornerRadius" Value="12,0,0,0" />
         <Setter Property="Padding" Value="0" />
     </Style>
 
     <Style x:Key="ChipStyle" TargetType="Border">
-        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="Background" Value="{ThemeResource App.CardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusChip}" />
         <Setter Property="MinHeight" Value="{StaticResource ChipMinHeight}" />
@@ -20,7 +20,7 @@
     </Style>
 
     <Style x:Key="EventChipStyle" TargetType="Border">
-        <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+        <Setter Property="Background" Value="{ThemeResource App.HoverBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusChip}" />
@@ -29,10 +29,11 @@
     </Style>
 
     <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeSectionHeader}" />
         <Setter Property="FontFamily" Value="{StaticResource FontFamilyDefault}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="CharacterSpacing" Value="40" />
+        <Setter Property="Foreground" Value="{ThemeResource App.TextTertiaryBrush}" />
         <Setter Property="Margin" Value="0,12,0,0" />
         <Setter Property="IsTextSelectionEnabled" Value="False" />
     </Style>
@@ -102,12 +103,12 @@
                                 </VisualState>
                                 <VisualState x:Name="Pressed">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                        <Setter Target="Root.Background" Value="{ThemeResource App.SelectedBrush}" />
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Selected">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                        <Setter Target="Root.Background" Value="{ThemeResource App.SelectedBrush}" />
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
@@ -119,13 +120,13 @@
                             <VisualStateGroup x:Name="FocusStates">
                                 <VisualState x:Name="Focus">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource App.FocusBrush}" />
                                         <Setter Target="Root.BorderThickness" Value="2" />
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Focused">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource App.FocusBrush}" />
                                         <Setter Target="Root.BorderThickness" Value="2" />
                                     </VisualState.Setters>
                                 </VisualState>
@@ -135,7 +136,7 @@
                         <Grid>
                             <Border
                                 x:Name="HoverVeil"
-                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                Background="{ThemeResource App.HoverBrush}"
                                 CornerRadius="{TemplateBinding CornerRadius}"
                                 Opacity="0" />
                             <ContentPresenter />
@@ -163,7 +164,7 @@
                             x:Name="AccentBar"
                             Width="{StaticResource AccentBarWidth}"
                             HorizontalAlignment="Left"
-                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            Background="{ThemeResource App.AccentBrush}"
                             CornerRadius="{StaticResource RadiusControl}"
                             Visibility="Collapsed" />
                         <Border
@@ -219,12 +220,12 @@
                                     </VisualState>
                                     <VisualState x:Name="Pressed">
                                         <VisualState.Setters>
-                                            <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                            <Setter Target="Root.Background" Value="{ThemeResource App.SelectedBrush}" />
                                         </VisualState.Setters>
                                     </VisualState>
                                     <VisualState x:Name="Selected">
                                         <VisualState.Setters>
-                                            <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                            <Setter Target="Root.Background" Value="{ThemeResource App.SelectedBrush}" />
                                             <Setter Target="AccentBar.Visibility" Value="Visible" />
                                         </VisualState.Setters>
                                     </VisualState>
@@ -237,13 +238,13 @@
                                 <VisualStateGroup x:Name="FocusStates">
                                     <VisualState x:Name="Focus">
                                         <VisualState.Setters>
-                                            <Setter Target="Root.BorderBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                                            <Setter Target="Root.BorderBrush" Value="{ThemeResource App.FocusBrush}" />
                                             <Setter Target="Root.BorderThickness" Value="2" />
                                         </VisualState.Setters>
                                     </VisualState>
                                     <VisualState x:Name="Focused">
                                         <VisualState.Setters>
-                                            <Setter Target="Root.BorderBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                                            <Setter Target="Root.BorderBrush" Value="{ThemeResource App.FocusBrush}" />
                                             <Setter Target="Root.BorderThickness" Value="2" />
                                         </VisualState.Setters>
                                     </VisualState>
@@ -253,7 +254,7 @@
                             <Grid>
                                 <Border
                                     x:Name="HoverVeil"
-                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    Background="{ThemeResource App.HoverBrush}"
                                     CornerRadius="{TemplateBinding CornerRadius}"
                                     Opacity="0" />
                                 <ContentPresenter HorizontalAlignment="Stretch" />
@@ -330,12 +331,12 @@
                                 </VisualState>
                                 <VisualState x:Name="Pressed">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                        <Setter Target="Root.Background" Value="{ThemeResource App.SelectedBrush}" />
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Selected">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                        <Setter Target="Root.Background" Value="{ThemeResource App.SelectedBrush}" />
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
@@ -347,13 +348,13 @@
                             <VisualStateGroup x:Name="FocusStates">
                                 <VisualState x:Name="Focus">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource App.FocusBrush}" />
                                         <Setter Target="Root.BorderThickness" Value="2" />
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Focused">
                                     <VisualState.Setters>
-                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource FocusStrokeColorOuterBrush}" />
+                                        <Setter Target="Root.BorderBrush" Value="{ThemeResource App.FocusBrush}" />
                                         <Setter Target="Root.BorderThickness" Value="2" />
                                     </VisualState.Setters>
                                 </VisualState>
@@ -363,7 +364,7 @@
                         <Grid>
                             <Border
                                 x:Name="HoverVeil"
-                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                Background="{ThemeResource App.HoverBrush}"
                                 CornerRadius="{TemplateBinding CornerRadius}"
                                 Opacity="0" />
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -375,8 +376,8 @@
     </Style>
 
     <Style x:Key="EditorCardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="Background" Value="{ThemeResource App.CardElevatedBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
         <Setter Property="Padding" Value="{StaticResource SpaceMD}" />
@@ -385,13 +386,13 @@
     <Style x:Key="EditorCardHeaderStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource App.TextSecondaryBrush}" />
         <Setter Property="IsTextSelectionEnabled" Value="False" />
     </Style>
 
     <Style x:Key="SettingsCardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="Background" Value="{ThemeResource App.CardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
         <Setter Property="Padding" Value="{StaticResource InsetMD}" />
@@ -400,20 +401,20 @@
     <Style x:Key="SettingsSectionHeaderStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{StaticResource FontSizeBodyStrong}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource App.TextPrimaryBrush}" />
         <Setter Property="IsTextSelectionEnabled" Value="False" />
     </Style>
 
     <Style x:Key="SettingsCardTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource App.TextPrimaryBrush}" />
         <Setter Property="TextWrapping" Value="NoWrap" />
         <Setter Property="IsTextSelectionEnabled" Value="False" />
     </Style>
 
     <Style x:Key="SettingsCardDescriptionStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource App.TextSecondaryBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="IsTextSelectionEnabled" Value="False" />
     </Style>

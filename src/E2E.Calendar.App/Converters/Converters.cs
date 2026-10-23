@@ -7,7 +7,7 @@ namespace E2E.Calendar.App.Converters;
 public sealed partial class ColorToBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        ColorHelper.FromHex(value as string);
+        CalendarColors.Resolve(null, value as string, parameter as string ?? "Bar");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();

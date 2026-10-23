@@ -6,7 +6,7 @@
     xmlns:core="using:E2E.Calendar.Core.Models"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" RowDefinitions="Auto,*,Auto">
+    <Grid Background="{ThemeResource App.CardBackgroundBrush}" RowDefinitions="Auto,*,Auto">
 
         <Grid Grid.Row="0" Padding="{StaticResource PaddingEditorHeader}" ColumnDefinitions="*,Auto">
             <StackPanel>
@@ -59,7 +59,7 @@
                             PlaceholderText="Add a title"
                             Text="{x:Bind ViewModel.Title, Mode=TwoWay}" />
                         <TextBlock
-                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            Foreground="{ThemeResource App.DangerBrush}"
                             Style="{ThemeResource CaptionTextBlockStyle}"
                             Text="{x:Bind ViewModel.TitleError, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.HasTitleError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
@@ -108,7 +108,7 @@
                                     Time="{x:Bind ViewModel.EndTime, Mode=TwoWay}" />
                             </Grid>
                             <TextBlock
-                                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                Foreground="{ThemeResource App.DangerBrush}"
                                 Style="{ThemeResource CaptionTextBlockStyle}"
                                 Text="{x:Bind ViewModel.TimeError, Mode=OneWay}"
                                 Visibility="{x:Bind ViewModel.HasTimeError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
@@ -156,13 +156,13 @@
                             Spacing="{StaticResource SpaceXS}"
                             Visibility="{x:Bind ViewModel.IsWeekly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
-                                <ToggleButton Content="M" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" />
-                                <ToggleButton Content="T" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" />
-                                <ToggleButton Content="W" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" />
-                                <ToggleButton Content="T" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" />
-                                <ToggleButton Content="F" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" />
-                                <ToggleButton Content="S" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" />
-                                <ToggleButton Content="S" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Mondays" Content="M" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Tuesdays" Content="T" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Wednesdays" Content="W" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Thursdays" Content="T" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Fridays" Content="F" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Saturdays" Content="S" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" />
+                <ToggleButton AutomationProperties.Name="Repeat on Sundays" Content="S" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" />
                             </StackPanel>
                         </StackPanel>
                         <StackPanel
@@ -243,7 +243,7 @@
                                     <Border
                                         Margin="0,0,0,4"
                                         Padding="{StaticResource PaddingMonthChip}"
-                                        Background="{ThemeResource ControlFillColorDefaultBrush}"
+                                        Background="{ThemeResource App.HoverBrush}"
                                         CornerRadius="{StaticResource RadiusChip}">
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceXS}">
                                             <ComboBox
@@ -294,6 +294,7 @@
                                 Content="{x:Bind ViewModel.DetectedMeetingLabel, Mode=OneWay}"
                                 NavigateUri="{x:Bind ViewModel.DetectedMeetingUri, Mode=OneWay}" />
                             <Button
+                                AutomationProperties.Name="Clear the detected meeting link"
                                 Click="OnClearMeetingClick"
                                 Content="Clear"
                                 Style="{StaticResource ToolbarButtonStyle}" />
@@ -352,7 +353,7 @@
                             PlaceholderText="Link (https://)"
                             Text="{x:Bind ViewModel.Url, Mode=TwoWay}" />
                         <TextBlock
-                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            Foreground="{ThemeResource App.DangerBrush}"
                             Style="{ThemeResource CaptionTextBlockStyle}"
                             Text="{x:Bind ViewModel.LinkError, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.HasLinkError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
@@ -365,7 +366,7 @@
         <Grid
             Grid.Row="2"
             Padding="{StaticResource PaddingEditorFooter}"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            Background="{ThemeResource App.CardBackgroundBrush}"
             ColumnDefinitions="Auto,*,Auto,Auto">
             <Button
                 Grid.Column="0"

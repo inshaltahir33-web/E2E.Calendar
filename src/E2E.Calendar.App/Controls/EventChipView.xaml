@@ -49,19 +49,19 @@
                     x:Name="TitleText"
                     FontSize="12"
                     FontWeight="SemiBold"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                    Foreground="{ThemeResource App.TextPrimaryBrush}"
                     TextTrimming="CharacterEllipsis" />
                 <TextBlock
                     x:Name="TimeTextBlock"
                     FontSize="11"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Foreground="{ThemeResource App.TextSecondaryBrush}"
                     TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </Grid>
 
         <Border
             x:Name="FocusRing"
-            BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+            BorderBrush="{ThemeResource App.FocusBrush}"
             BorderThickness="{StaticResource FocusStrokeThickness}"
             CornerRadius="6"
             Visibility="Collapsed" />

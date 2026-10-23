@@ -90,6 +90,30 @@ public sealed class MigrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Palette_migration_maps_legacy_hex_values_to_palette_names()
+    {
+        await using var connection = await _database.Database.OpenAsync();
+
+        await connection.ExecuteAsync(
+            """
+            INSERT INTO calendar (id, name, color, is_local) VALUES ('cal-1', 'Legacy', '#0078D4', 1);
+            INSERT INTO event (id, calendar_id, title, start_utc, end_utc, color)
+            VALUES ('evt-1', 'cal-1', 'Legacy event', '2026-01-01T00:00:00Z', '2026-01-01T01:00:00Z', '#E3008C');
+            PRAGMA user_version = 1;
+            """);
+
+        await new MigrationRunner().MigrateAsync(connection);
+
+        var calendarColor = await connection.ExecuteScalarAsync<string>(
+            "SELECT color FROM calendar WHERE id = 'cal-1';");
+        var eventColor = await connection.ExecuteScalarAsync<string>(
+            "SELECT color FROM event WHERE id = 'evt-1';");
+
+        calendarColor.Should().Be("Blue");
+        eventColor.Should().Be("Pink");
+    }
+
+    [Fact]
     public void The_init_migration_is_the_first_migration()
     {
         MigrationRunner.Migrations.Should().NotBeEmpty();

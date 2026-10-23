@@ -31,7 +31,7 @@ public sealed partial class QuickAddView : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(_root);
 
-        SystemBackdrop = new DesktopAcrylicBackdrop();
+        SystemBackdrop = null;
 
         ConfigurePresenter();
 

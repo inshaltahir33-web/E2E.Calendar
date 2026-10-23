@@ -11,8 +11,8 @@
         <Border
             x:Name="StickyHeaderBar"
             Grid.Row="0"
-            Background="{ThemeResource LayerFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            Background="{ThemeResource App.CardBackgroundBrush}"
+            BorderBrush="{ThemeResource App.DividerBrush}"
             BorderThickness="0,0,0,1"
             Padding="12,6"
             Visibility="Collapsed">
@@ -46,7 +46,7 @@
                                         Grid.Column="0"
                                         VerticalAlignment="Center"
                                         Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                        Foreground="{ThemeResource App.AccentBrush}"
                                         Text="{x:Bind Header, Mode=OneTime}" />
                                     <TextBlock
                                         Grid.Column="1"
@@ -67,7 +67,7 @@
                                                     x:Name="RowHover"
                                                     Grid.Column="0"
                                                     Grid.ColumnSpan="5"
-                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                    Background="{ThemeResource App.HoverBrush}"
                                                     CornerRadius="4"
                                                     Opacity="0"
                                                     PointerEntered="OnRowPointerEntered"

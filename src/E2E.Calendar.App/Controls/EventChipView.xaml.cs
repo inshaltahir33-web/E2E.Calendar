@@ -1,20 +1,16 @@
+using System.Numerics;
 using E2E.Calendar.App.Utilities;
-using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Windows.UI;
 
 namespace E2E.Calendar.App.Controls;
 
 public sealed partial class EventChipView : UserControl
 {
-    private const byte TintAlphaLight = 0x2E;
-    private const byte TintAlphaDark = 0x47;
-    private const byte HoverAlphaLight = 0x3F;
-    private const byte HoverAlphaDark = 0x5C;
+    private readonly ThemeShadow _shadow = new();
 
     public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
         nameof(Title),
@@ -72,6 +68,8 @@ public sealed partial class EventChipView : UserControl
     {
         InitializeComponent();
 
+        ChipBorder.Shadow = _shadow;
+
         PointerEntered += OnPointerEntered;
         PointerExited += OnPointerExited;
         PointerPressed += OnPointerPressed;
@@ -79,6 +77,7 @@ public sealed partial class EventChipView : UserControl
         LostFocus += OnLostFocus;
         Loaded += OnLoaded;
         CheckBox.Tapped += OnCheckBoxTapped;
+        ActualThemeChanged += (_, _) => ApplyVisual();
     }
 
     public string Title
@@ -199,7 +198,6 @@ public sealed partial class EventChipView : UserControl
 
     private void ApplyVisual()
     {
-        var isDark = ActualTheme == ElementTheme.Dark;
         var isTickable = IsTickable;
 
         TitleText.Text = Title;
@@ -211,50 +209,37 @@ public sealed partial class EventChipView : UserControl
         CheckBox.Visibility = isTickable ? Visibility.Visible : Visibility.Collapsed;
         CheckGlyph.Visibility = IsDone ? Visibility.Visible : Visibility.Collapsed;
         CheckBox.Background = IsDone
-            ? (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
+            ? (Brush)Application.Current.Resources["App.AccentBrush"]
             : (Brush)Application.Current.Resources["ControlFillColorTransparentBrush"];
         CheckBox.BorderBrush = IsDone
-            ? (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
-            : (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+            ? (Brush)Application.Current.Resources["App.AccentBrush"]
+            : (Brush)Application.Current.Resources["App.DividerStrongBrush"];
 
         ColorBar.Visibility = isTickable ? Visibility.Collapsed : Visibility.Visible;
+        ColorBar.Background = CalendarColors.Bar(this, ColorHex);
 
-        var hasColor = ColorHelper.TryParse(ColorHex, out var color);
+        ChipBorder.Background = isTickable
+            ? (Brush)Application.Current.Resources["ControlFillColorTransparentBrush"]
+            : CalendarColors.Fill(this, ColorHex);
 
-        ColorBar.Background = hasColor
-            ? ColorHelper.FromColor(color)
-            : (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
-
-        if (isTickable)
-        {
-            ChipBorder.Background = ColorHelper.Transparent;
-        }
-        else if (hasColor)
-        {
-            var alpha = _isPressed
-                ? (isDark ? (byte)0x70 : (byte)0x52)
-                : _isHovered
-                    ? (isDark ? HoverAlphaDark : HoverAlphaLight)
-                    : (isDark ? TintAlphaDark : TintAlphaLight);
-
-            ChipBorder.Background = ColorHelper.FromColor(Color.FromArgb(alpha, color.R, color.G, color.B));
-        }
-        else
-        {
-            ChipBorder.Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-        }
+        TitleText.Foreground = CalendarColors.Text(this, ColorHex);
+        TimeTextBlock.Foreground = CalendarColors.Text(this, ColorHex);
+        TimeTextBlock.Opacity = 0.8;
 
         if (IsSelected)
         {
-            ChipBorder.BorderBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+            ChipBorder.BorderBrush = (Brush)Application.Current.Resources["App.AccentBrush"];
             ChipBorder.BorderThickness = new Thickness(2);
         }
         else
         {
-            ChipBorder.BorderBrush = ColorHelper.FromColor(
-                Color.FromArgb(isDark ? (byte)0x40 : (byte)0x26, color.R, color.G, color.B));
+            ChipBorder.BorderBrush = (Brush)Application.Current.Resources[
+                _isHovered ? "App.DividerStrongBrush" : "App.DividerBrush"];
             ChipBorder.BorderThickness = new Thickness(1);
         }
+
+        ChipBorder.Translation = _isHovered ? new Vector3(0, 0, 16) : Vector3.Zero;
+        ChipBorder.Opacity = _isPressed ? 0.85 : 1;
 
         Opacity = IsDone ? 0.55 : 1;
 
@@ -264,5 +249,6 @@ public sealed partial class EventChipView : UserControl
         }
 
         AutomationProperties.SetName(this, TooltipText ?? Title);
+        AutomationProperties.SetItemStatus(this, TimeText);
     }
 }

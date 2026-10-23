@@ -1,6 +1,8 @@
 using E2E.Calendar.App.Utilities;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace E2E.Calendar.App.Controls;
@@ -11,13 +13,13 @@ public sealed partial class MonthChipView : UserControl
         nameof(Title),
         typeof(string),
         typeof(MonthChipView),
-        new PropertyMetadata(string.Empty, OnTitleChanged));
+        new PropertyMetadata(string.Empty, OnVisualChanged));
 
     public static readonly DependencyProperty ColorProperty = DependencyProperty.Register(
         nameof(Color),
         typeof(string),
         typeof(MonthChipView),
-        new PropertyMetadata(null, OnColorChanged));
+        new PropertyMetadata(null, OnVisualChanged));
 
     public static readonly DependencyProperty ItemIdProperty = DependencyProperty.Register(
         nameof(ItemId),
@@ -29,13 +31,15 @@ public sealed partial class MonthChipView : UserControl
     {
         InitializeComponent();
 
-        this.CanDrag = true;
-        this.DragStarting += OnDragStarting;
+        CanDrag = true;
+        DragStarting += OnDragStarting;
 
-        PointerEntered += (_, _) => HoverFill.Visibility = Visibility.Visible;
-        PointerExited += (_, _) => HoverFill.Visibility = Visibility.Collapsed;
+        PointerEntered += (_, _) => ApplyHover(true);
+        PointerExited += (_, _) => ApplyHover(false);
         GotFocus += (_, _) => FocusRing.Visibility = Visibility.Visible;
         LostFocus += (_, _) => FocusRing.Visibility = Visibility.Collapsed;
+        Loaded += (_, _) => ApplyVisual();
+        ActualThemeChanged += (_, _) => ApplyVisual();
     }
 
     public string Title
@@ -56,20 +60,29 @@ public sealed partial class MonthChipView : UserControl
         set => SetValue(ItemIdProperty, value);
     }
 
-    private static void OnTitleChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    private static void OnVisualChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         if (sender is MonthChipView chip)
         {
-            chip.TitleText.Text = chip.Title;
+            chip.ApplyVisual();
         }
     }
 
-    private static void OnColorChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    private void ApplyVisual()
     {
-        if (sender is MonthChipView chip)
-        {
-            chip.AccentEdge.Background = ColorHelper.FromHex(chip.Color);
-        }
+        TitleText.Text = Title;
+        TitleText.Foreground = CalendarColors.Text(this, Color);
+        AccentEdge.Background = CalendarColors.Bar(this, Color);
+        ChipBorder.Background = CalendarColors.Fill(this, Color);
+
+        AutomationProperties.SetName(this, Title);
+        AutomationProperties.SetItemStatus(this, Color);
+    }
+
+    private void ApplyHover(bool hovered)
+    {
+        ChipBorder.BorderBrush = (Brush)Application.Current.Resources[
+            hovered ? "App.DividerStrongBrush" : "App.DividerBrush"];
     }
 
     private void OnDragStarting(UIElement sender, DragStartingEventArgs args)

@@ -409,7 +409,7 @@ public sealed partial class TimeGrid : UserControl
         _nowLine = new Rectangle
         {
             Height = 2,
-            Fill = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            Fill = (Brush)Application.Current.Resources["App.NowLineBrush"],
             Visibility = Visibility.Collapsed,
         };
 
@@ -419,7 +419,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Width = 8,
             Height = 8,
-            Fill = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            Fill = (Brush)Application.Current.Resources["App.NowLineBrush"],
             Visibility = Visibility.Collapsed,
         };
 
@@ -427,8 +427,8 @@ public sealed partial class TimeGrid : UserControl
 
         _ghost = new Border
         {
-            Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"],
-            BorderBrush = (Brush)Application.Current.Resources["AccentControlElevationBorderBrush"],
+            Background = (Brush)Application.Current.Resources["App.AccentBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["App.AccentBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
             Opacity = 0.35,
@@ -441,7 +441,7 @@ public sealed partial class TimeGrid : UserControl
         {
             FontSize = 11,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+            Foreground = (Brush)Application.Current.Resources["App.TextPrimaryBrush"],
             Visibility = Visibility.Collapsed,
         };
 
@@ -491,7 +491,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Text = FormatTimeZoneOffset(LocalTimeZone),
             FontSize = 11,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
             Margin = new Thickness(0, 0, 8, 6),
@@ -525,8 +525,10 @@ public sealed partial class TimeGrid : UserControl
         content.Children.Add(new TextBlock
         {
             Text = day.WeekdayLabel.ToUpperInvariant(),
-            FontSize = 12,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            CharacterSpacing = 40,
+            Foreground = (Brush)Application.Current.Resources["App.TextTertiaryBrush"],
             HorizontalAlignment = HorizontalAlignment.Center,
         });
 
@@ -540,7 +542,7 @@ public sealed partial class TimeGrid : UserControl
         var dateText = new TextBlock
         {
             Text = day.Date.Day.ToString(System.Globalization.CultureInfo.CurrentCulture),
-            FontSize = Tokens.Double("FontSizeSubtitle", 20d) - 6,
+            FontSize = Tokens.Double("FontSizeSubtitle", 20d),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
@@ -548,13 +550,13 @@ public sealed partial class TimeGrid : UserControl
 
         if (day.IsToday)
         {
-            dateHost.Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+            dateHost.Background = (Brush)Application.Current.Resources["App.AccentBrush"];
             dateHost.CornerRadius = new CornerRadius(16);
-            dateText.Foreground = (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+            dateText.Foreground = (Brush)Application.Current.Resources["App.OnAccentBrush"];
         }
         else
         {
-            dateText.Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+            dateText.Foreground = (Brush)Application.Current.Resources["App.TextPrimaryBrush"];
         }
 
         dateHost.Children.Add(dateText);
@@ -564,13 +566,11 @@ public sealed partial class TimeGrid : UserControl
 
         if (day.IsToday)
         {
-            background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
-            background.Opacity = 0.06;
+            background = (Brush)Application.Current.Resources["App.TodayTintBrush"];
         }
         else if (day.IsWeekend)
         {
-            background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
-            background.Opacity = 0.4;
+            background = (Brush)Application.Current.Resources["App.WeekendTintBrush"];
         }
 
         return new Border
@@ -611,7 +611,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Text = "all-day",
             FontSize = 11,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 6, 8, 0),
@@ -677,7 +677,7 @@ public sealed partial class TimeGrid : UserControl
             {
                 Text = $"+{pair.Value} more",
                 FontSize = 11,
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 2, 4, 2),
@@ -692,15 +692,11 @@ public sealed partial class TimeGrid : UserControl
 
     private Border CreateAllDayBar(CalendarItem item)
     {
-        var color = ColorHelper.TryParse(item.Color, out var parsed)
-            ? parsed
-            : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4);
-
         var content = new Grid();
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var bar = new Border { Background = ColorHelper.FromColor(color) };
+        var bar = new Border { Background = CalendarColors.Bar(this, item.Color) };
         Grid.SetColumn(bar, 0);
         content.Children.Add(bar);
 
@@ -708,7 +704,8 @@ public sealed partial class TimeGrid : UserControl
         {
             Text = item.Title,
             FontSize = 12,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = CalendarColors.Text(this, item.Color),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 3, 4, 3),
@@ -720,7 +717,7 @@ public sealed partial class TimeGrid : UserControl
         return new Border
         {
             Child = content,
-            Background = ColorHelper.FromColor(Windows.UI.Color.FromArgb(0x2E, color.R, color.G, color.B)),
+            Background = CalendarColors.Fill(this, item.Color),
             CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
             Margin = new Thickness(2, 1, 2, 1),
         };
@@ -816,7 +813,7 @@ public sealed partial class TimeGrid : UserControl
                     {
                         Text = $"+{hidden}",
                         FontSize = 11,
-                        Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                        Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
                         HorizontalAlignment = HorizontalAlignment.Left,
                     };
 
@@ -872,7 +869,7 @@ public sealed partial class TimeGrid : UserControl
         _linesCanvas.Children.Clear();
         _gutterCanvas.Children.Clear();
 
-        var divider = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+        var divider = (Brush)Application.Current.Resources["App.DividerBrush"];
 
         for (var hour = 0; hour <= HoursPerDay; hour++)
         {
@@ -913,7 +910,7 @@ public sealed partial class TimeGrid : UserControl
             {
                 Text = FormatHour(hour),
                 FontSize = 12,
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
             };
@@ -964,7 +961,7 @@ public sealed partial class TimeGrid : UserControl
             {
                 Text = FormatLocalTime(local),
                 FontSize = 12,
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
@@ -1175,10 +1172,10 @@ public sealed partial class TimeGrid : UserControl
 
         var colour = new MenuFlyoutSubItem { Text = "Change colour" };
 
-        foreach (var hex in CalendarPalette.All)
+        foreach (var paletteName in CalendarPalette.All)
         {
-            var entry = new MenuFlyoutItem { Text = hex };
-            entry.Click += (_, _) => ItemActionRequested?.Invoke(this, new TimeGridItemActionEventArgs(item with { Color = hex }, TimeGridItemAction.ChangeColor));
+            var entry = new MenuFlyoutItem { Text = paletteName };
+            entry.Click += (_, _) => ItemActionRequested?.Invoke(this, new TimeGridItemActionEventArgs(item with { Color = paletteName }, TimeGridItemAction.ChangeColor));
             colour.Items.Add(entry);
         }
 

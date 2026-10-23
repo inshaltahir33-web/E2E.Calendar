@@ -58,9 +58,7 @@ public partial class EventEditorView : UserControl
 
     private void UpdateColorSwatch()
     {
-        ColorSwatch.Background = string.IsNullOrWhiteSpace(ViewModel.Color)
-            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlFillColorDefaultBrush"]
-            : ColorHelper.FromHex(ViewModel.Color);
+        ColorSwatch.Background = CalendarColors.Bar(this, ViewModel.Color);
     }
 
     private void UpdateHeader()

@@ -61,9 +61,9 @@
                 HorizontalAlignment="Center"
                 Orientation="Horizontal"
                 Spacing="{StaticResource SpaceMD}">
-                <RadioButton Content="Use system setting" IsChecked="True" Tag="System" />
-                <RadioButton Content="Light" Tag="Light" />
-                <RadioButton Content="Dark" Tag="Dark" />
+                <RadioButton AutomationProperties.Name="Use the system theme" Content="Use system setting" IsChecked="True" Tag="System" />
+                <RadioButton AutomationProperties.Name="Use the light theme" Content="Light" Tag="Light" />
+                <RadioButton AutomationProperties.Name="Use the dark theme" Content="Dark" Tag="Dark" />
             </StackPanel>
         </StackPanel>
 

@@ -10,8 +10,8 @@
 
     <Grid
         x:Name="RootGrid"
-        Background="Transparent"
-        KeyboardAcceleratorPlacementMode="Hidden"
+        Background="{ThemeResource App.WindowBackgroundBrush}"
+       
         RowDefinitions="Auto,*">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="N" Invoked="OnNewAccelerator"/>
@@ -59,7 +59,7 @@
                     Glyph="&#xE787;" />
                 <TextBlock
                     VerticalAlignment="Center"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Foreground="{ThemeResource App.TextSecondaryBrush}"
                     Style="{ThemeResource CaptionTextBlockStyle}"
                     Text="Calendar" />
             </StackPanel>
@@ -125,15 +125,19 @@
                     <Button.Flyout>
                         <muxc:MenuFlyout>
                             <muxc:ToggleMenuFlyoutItem
+                                AutomationProperties.Name="Show weekends"
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekends, Mode=TwoWay}"
                                 Text="Show weekends" />
                             <muxc:ToggleMenuFlyoutItem
+                                AutomationProperties.Name="Show week numbers for the week view"
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekNumbers, Mode=TwoWay}"
                                 Text="Show week numbers (week)" />
                             <muxc:ToggleMenuFlyoutItem
+                                AutomationProperties.Name="Show week numbers for the month view"
                                 IsChecked="{x:Bind MonthViewModel.ShowWeekNumbers, Mode=TwoWay}"
                                 Text="Show week numbers (month)" />
                             <muxc:ToggleMenuFlyoutItem
+                                AutomationProperties.Name="Show the secondary time zone column"
                                 IsChecked="{x:Bind WeekViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
                                 Text="Secondary time zone" />
                         </muxc:MenuFlyout>
@@ -179,7 +183,7 @@
                 x:Name="SidebarHost"
                 Grid.Column="0"
                 Width="{StaticResource SidebarWidth}"
-                Background="Transparent">
+                Background="{ThemeResource App.SidebarBackgroundBrush}">
 
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -206,9 +210,9 @@
                     </muxc:SplitButton.Content>
                     <muxc:SplitButton.Flyout>
                         <MenuFlyout>
-                            <MenuFlyoutItem Click="OnNewEventClick" Text="Event" />
-                            <MenuFlyoutItem Click="OnNewReminderClick" Text="Reminder" />
-                            <MenuFlyoutItem Click="OnNewTaskClick" Text="Task" />
+                            <MenuFlyoutItem AutomationProperties.Name="New event" Click="OnNewEventClick" Text="Event" />
+                            <MenuFlyoutItem AutomationProperties.Name="New reminder" Click="OnNewReminderClick" Text="Reminder" />
+                            <MenuFlyoutItem AutomationProperties.Name="New task" Click="OnNewTaskClick" Text="Task" />
                         </MenuFlyout>
                     </muxc:SplitButton.Flyout>
                 </muxc:SplitButton>
@@ -279,13 +283,13 @@
                                 <DataTemplate x:DataType="vm:NavigationListItem">
                                     <Grid>
                                     <Border
-                                        Background="{ThemeResource SubtleFillColorTertiaryBrush}"
+                                        Background="{ThemeResource App.SelectedBrush}"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
                                     <Border
                                         Width="{StaticResource AccentBarWidth}"
                                         HorizontalAlignment="Left"
-                                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                        Background="{ThemeResource App.AccentBrush}"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
                                     <Button
@@ -308,7 +312,7 @@
                                                 MinWidth="20"
                                                 Padding="6,0"
                                                 VerticalAlignment="Center"
-                                                Background="{ThemeResource ControlFillColorDefaultBrush}"
+                                                Background="{ThemeResource App.HoverBrush}"
                                                 CornerRadius="8">
                                                 <TextBlock
                                                     HorizontalAlignment="Center"
@@ -333,13 +337,13 @@
                                 <DataTemplate x:DataType="vm:NavigationListItem">
                                     <Grid>
                                     <Border
-                                        Background="{ThemeResource SubtleFillColorTertiaryBrush}"
+                                        Background="{ThemeResource App.SelectedBrush}"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
                                     <Border
                                         Width="{StaticResource AccentBarWidth}"
                                         HorizontalAlignment="Left"
-                                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                        Background="{ThemeResource App.AccentBrush}"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
                                     <Button
@@ -362,7 +366,7 @@
                                                 MinWidth="20"
                                                 Padding="6,0"
                                                 VerticalAlignment="Center"
-                                                Background="{ThemeResource ControlFillColorDefaultBrush}"
+                                                Background="{ThemeResource App.HoverBrush}"
                                                 CornerRadius="8">
                                                 <TextBlock
                                                     HorizontalAlignment="Center"
@@ -401,7 +405,7 @@
                         Grid.Column="1"
                         Padding="8,2"
                         VerticalAlignment="Center"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
+                        Background="{ThemeResource App.HoverBrush}"
                         CornerRadius="{StaticResource RadiusControl}">
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXXS}">
                             <FontIcon

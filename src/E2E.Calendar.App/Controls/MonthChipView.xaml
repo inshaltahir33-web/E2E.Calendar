@@ -6,34 +6,30 @@
     <Border
         x:Name="ChipBorder"
         Height="20"
-        Padding="0,0,4,0"
-        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        Padding="0,0,6,0"
+        Background="{ThemeResource App.CardBackgroundBrush}"
+        BorderBrush="{ThemeResource App.DividerBrush}"
         BorderThickness="1"
-        CornerRadius="4">
+        CornerRadius="{StaticResource RadiusChip}">
         <Grid>
             <Grid ColumnDefinitions="3,*">
-                <Border x:Name="AccentEdge" Background="Transparent" />
+                <Border x:Name="AccentEdge" />
                 <TextBlock
                     x:Name="TitleText"
                     Grid.Column="1"
-                    Margin="4,0,0,0"
+                    Margin="6,0,0,0"
                     VerticalAlignment="Center"
-                    FontSize="11"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource App.TextPrimaryBrush}"
                     TextTrimming="CharacterEllipsis" />
             </Grid>
 
             <Border
-                x:Name="HoverFill"
-                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                CornerRadius="3"
-                Visibility="Collapsed" />
-
-            <Border
                 x:Name="FocusRing"
-                BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+                BorderBrush="{ThemeResource App.FocusBrush}"
                 BorderThickness="{StaticResource FocusStrokeThickness}"
-                CornerRadius="4"
+                CornerRadius="{StaticResource RadiusChip}"
                 Visibility="Collapsed" />
         </Grid>
     </Border>

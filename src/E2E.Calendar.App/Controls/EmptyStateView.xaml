@@ -7,8 +7,8 @@
         Padding="{StaticResource InsetLG}"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        Background="{ThemeResource App.CardBackgroundBrush}"
+        BorderBrush="{ThemeResource App.DividerBrush}"
         BorderThickness="1"
         CornerRadius="{StaticResource RadiusCard}">
 
@@ -22,7 +22,7 @@
                 x:Name="GlyphIcon"
                 HorizontalAlignment="Center"
                 FontSize="28"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                Foreground="{ThemeResource App.TextSecondaryBrush}" />
 
             <TextBlock
                 x:Name="TitleText"
@@ -41,6 +41,7 @@
 
             <Button
                 x:Name="ActionButton"
+                AutomationProperties.Name="Perform the suggested action"
                 HorizontalAlignment="Center"
                 Margin="0,4,0,0"
                 Click="OnActionClick"

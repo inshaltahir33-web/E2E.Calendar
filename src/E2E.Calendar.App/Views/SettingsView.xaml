@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+    <Grid Background="{ThemeResource App.CardBackgroundBrush}">
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="248" />

@@ -123,7 +123,7 @@ public sealed partial class MainWindow : Window
 
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
         {
-            this.SystemBackdrop = new MicaBackdrop();
+            this.SystemBackdrop = null;
         }
 
         this.SizeChanged += OnWindowSizeChanged;
@@ -315,8 +315,8 @@ public sealed partial class MainWindow : Window
         {
             Id = calendar.Id,
             Name = calendar.Name,
-            Color = calendar.Color ?? CalendarPalette.Other,
-            ColorBrush = ColorHelper.FromHex(calendar.Color),
+            Color = CalendarPalette.Normalize(calendar.Color),
+            ColorBrush = CalendarColors.Bar(RootGrid, calendar.Color),
             IsVisible = calendar.Visible,
         }));
 
@@ -607,10 +607,10 @@ public sealed partial class MainWindow : Window
 
         var colour = new MenuFlyoutSubItem { Text = "Colour" };
 
-        foreach (var hex in CalendarPalette.All)
+        foreach (var paletteName in CalendarPalette.All)
         {
-            var entry = new MenuFlyoutItem { Text = hex };
-            entry.Click += async (_, _) => await SetCalendarColorAsync(item.Id, hex);
+            var entry = new MenuFlyoutItem { Text = paletteName };
+            entry.Click += async (_, _) => await SetCalendarColorAsync(item.Id, paletteName);
             colour.Items.Add(entry);
         }
 

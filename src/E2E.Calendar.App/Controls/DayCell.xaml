@@ -10,13 +10,13 @@
 
         <Border
             x:Name="WeekBackground"
-            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            Background="{ThemeResource App.HoverBrush}"
             CornerRadius="{StaticResource RadiusControl}"
             Visibility="Collapsed" />
 
         <Border
             x:Name="HoverFill"
-            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            Background="{ThemeResource App.HoverBrush}"
             CornerRadius="{StaticResource RadiusControl}"
             Opacity="0.6"
             Visibility="Collapsed" />
@@ -27,7 +27,7 @@
             Height="28"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Fill="{ThemeResource AccentFillColorDefaultBrush}"
+            Fill="{ThemeResource App.AccentBrush}"
             Visibility="Collapsed" />
 
         <TextBlock
@@ -36,7 +36,7 @@
             VerticalAlignment="Center"
             Margin="0,0,0,6"
             FontSize="{StaticResource FontSizeBody}"
-            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+            Foreground="{ThemeResource App.TextPrimaryBrush}" />
 
         <TextBlock
             x:Name="TodayText"
@@ -44,7 +44,7 @@
             VerticalAlignment="Center"
             Margin="0,0,0,6"
             FontSize="{StaticResource FontSizeBody}"
-            Foreground="{ThemeResource TextOnAccentFillColorDefaultBrush}"
+            Foreground="{ThemeResource App.OnAccentBrush}"
             Visibility="Collapsed" />
 
         <Ellipse
@@ -54,12 +54,12 @@
             Margin="0,0,0,3"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Fill="{ThemeResource AccentFillColorDefaultBrush}"
+            Fill="{ThemeResource App.AccentBrush}"
             Visibility="Collapsed" />
 
         <Border
             x:Name="FocusRing"
-            BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+            BorderBrush="{ThemeResource App.FocusBrush}"
             BorderThickness="{StaticResource FocusStrokeThickness}"
             CornerRadius="{StaticResource RadiusControl}"
             Visibility="Collapsed" />

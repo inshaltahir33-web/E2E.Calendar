@@ -9,25 +9,25 @@
 
         <Border
             x:Name="WeekendTint"
-            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            Background="{ThemeResource App.HoverBrush}"
             Opacity="0.6" />
 
         <Border
             x:Name="HoverFill"
-            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+            Background="{ThemeResource App.HoverBrush}"
             CornerRadius="4"
             Visibility="Collapsed" />
 
         <Border
             x:Name="SelectionBorder"
-            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource App.AccentBrush}"
             BorderThickness="1"
             CornerRadius="4"
             Visibility="Collapsed" />
 
         <Border
             x:Name="FocusRing"
-            BorderBrush="{ThemeResource FocusStrokeColorOuterBrush}"
+            BorderBrush="{ThemeResource App.FocusBrush}"
             BorderThickness="{StaticResource FocusStrokeThickness}"
             CornerRadius="4"
             Visibility="Collapsed" />
@@ -40,7 +40,7 @@
                     Width="24"
                     Height="24"
                     HorizontalAlignment="Left"
-                    Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                    Fill="{ThemeResource App.AccentBrush}"
                     Visibility="Collapsed" />
                 <TextBlock
                     x:Name="DayText"
@@ -49,7 +49,7 @@
                     VerticalAlignment="Center"
                     TextAlignment="Center"
                     FontSize="{StaticResource FontSizeBody}"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                    Foreground="{ThemeResource App.TextPrimaryBrush}" />
                 <TextBlock
                     x:Name="TodayText"
                     Width="24"
@@ -57,7 +57,7 @@
                     VerticalAlignment="Center"
                     TextAlignment="Center"
                     FontSize="{StaticResource FontSizeBody}"
-                    Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                    Foreground="{ThemeResource App.OnAccentBrush}"
                     Visibility="Collapsed" />
                 <StackPanel
                     x:Name="HeatDots"
@@ -70,7 +70,7 @@
                         Width="5"
                         Height="5"
                         CornerRadius="3"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Background="{ThemeResource App.AccentBrush}"
                         Opacity="0.35"
                         Visibility="Collapsed" />
                     <Border
@@ -78,7 +78,7 @@
                         Width="5"
                         Height="5"
                         CornerRadius="3"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Background="{ThemeResource App.AccentBrush}"
                         Opacity="0.65"
                         Visibility="Collapsed" />
                     <Border
@@ -86,7 +86,7 @@
                         Width="5"
                         Height="5"
                         CornerRadius="3"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Background="{ThemeResource App.AccentBrush}"
                         Opacity="0.95"
                         Visibility="Collapsed" />
                 </StackPanel>
@@ -96,6 +96,7 @@
 
             <Button
                 x:Name="MoreButton"
+                AutomationProperties.Name="Show the remaining events for this day"
                 HorizontalAlignment="Left"
                 Background="Transparent"
                 BorderThickness="0"

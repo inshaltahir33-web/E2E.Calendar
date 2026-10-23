@@ -5,8 +5,8 @@
 
     <Border
         Padding="{StaticResource PaddingSnackbar}"
-        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        Background="{ThemeResource App.CardBackgroundBrush}"
+        BorderBrush="{ThemeResource App.DividerBrush}"
         BorderThickness="1"
         CornerRadius="{StaticResource RadiusControl}">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceLG}">
