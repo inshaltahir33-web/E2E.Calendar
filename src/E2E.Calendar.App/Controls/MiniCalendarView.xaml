@@ -39,11 +39,8 @@
             </Button>
         </Grid>
 
-        <Grid
-            x:Name="WeekdayHeader"
-            Height="16" />
+        <Grid x:Name="CalendarGrid" />
 
-        <Grid x:Name="DaysHost" />
 
     </StackPanel>
 

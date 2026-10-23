@@ -55,21 +55,27 @@ public sealed partial class MiniCalendarView : UserControl
 
         var days = ViewModel.Days;
 
-        WeekdayHeader.ColumnDefinitions.Clear();
-        WeekdayHeader.Children.Clear();
-        DaysHost.ColumnDefinitions.Clear();
-        DaysHost.RowDefinitions.Clear();
+        CalendarGrid.ColumnDefinitions.Clear();
+        CalendarGrid.RowDefinitions.Clear();
+        CalendarGrid.Children.Clear();
+
+        // Header and day cells live in the same grid so the seven columns can
+        // never drift out of alignment (the old split header clipped letters).
+        for (var index = 0; index < MiniCalendarGridBuilder.DaysPerWeek; index++)
+        {
+            CalendarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CellSize) });
+        }
+
+        CalendarGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(HeaderHeight) });
 
         for (var index = 0; index < MiniCalendarGridBuilder.DaysPerWeek; index++)
         {
-            WeekdayHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CellSize) });
-
             var header = new TextBlock
             {
-                Width = CellSize,
                 FontSize = 12,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
                 TextWrapping = TextWrapping.NoWrap,
             };
 
@@ -80,19 +86,15 @@ public sealed partial class MiniCalendarView : UserControl
             }
 
             Grid.SetColumn(header, index);
-            WeekdayHeader.Children.Add(header);
+            Grid.SetRow(header, 0);
+            CalendarGrid.Children.Add(header);
         }
 
         var rows = days.Count == 0 ? 1 : (int)Math.Ceiling(days.Count / (double)MiniCalendarGridBuilder.DaysPerWeek);
 
         for (var row = 0; row < rows; row++)
         {
-            DaysHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CellSize) });
-        }
-
-        for (var index = 0; index < MiniCalendarGridBuilder.DaysPerWeek; index++)
-        {
-            DaysHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CellSize) });
+            CalendarGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CellSize) });
         }
 
         EnsureCellCount(days.Count);
@@ -104,8 +106,13 @@ public sealed partial class MiniCalendarView : UserControl
             cell.Apply(days[index]);
             cell.Visibility = Visibility.Visible;
 
+            if (!CalendarGrid.Children.Contains(cell))
+            {
+                CalendarGrid.Children.Add(cell);
+            }
+
             Grid.SetColumn(cell, index % MiniCalendarGridBuilder.DaysPerWeek);
-            Grid.SetRow(cell, index / MiniCalendarGridBuilder.DaysPerWeek);
+            Grid.SetRow(cell, (index / MiniCalendarGridBuilder.DaysPerWeek) + 1);
         }
 
         for (var index = days.Count; index < _cells.Count; index++)
@@ -119,7 +126,7 @@ public sealed partial class MiniCalendarView : UserControl
         while (_cells.Count > count)
         {
             var last = _cells[^1];
-            DaysHost.Children.Remove(last);
+            CalendarGrid.Children.Remove(last);
             last.Tapped -= OnDayCellTapped;
             _cells.RemoveAt(_cells.Count - 1);
         }
@@ -130,7 +137,7 @@ public sealed partial class MiniCalendarView : UserControl
 
             cell.Tapped += OnDayCellTapped;
 
-            DaysHost.Children.Add(cell);
+            CalendarGrid.Children.Add(cell);
             _cells.Add(cell);
         }
     }
@@ -197,7 +204,7 @@ public sealed partial class MiniCalendarView : UserControl
 
     private async void OnCalendarPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        var delta = e.GetCurrentPoint(DaysHost).Properties.MouseWheelDelta;
+        var delta = e.GetCurrentPoint(CalendarGrid).Properties.MouseWheelDelta;
 
         if (delta is 0)
         {
