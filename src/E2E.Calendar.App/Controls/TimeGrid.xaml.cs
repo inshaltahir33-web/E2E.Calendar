@@ -68,6 +68,7 @@ public sealed partial class TimeGrid : UserControl
     private const int HoursPerDay = 24;
     private const int MaxAllDayRows = 3;
     private const int MaxOverlapColumns = 4;
+    private const double MaxDayChipWidth = 360;
     private const double ResizeEdgeInPixels = 6;
     private const double SecondaryColumnWidth = 72;
     private const int SnapMinutes = 15;
@@ -798,6 +799,13 @@ public sealed partial class TimeGrid : UserControl
                     var y = (entry.Item.StartUtc - dayStart).TotalHours * HourHeight;
                     var height = Math.Max(22, (entry.Item.EndUtc - entry.Item.StartUtc).TotalHours * HourHeight - 2);
                     var width = Math.Max(24, (_columnWidth / columnCount) - 1);
+
+                    if (days.Count == 1)
+                    {
+                        // Day view has one day column, so a lone or split event
+                        // would otherwise stretch across the whole window.
+                        width = Math.Min(width, MaxDayChipWidth);
+                    }
 
                     Canvas.SetTop(chip, y);
                     Canvas.SetLeft(chip, (entry.Column * _columnWidth / columnCount) + 1);
