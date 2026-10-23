@@ -97,5 +97,11 @@ public sealed partial class CalendarStateViewModel : ObservableObject
 
     partial void OnSelectedDateChanged(DateOnly value) => OnPropertyChanged(nameof(SelectedDate));
 
+    partial void OnViewModeChanged(CalendarViewMode value)
+    {
+        OnPropertyChanged(nameof(PeriodLabel));
+        OnPropertyChanged(nameof(Period));
+    }
+
     partial void OnWeekStartChanged(WeekStartDay value) => OnPropertyChanged(nameof(WeekStart));
 }

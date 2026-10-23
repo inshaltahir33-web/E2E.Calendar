@@ -693,8 +693,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private async void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(CalendarStateViewModel.SelectedDate)
+            or nameof(CalendarStateViewModel.LocalDate))
+        {
+            await SyncMiniCalendarAsync();
+        }
+
         if (e.PropertyName != nameof(CalendarStateViewModel.ViewMode))
         {
             return;
@@ -709,6 +715,23 @@ public sealed partial class MainWindow : Window
         {
             _navigation.NavigateTo(key);
         }
+
+        await SyncMiniCalendarAsync();
+    }
+
+    private async Task SyncMiniCalendarAsync()
+    {
+        var date = StateViewModel.SelectedDate == default
+            ? StateViewModel.LocalDate
+            : StateViewModel.SelectedDate;
+
+        if (MiniCalendar.VisibleYear != date.Year || MiniCalendar.VisibleMonth != date.Month)
+        {
+            MiniCalendar.VisibleYear = date.Year;
+            MiniCalendar.VisibleMonth = date.Month;
+        }
+
+        await MiniCalendar.RefreshAsync();
     }
 
     private void OnNewAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
