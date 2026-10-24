@@ -9,4 +9,8 @@ public interface ICalendarRepository
     Task<Calendar?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
     Task UpsertAsync(Calendar calendar, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    Task DeleteByAccountAsync(string accountId, CancellationToken cancellationToken = default);
 }

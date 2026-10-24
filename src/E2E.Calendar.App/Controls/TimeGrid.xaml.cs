@@ -1243,9 +1243,12 @@ public sealed partial class TimeGrid : UserControl
             return;
         }
 
-        e.Handled = true;
+        if (FindAncestor<Canvas>(chip) is Canvas canvas)
+        {
+            BeginItemDrag(canvas, item, e.GetCurrentPoint(canvas).Position, e.Pointer);
+        }
 
-        ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item));
+        e.Handled = true;
     }
 
     private void OnDayCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1270,18 +1273,7 @@ public sealed partial class TimeGrid : UserControl
 
         if (hit is not null && hit.Tag is CalendarItem hitItem)
         {
-            var mode = IsOnResizeEdge(hit, position) ? DragMode.Resize : DragMode.Move;
-
-            _drag = new DragState
-            {
-                Mode = mode,
-                Item = hitItem,
-                DayIndex = dayIndex,
-                StartUtc = hitItem.StartUtc,
-                EndUtc = hitItem.EndUtc,
-                GrabOffset = TimeAt(dayIndex, position.Y) - hitItem.StartUtc,
-                IsCopy = mode == DragMode.Move && IsControlDown(),
-            };
+            BeginItemDrag(canvas, hitItem, position, e.Pointer);
         }
         else
         {
@@ -1297,7 +1289,41 @@ public sealed partial class TimeGrid : UserControl
         }
 
         canvas.CapturePointer(e.Pointer);
+    }
+
+    private void BeginItemDrag(Canvas canvas, CalendarItem item, Point position, Pointer pointer)
+    {
+        var dayIndex = _dayCanvases.IndexOf(canvas);
+        var hit = HitTest(canvas, position);
+        var mode = hit is not null && IsOnResizeEdge(hit, position) ? DragMode.Resize : DragMode.Move;
+        _drag = new DragState
+        {
+            Mode = mode,
+            Item = item,
+            DayIndex = dayIndex,
+            StartUtc = item.StartUtc,
+            EndUtc = item.EndUtc,
+            GrabOffset = TimeAt(dayIndex, position.Y) - item.StartUtc,
+            IsCopy = mode == DragMode.Move && IsControlDown(),
+            LastPointerPosition = position,
+        };
+        canvas.CapturePointer(pointer);
         ShowPreview();
+    }
+
+    private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        while (element is not null)
+        {
+            if (element is T match)
+            {
+                return match;
+            }
+
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        return null;
     }
 
     private void OnDayCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
@@ -1309,6 +1335,12 @@ public sealed partial class TimeGrid : UserControl
 
         var canvas = (Canvas)sender;
         var position = e.GetCurrentPoint(canvas).Position;
+        if (Math.Abs(position.X - _drag.LastPointerPosition.X) > 3 ||
+            Math.Abs(position.Y - _drag.LastPointerPosition.Y) > 3)
+        {
+            _drag.HasMoved = true;
+        }
+        _drag.LastPointerPosition = position;
         var time = TimeAt(_drag.DayIndex, position.Y);
 
         switch (_drag.Mode)
@@ -1351,6 +1383,11 @@ public sealed partial class TimeGrid : UserControl
                 break;
 
             case DragMode.Move:
+                if (!drag.HasMoved)
+                {
+                    ItemActivated?.Invoke(this, new TimeGridItemEventArgs(drag.Item!));
+                    break;
+                }
                 var moved = drag.Item! with { StartUtc = drag.StartUtc, EndUtc = drag.EndUtc };
 
                 if (drag.IsCopy)
@@ -1581,5 +1618,9 @@ public sealed partial class TimeGrid : UserControl
         public TimeSpan GrabOffset { get; init; }
 
         public bool IsCopy { get; init; }
+
+        public Point LastPointerPosition { get; set; }
+
+        public bool HasMoved { get; set; }
     }
 }

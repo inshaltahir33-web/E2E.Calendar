@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using E2E.Calendar.Core.Abstractions;
+using E2E.Calendar.Core.Models;
 
 namespace E2E.Calendar.App.Services;
 
@@ -8,7 +10,12 @@ public sealed class NavigationService
     private readonly Dictionary<string, Type> _views = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Func<object?, object?>> _factories = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?> _pages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IShellState _shellState;
 
+    public NavigationService(IShellState shellState)
+    {
+        _shellState = shellState;
+    }
     public Frame? Frame { get; set; }
 
     public string? CurrentViewKey { get; private set; }
@@ -38,6 +45,7 @@ public sealed class NavigationService
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         CurrentViewKey = key;
+        UpdateShellState(key, parameter);
 
         if (_factories.TryGetValue(key, out var factory))
         {
@@ -60,5 +68,32 @@ public sealed class NavigationService
         Navigated?.Invoke(this, key);
 
         return _views.ContainsKey(key) || _factories.ContainsKey(key);
+    }
+
+    private void UpdateShellState(string key, object? parameter)
+    {
+        if (key.Equals(NavigationKeys.Settings, StringComparison.OrdinalIgnoreCase))
+        {
+            _shellState.ShowSettings();
+        }
+        else if (key.Equals(NavigationKeys.Tasks, StringComparison.OrdinalIgnoreCase))
+        {
+            _shellState.ShowTodo(parameter as string);
+        }
+        else if (key.Equals(NavigationKeys.Reminders, StringComparison.OrdinalIgnoreCase))
+        {
+            _shellState.ShowTodo(parameter as string);
+        }
+        else
+        {
+            var view = key switch
+            {
+                NavigationKeys.Day => CalendarViewMode.Day,
+                NavigationKeys.Month => CalendarViewMode.Month,
+                NavigationKeys.Agenda => CalendarViewMode.Agenda,
+                _ => CalendarViewMode.Week,
+            };
+            _shellState.ShowCalendar(view, _shellState.SelectedDate);
+        }
     }
 }

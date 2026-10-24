@@ -27,6 +27,8 @@ public sealed class EventRepository : IEventRepository
         color AS Color,
         meeting_url AS MeetingUrl,
         attendees AS Attendees,
+        tags AS Tags,
+        category AS Category,
         travel_minutes AS TravelMinutes,
         created_utc AS CreatedUtc,
         updated_utc AS UpdatedUtc,
@@ -38,12 +40,12 @@ public sealed class EventRepository : IEventRepository
         INSERT INTO event (
             id, calendar_id, remote_id, etag, title, notes, location, url,
             start_utc, end_utc, all_day, tz_id, rrule, exdates,
-            recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, travel_minutes,
+            recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, tags, category, travel_minutes,
             created_utc, updated_utc, deleted, dirty)
         VALUES (
             @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Url,
             @StartUtc, @EndUtc, @AllDay, @TimeZoneId, @RRule, @ExDates,
-            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @TravelMinutes,
+            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @Tags, @Category, @TravelMinutes,
             @CreatedUtc, @UpdatedUtc, @Deleted, @Dirty)
         ON CONFLICT(id) DO UPDATE SET
             calendar_id = excluded.calendar_id,
@@ -64,6 +66,8 @@ public sealed class EventRepository : IEventRepository
             color = excluded.color,
             meeting_url = excluded.meeting_url,
             attendees = excluded.attendees,
+            tags = excluded.tags,
+            category = excluded.category,
             travel_minutes = excluded.travel_minutes,
             created_utc = excluded.created_utc,
             updated_utc = excluded.updated_utc,
@@ -75,12 +79,12 @@ public sealed class EventRepository : IEventRepository
         INSERT INTO event (
             id, calendar_id, remote_id, etag, title, notes, location, url,
             start_utc, end_utc, all_day, tz_id, rrule, exdates,
-            recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, travel_minutes,
+            recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, tags, category, travel_minutes,
             created_utc, updated_utc, deleted, dirty)
         VALUES (
             @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Url,
             @StartUtc, @EndUtc, @AllDay, @TimeZoneId, @RRule, @ExDates,
-            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @TravelMinutes,
+            @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @Tags, @Category, @TravelMinutes,
             @CreatedUtc, @UpdatedUtc, @Deleted, @Dirty)
         """;
 
@@ -133,6 +137,61 @@ public sealed class EventRepository : IEventRepository
                     CalendarId = calendarId,
                 },
                 cancellationToken: cancellationToken));
+
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<CalendarEvent>> SearchAsync(
+        EventSearchCriteria criteria,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+
+        var predicates = new List<string> { "deleted = 0" };
+        var parameters = new DynamicParameters();
+
+        if (!string.IsNullOrWhiteSpace(criteria.Text))
+        {
+            predicates.Add("(title LIKE @Text OR notes LIKE @Text OR location LIKE @Text OR tags LIKE @Text OR category LIKE @Text)");
+            parameters.Add("Text", $"%{criteria.Text.Trim()}%");
+        }
+
+        if (criteria.FromUtc is not null)
+        {
+            predicates.Add("end_utc > @From");
+            parameters.Add("From", SqliteTime.ToUtcText(criteria.FromUtc.Value));
+        }
+
+        if (criteria.ToUtc is not null)
+        {
+            predicates.Add("start_utc < @To");
+            parameters.Add("To", SqliteTime.ToUtcText(criteria.ToUtc.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.Category))
+        {
+            predicates.Add("lower(category) = lower(@Category)");
+            parameters.Add("Category", criteria.Category.Trim());
+        }
+
+        var tagIndex = 0;
+        foreach (var tag in criteria.Tags.Where(tag => !string.IsNullOrWhiteSpace(tag)))
+        {
+            var parameterName = $"Tag{tagIndex++}";
+            predicates.Add($"(',' || replace(lower(coalesce(tags, '')), ' ', '') || ',') LIKE @_{parameterName}");
+            parameters.Add($"_{parameterName}", $"%,{tag.Trim().ToLowerInvariant()},%");
+        }
+
+        var sql = $"""
+            SELECT {SelectColumns}
+            FROM event
+            WHERE {string.Join(" AND ", predicates)}
+            ORDER BY start_utc, title;
+            """;
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<CalendarEvent>(
+            new CommandDefinition(sql, parameters, cancellationToken: cancellationToken));
 
         return rows.AsList();
     }
@@ -221,5 +280,25 @@ public sealed class EventRepository : IEventRepository
 
         await transaction.CommitAsync(cancellationToken);
     }
-}
 
+    public async Task DeleteByCalendarIdsAsync(IReadOnlyList<string> calendarIds, CancellationToken cancellationToken = default)
+    {
+        if (calendarIds.Count == 0)
+        {
+            return;
+        }
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        var names = calendarIds.Select((_, index) => $"@Calendar{index}").ToArray();
+        var parameters = new DynamicParameters();
+        for (var index = 0; index < calendarIds.Count; index++)
+        {
+            parameters.Add($"Calendar{index}", calendarIds[index]);
+        }
+
+        await connection.ExecuteAsync(new CommandDefinition(
+            $"DELETE FROM event WHERE calendar_id IN ({string.Join(", ", names)});",
+            parameters,
+            cancellationToken: cancellationToken));
+    }
+}

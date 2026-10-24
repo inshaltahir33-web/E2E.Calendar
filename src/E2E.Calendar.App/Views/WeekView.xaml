@@ -5,9 +5,13 @@
     xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="Transparent" Loaded="OnLoaded">
+    <Grid Background="Transparent" Loaded="OnLoaded" RowDefinitions="Auto,*">
+        <Border Padding="12,6" Background="{ThemeResource App.CardBackgroundBrush}">
+            <TextBlock Text="{x:Bind ViewModel.WeatherText, Mode=OneWay}" AutomationProperties.Name="Local weather" />
+        </Border>
 
         <ctrl:TimeGrid
+            Grid.Row="1"
             x:Name="TimeGrid"
             Days="{x:Bind ViewModel.Days, Mode=OneWay}"
             Items="{x:Bind ViewModel.Items, Mode=OneWay}"

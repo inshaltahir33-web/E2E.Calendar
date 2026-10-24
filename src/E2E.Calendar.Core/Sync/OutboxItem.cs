@@ -15,6 +15,7 @@ public static class OutboxEntities
 
 public sealed record OutboxItem
 {
+    public long Id { get; init; }
     public required string Entity { get; init; }
 
     public required string EntityId { get; init; }

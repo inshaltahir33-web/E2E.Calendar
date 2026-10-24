@@ -85,4 +85,22 @@ public sealed class CalendarRepository : ICalendarRepository
                 },
                 cancellationToken: cancellationToken));
     }
+
+    public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM calendar WHERE id = @Id AND is_local = 1 AND account_id IS NULL;",
+            new { Id = id },
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task DeleteByAccountAsync(string accountId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM calendar WHERE account_id = @AccountId;",
+            new { AccountId = accountId },
+            cancellationToken: cancellationToken));
+    }
 }

@@ -81,6 +81,12 @@ public static class RecurrenceRuleBuilder
             return false;
         }
 
+        rRule = rRule.Trim();
+        if (rRule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase))
+        {
+            rRule = rRule["RRULE:".Length..];
+        }
+
         var frequency = RecurrenceFrequency.None;
         var interval = 1;
         var weeklyDays = new List<DayOfWeek>();

@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace E2E.Calendar.App.Controls;
 
@@ -261,6 +262,15 @@ public sealed partial class MonthDayCell : UserControl
     private void OnTapped(object sender, TappedRoutedEventArgs e)
     {
         DaySelected?.Invoke(this, Date);
+    }
+
+    private void OnCellKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key is VirtualKey.Enter or VirtualKey.Space)
+        {
+            DaySelected?.Invoke(this, Date);
+            e.Handled = true;
+        }
     }
 
     private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)

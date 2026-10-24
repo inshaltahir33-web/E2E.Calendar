@@ -624,6 +624,17 @@ public sealed partial class EventEditorViewModel : ObservableObject
             return false;
         }
 
+        if (item.IsRecurring && !item.IsException)
+        {
+            await _recurrenceEdit.ApplyAsync(
+                calendarEvent,
+                item.StartUtc,
+                calendarEvent with { StartUtc = startUtc, EndUtc = endUtc },
+                RecurrenceEditScope.ThisEvent);
+            _queryCache.Invalidate();
+            return true;
+        }
+
         await _events.UpdateAsync(calendarEvent with { StartUtc = startUtc, EndUtc = endUtc });
 
         return true;

@@ -163,6 +163,17 @@ public partial class AgendaView : Page
         AnimateCompletion(item, checkBox);
     }
 
+    private void OnAgendaItemKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key is Windows.System.VirtualKey.Enter or Windows.System.VirtualKey.Space &&
+            sender is FrameworkElement { DataContext: AgendaItemViewModel item } &&
+            item.IsTickable)
+        {
+            _ = ViewModel.ToggleCompletedAsync(item);
+            e.Handled = true;
+        }
+    }
+
     private static void AnimateCompletion(AgendaItemViewModel item, UIElement target)
     {
         var visual = ElementCompositionPreview.GetElementVisual(target);

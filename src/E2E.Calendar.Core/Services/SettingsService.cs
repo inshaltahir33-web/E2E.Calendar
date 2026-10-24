@@ -7,7 +7,7 @@ namespace E2E.Calendar.Core.Services;
 /// Loads and persists <see cref="AppSettings"/>. Owns the mapping between the
 /// typed model and the raw key/value rows so every consumer reads consistent data.
 /// </summary>
-public sealed class SettingsService
+public sealed class SettingsService : ISettingsService, System.ComponentModel.INotifyPropertyChanged
 {
     private const string ThemeKey = "appearance.theme";
     private const string AccentKey = "appearance.accent";
@@ -35,14 +35,25 @@ public sealed class SettingsService
     }
 
     public event EventHandler<AppSettings>? Changed;
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 
     public AppSettings Current => _current;
+    public AppTheme Theme => _current.Theme;
+    public WeekStartDay WeekStart => _current.WeekStart;
+    public ClockFormat Clock => _current.ClockFormat;
+    public bool ShowWeekends => _current.ShowWeekends;
+    public bool ShowWeekNumbersWeek => _current.ShowWeekNumbers;
+    public bool ShowWeekNumbersMonth => _current.ShowWeekNumbers;
+    public bool ShowSecondaryTimeZone => _current.ShowSecondaryTimeZone;
+    public string? SecondaryTimeZoneId => _current.SecondaryTimeZoneId;
+    public AppDensity Density => _current.Density;
 
     public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
     {
         var values = await _repository.GetAllAsync(cancellationToken);
 
         _current = FromValues(values);
+        NotifyProperties();
 
         return _current;
     }
@@ -52,6 +63,7 @@ public sealed class SettingsService
         ArgumentNullException.ThrowIfNull(settings);
 
         _current = settings;
+        NotifyProperties();
 
         await _repository.SetAsync(ThemeKey, settings.Theme.ToString(), cancellationToken);
         await _repository.SetAsync(AccentKey, settings.Accent.ToString(), cancellationToken);
@@ -75,6 +87,20 @@ public sealed class SettingsService
             cancellationToken);
 
         Changed?.Invoke(this, _current);
+    }
+
+    private void NotifyProperties()
+    {
+        PropertyChanged?.Invoke(this, new(nameof(Current)));
+        PropertyChanged?.Invoke(this, new(nameof(Theme)));
+        PropertyChanged?.Invoke(this, new(nameof(WeekStart)));
+        PropertyChanged?.Invoke(this, new(nameof(Clock)));
+        PropertyChanged?.Invoke(this, new(nameof(ShowWeekends)));
+        PropertyChanged?.Invoke(this, new(nameof(ShowWeekNumbersWeek)));
+        PropertyChanged?.Invoke(this, new(nameof(ShowWeekNumbersMonth)));
+        PropertyChanged?.Invoke(this, new(nameof(ShowSecondaryTimeZone)));
+        PropertyChanged?.Invoke(this, new(nameof(SecondaryTimeZoneId)));
+        PropertyChanged?.Invoke(this, new(nameof(Density)));
     }
 
     private static AppSettings FromValues(IReadOnlyDictionary<string, string?> values)

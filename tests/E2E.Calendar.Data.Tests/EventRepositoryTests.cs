@@ -52,6 +52,8 @@ public sealed class EventRepositoryTests : IAsyncLifetime
             RecurrenceIdUtc = null,
             Color = "#FF0000",
             MeetingUrl = "https://example.invalid/meet",
+            Tags = "work, planning",
+            Category = "Meeting",
             TravelMinutes = 15,
             CreatedUtc = new DateTimeOffset(2026, 10, 19, 8, 0, 0, TimeSpan.Zero),
             UpdatedUtc = new DateTimeOffset(2026, 10, 19, 8, 0, 0, TimeSpan.Zero),
@@ -85,11 +87,34 @@ public sealed class EventRepositoryTests : IAsyncLifetime
         loaded.RecurrenceIdUtc.Should().BeNull();
         loaded.Color.Should().Be(original.Color);
         loaded.MeetingUrl.Should().Be(original.MeetingUrl);
+        loaded.Tags.Should().Be(original.Tags);
+        loaded.Category.Should().Be(original.Category);
         loaded.TravelMinutes.Should().Be(original.TravelMinutes);
         loaded.CreatedUtc.Should().Be(original.CreatedUtc);
         loaded.UpdatedUtc.Should().Be(original.UpdatedUtc);
         loaded.Deleted.Should().BeFalse();
         loaded.Dirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Search_filters_text_date_tags_and_category()
+    {
+        await _events.UpsertAsync(CreateEvent(
+            id: "evt-match",
+            startUtc: new DateTimeOffset(2026, 10, 22, 9, 0, 0, TimeSpan.Zero),
+            endUtc: new DateTimeOffset(2026, 10, 22, 10, 0, 0, TimeSpan.Zero)));
+        await _events.UpsertAsync(CreateEvent(id: "evt-other", calendarId: "cal-google"));
+
+        var results = await _events.SearchAsync(new EventSearchCriteria
+        {
+            Text = "stand",
+            FromUtc = new DateTimeOffset(2026, 10, 22, 0, 0, 0, TimeSpan.Zero),
+            ToUtc = new DateTimeOffset(2026, 10, 23, 0, 0, 0, TimeSpan.Zero),
+            Tags = ["planning"],
+            Category = "meeting",
+        });
+
+        results.Select(item => item.Id).Should().ContainSingle().Which.Should().Be("evt-match");
     }
 
     [Fact]

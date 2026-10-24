@@ -26,8 +26,10 @@ public sealed class MigrationRunner
             await using (var command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
-                if (migration.Version == 3 &&
-                    await ColumnExistsAsync(connection, transaction, "event", "attendees", cancellationToken))
+                if ((migration.Version == 3 &&
+                     await ColumnExistsAsync(connection, transaction, "event", "attendees", cancellationToken)) ||
+                    (migration.Version == 4 &&
+                     await ColumnExistsAsync(connection, transaction, "event", "tags", cancellationToken)))
                 {
                     command.CommandText = "SELECT 1;";
                 }

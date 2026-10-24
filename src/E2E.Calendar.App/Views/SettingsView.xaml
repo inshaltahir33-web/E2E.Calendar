@@ -145,6 +145,25 @@
                                 AutomationProperties.Name="Show secondary time zone" />
                         </Grid>
                     </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Secondary time zone" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Choose the zone shown beside your local schedule. Event times are converted from their stored UTC instant." />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="220"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.TimeZoneLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.SecondaryTimeZoneIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Secondary time zone" />
+                        </Grid>
+                    </Border>
+
                 </StackPanel>
 
                 <!--  Accounts  -->
@@ -167,9 +186,10 @@
                                         <Button
                                             Grid.Column="2"
                                             VerticalAlignment="Center"
-                                            Content="Manage"
-                                            IsEnabled="False"
-                                            AutomationProperties.Name="Manage account" />
+                                            Content="Remove"
+                                            Tag="{Binding Id}"
+                                            Click="OnRemoveAccountClick"
+                                            AutomationProperties.Name="Remove account" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -197,7 +217,11 @@
                                     Command="{x:Bind ViewModel.AddMicrosoftAccountCommand}"
                                     IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
                                     AutomationProperties.Name="Add Microsoft account" />
-                                <Button Content="CalDAV" IsEnabled="False" AutomationProperties.Name="Add CalDAV account" />
+                                <Button
+                                    Content="CalDAV"
+                                    Command="{x:Bind ViewModel.AddCalDavAccountCommand}"
+                                    IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
+                                    AutomationProperties.Name="Add CalDAV account" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -206,6 +230,12 @@
                 <!--  Calendars  -->
                 <StackPanel x:Name="SectionCalendars" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Calendars" />
+
+                    <Button
+                        HorizontalAlignment="Left"
+                        Content="Create calendar"
+                        Click="OnCreateCalendarClick"
+                        AutomationProperties.Name="Create calendar" />
 
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnDefinitions="*,Auto">
@@ -239,11 +269,22 @@
                                             VerticalAlignment="Center"
                                             Style="{StaticResource SettingsCardTitleStyle}"
                                             Text="{Binding Name}" />
-                                        <ToggleSwitch
-                                            Grid.Column="2"
-                                            VerticalAlignment="Center"
-                                            AutomationProperties.Name="{Binding Name}"
-                                            IsOn="{Binding IsVisible, Mode=TwoWay}" />
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                                            <ToggleSwitch
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="{Binding Name}"
+                                                IsOn="{Binding IsVisible, Mode=TwoWay}" />
+                                            <Button
+                                                Content="Color"
+                                                Tag="{Binding Id}"
+                                                Click="OnCalendarColorClick"
+                                                AutomationProperties.Name="Change calendar color" />
+                                            <Button
+                                                Content="Delete"
+                                                Tag="{Binding Id}"
+                                                Click="OnDeleteCalendarClick"
+                                                AutomationProperties.Name="Delete calendar" />
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -416,6 +457,14 @@
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Day / Week / Month / Agenda" />
                                 <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="D / W / M / A" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Previous / next period" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Arrow keys" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Undo delete" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Ctrl + Z" />
                             </Grid>
                         </StackPanel>
                     </Border>

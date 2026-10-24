@@ -40,6 +40,10 @@ public sealed record CalendarEvent
 
     public string? Attendees { get; init; }
 
+    public string? Tags { get; init; }
+
+    public string? Category { get; init; }
+
     public int? TravelMinutes { get; init; }
 
     public required DateTimeOffset CreatedUtc { get; init; }

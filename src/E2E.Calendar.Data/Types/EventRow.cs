@@ -42,6 +42,10 @@ public sealed class EventRow
 
     public string? Attendees { get; init; }
 
+    public string? Tags { get; init; }
+
+    public string? Category { get; init; }
+
     public long? TravelMinutes { get; init; }
 
     public string CreatedUtc { get; init; } = string.Empty;
@@ -75,6 +79,8 @@ public sealed class EventRow
         Color = model.Color,
         MeetingUrl = model.MeetingUrl,
         Attendees = model.Attendees,
+        Tags = model.Tags,
+        Category = model.Category,
         TravelMinutes = model.TravelMinutes,
         CreatedUtc = SqliteTime.ToUtcText(model.CreatedUtc),
         UpdatedUtc = SqliteTime.ToUtcText(model.UpdatedUtc),

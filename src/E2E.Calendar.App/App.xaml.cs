@@ -8,6 +8,8 @@ using E2E.Calendar.Data.Repos;
 using E2E.Calendar.Platform;
 using E2E.Calendar.Sync.Google;
 using E2E.Calendar.Sync.Microsoft;
+using E2E.Calendar.Sync.Ics;
+using E2E.Calendar.Sync.CalDav;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -25,6 +27,7 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private Views.QuickAddView? _quickAddWindow;
     private Services.HotkeyService? _hotkey;
+    private CrashReportingService? _crashReporter;
 
     public App()
     {
@@ -59,6 +62,7 @@ public partial class App : Application
         try
         {
             _host = BuildHost();
+            _crashReporter = _host.Services.GetRequiredService<CrashReportingService>();
             await _host.StartAsync();
 
             var settings = _host.Services.GetRequiredService<SettingsService>();
@@ -90,6 +94,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            _crashReporter?.Report(ex, "startup");
             Log.Fatal(ex, "Application startup failed");
             _mainWindow?.Close();
             _mainWindow = null;
@@ -146,6 +151,10 @@ public partial class App : Application
                 });
                 services.AddSingleton<IClock, SystemClock>();
                 services.AddSingleton<ISecretStore, CredentialStore>();
+                services.AddSingleton<WidgetAgendaCardService>();
+                services.AddSingleton<WeatherService>();
+                services.AddSingleton<CrashReportingService>();
+                services.AddHostedService<UpdateCheckService>();
 
                 services.AddSingleton(serviceProvider => new Db(
                     ResolveDatabasePath(),
@@ -159,9 +168,15 @@ public partial class App : Application
                 services.AddSingleton<IAlertRepository, AlertRepository>();
                 services.AddSingleton<ISettingsRepository, SettingsRepository>();
                 services.AddSingleton<IOutbox, Outbox>();
+                services.AddSingleton<IAttachmentRepository, AttachmentRepository>();
+                services.AddSingleton<SchedulingAssistantService>();
+                services.AddSingleton<EventAttachmentService>();
+                services.AddSingleton<ConflictResolutionService>();
+                services.AddSingleton<ScheduleExportService>();
 
                 services.AddSingleton<IRecurrenceExpander, RecurrenceExpander>();
                 services.AddSingleton<EventQueryService>();
+                services.AddSingleton<ProductivityAnalyticsService>();
                 services.AddSingleton<IEventQueryCache>(serviceProvider => serviceProvider.GetRequiredService<EventQueryService>());
                 services.AddSingleton<EventService>(serviceProvider => new EventService(
                     serviceProvider.GetRequiredService<IEventRepository>(),
@@ -178,6 +193,8 @@ public partial class App : Application
                 services.AddTransient<Views.QuickAddView>();
 
                 services.AddSingleton<SettingsService>();
+                services.AddSingleton<ISettingsService>(serviceProvider => serviceProvider.GetRequiredService<SettingsService>());
+                services.AddSingleton<IShellState, ShellState>();
                 services.AddSingleton<ViewModels.SettingsViewModel>();
                 services.AddSingleton<AppearanceService>();
                 services.AddSingleton<CalendarService>();
@@ -188,11 +205,15 @@ public partial class App : Application
                 services.AddSingleton<IEntitlementService, FreeEntitlementService>();
                 services.AddSingleton<GoogleCalendarProvider>();
                 services.AddSingleton<GraphCalendarProvider>();
+                services.AddSingleton<CalDavProvider>();
                 services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
                     serviceProvider.GetRequiredService<GoogleCalendarProvider>());
                 services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
                     serviceProvider.GetRequiredService<GraphCalendarProvider>());
+                services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
+                    serviceProvider.GetRequiredService<CalDavProvider>());
                 services.AddSingleton<SyncCoordinator>();
+                services.AddSingleton<IcsService>();
                 services.AddSingleton<CalendarStateViewModel>();
                 services.AddSingleton<NavigationService>();
                 services.AddSingleton<MainWindowViewModel>();
@@ -206,6 +227,7 @@ public partial class App : Application
 
                 services.AddHostedService<AppStartupService>();
                 services.AddHostedService<NavigationRegistrationService>();
+                services.AddHostedService<ReminderNotificationService>();
 
 #if DEBUG
                 if (string.Equals(
@@ -244,6 +266,7 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
+        _crashReporter?.Report(e.Exception, "ui");
         Log.Fatal(e.Exception, "Unhandled exception");
         e.Handled = true;
     }

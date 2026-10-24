@@ -159,6 +159,15 @@ public sealed class RecurrenceRuleBuilderTests
         result.MonthlyDay.Should().Be(15);
     }
 
+    [Fact]
+    public void A_prefixed_ical_rule_can_be_read_back()
+    {
+        RecurrenceRuleBuilder.TryParse("RRULE:FREQ=DAILY;INTERVAL=2", out var result).Should().BeTrue();
+
+        result.Frequency.Should().Be(RecurrenceFrequency.Daily);
+        result.Interval.Should().Be(2);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

@@ -1,5 +1,7 @@
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
+using E2E.Calendar.Core;
+using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -81,5 +83,102 @@ public sealed partial class SettingsView : UserControl
         ContentScroll.ChangeView(null, 0, null, disableAnimation: true);
 
         _ = Motion.FadeInAsync(ContentScroll);
+    }
+
+    private async void OnCreateCalendarClick(object sender, RoutedEventArgs e)
+    {
+        var nameBox = new TextBox { PlaceholderText = "Calendar name" };
+        var dialog = new ContentDialog
+        {
+            Title = "Create calendar",
+            Content = nameBox,
+            PrimaryButtonText = "Create",
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary ||
+            string.IsNullOrWhiteSpace(nameBox.Text))
+        {
+            return;
+        }
+
+        await ViewModel.CreateCalendarAsync(nameBox.Text, CalendarPalette.Personal);
+    }
+
+    private async void OnDeleteCalendarClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id })
+        {
+            return;
+        }
+
+        try
+        {
+            await ViewModel.DeleteCalendarAsync(id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await new ContentDialog
+            {
+                Title = "Calendar cannot be deleted",
+                Content = ex.Message,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            }.ShowAsync();
+        }
+    }
+
+    private void OnCalendarColorClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id } button)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        foreach (var color in CalendarPalette.All)
+        {
+            var item = new MenuFlyoutItem { Text = color };
+            item.Click += async (_, _) => await ViewModel.SetCalendarColorAsync(id, color);
+            flyout.Items.Add(item);
+        }
+
+        flyout.ShowAt(button);
+    }
+
+    private async void OnRemoveAccountClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id } || id == "local")
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "Remove connected account?",
+            Content = "This removes the account, its synced calendars, and their local event copies. The remote account is not changed.",
+            PrimaryButtonText = "Remove",
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            try
+            {
+                await ViewModel.RemoveAccountAsync(id);
+            }
+            catch (Exception ex)
+            {
+                await new ContentDialog
+                {
+                    Title = "Account could not be removed",
+                    Content = ex.Message,
+                    CloseButtonText = "Close",
+                    XamlRoot = XamlRoot,
+                }.ShowAsync();
+            }
+        }
     }
 }

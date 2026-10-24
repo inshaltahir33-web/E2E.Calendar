@@ -46,6 +46,15 @@ public sealed class AccountRepository : IAccountRepository
             cancellationToken: cancellationToken));
     }
 
+    public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM account WHERE id = @Id;",
+            new { Id = id },
+            cancellationToken: cancellationToken));
+    }
+
     private sealed class AccountRow
     {
         public required string Id { get; init; }

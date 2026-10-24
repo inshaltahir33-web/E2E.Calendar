@@ -1,6 +1,7 @@
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Sync;
+using System.Text.Json;
 
 namespace E2E.Calendar.Core.Services;
 
@@ -228,6 +229,7 @@ public sealed class EventService : IEventService
                 Entity = OutboxEntities.Event,
                 EntityId = calendarEvent.Id,
                 Op = op,
+                Payload = JsonSerializer.Serialize(calendarEvent),
             },
             cancellationToken);
 

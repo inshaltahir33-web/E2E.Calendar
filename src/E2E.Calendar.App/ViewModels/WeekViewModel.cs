@@ -17,8 +17,11 @@ public sealed partial class WeekViewModel : TimeGridViewModel
         CalendarStateViewModel state,
         EventQueryService query,
         IEventQueryCache cache,
-        SettingsService settings)
-        : base(state, query, cache, settings)
+        SettingsService settings,
+        Services.WeatherService weather,
+        IReminderRepository reminders,
+        ITaskRepository tasks)
+        : base(state, query, cache, settings, weather, reminders, tasks)
     {
     }
 

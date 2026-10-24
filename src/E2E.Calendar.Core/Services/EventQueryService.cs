@@ -49,6 +49,30 @@ public sealed class EventQueryService : IEventQueryCache
             .ToList();
     }
 
+    public async Task<IReadOnlyList<CalendarItem>> SearchAsync(
+        EventSearchCriteria criteria,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+
+        var events = await _events.SearchAsync(criteria, cancellationToken);
+
+        return events.Select(calendarEvent => new CalendarItem
+        {
+            Id = calendarEvent.Id,
+            Title = calendarEvent.Title,
+            StartUtc = calendarEvent.StartUtc,
+            EndUtc = calendarEvent.EndUtc,
+            Kind = CalendarItemKind.Event,
+            CalendarId = calendarEvent.CalendarId,
+            Color = calendarEvent.Color,
+            Location = calendarEvent.Location,
+            AllDay = calendarEvent.AllDay,
+            HasTime = !calendarEvent.AllDay,
+            IsRecurring = !string.IsNullOrWhiteSpace(calendarEvent.RRule),
+        }).ToList();
+    }
+
     public event EventHandler? Invalidated;
 
     public void Invalidate()

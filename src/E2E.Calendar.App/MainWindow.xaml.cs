@@ -13,6 +13,10 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Dispatching;
 using Microsoft.Extensions.Logging;
+using E2E.Calendar.Sync.Ics;
+using Windows.Storage.Pickers;
+using Windows.Storage;
+using WinRT.Interop;
 
 namespace E2E.Calendar.App;
 
@@ -25,18 +29,22 @@ public sealed partial class MainWindow : Window
     private readonly CalendarService _calendars;
     private readonly IReminderRepository _reminders;
     private readonly EventService _events;
+    private readonly IEventRepository _eventRepository;
     private readonly EventQueryService _query;
     private readonly IClock _clock;
     private readonly ILogger<MainWindow> _logger;
     private readonly EventEditorViewModel _editor;
     private readonly SettingsService _settings;
     private readonly SyncCoordinator _sync;
+    private readonly IcsService _ics;
+    private readonly ScheduleExportService _scheduleExport;
     private bool _syncInProgress;
     private bool _rsvpInProgress;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
     private CancellationTokenSource? _searchCts;
+    private EventSearchCriteria _searchCriteria = new();
 
     private bool _lastAutoCollapsed;
     private HotkeyService? _hotkey;
@@ -56,6 +64,7 @@ public sealed partial class MainWindow : Window
         NavigationService navigation,
         CalendarService calendars,
         EventService events,
+        IEventRepository eventRepository,
         EventQueryService query,
         IClock clock,
         ILogger<MainWindow> logger,
@@ -65,7 +74,9 @@ public sealed partial class MainWindow : Window
         MiniCalendarViewModel miniCalendar,
         IReminderRepository reminders,
         SettingsService settings,
-        SyncCoordinator sync)
+        SyncCoordinator sync,
+        IcsService ics,
+        ScheduleExportService scheduleExport)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -87,6 +98,7 @@ public sealed partial class MainWindow : Window
         _navigation = navigation;
         _calendars = calendars;
         _events = events;
+        _eventRepository = eventRepository;
         _query = query;
         _clock = clock;
         _logger = logger;
@@ -97,6 +109,8 @@ public sealed partial class MainWindow : Window
         _reminders = reminders;
         _settings = settings;
         _sync = sync;
+        _ics = ics;
+        _scheduleExport = scheduleExport;
 
         this.InitializeComponent();
 
@@ -121,7 +135,6 @@ public sealed partial class MainWindow : Window
         EditorHost.KeyDown += OnEditorKeyDown;
 
         Snackbar.ActionInvoked += OnSnackbarAction;
-        PlaceholderState.ActionInvoked += OnPlaceholderAction;
 
         this.ExtendsContentIntoTitleBar = true;
         this.SetTitleBar(TitleBarElement);
@@ -134,6 +147,53 @@ public sealed partial class MainWindow : Window
         this.SizeChanged += OnWindowSizeChanged;
         RootGrid.Loaded += OnLoaded;
     }
+
+    private async void OnExportPdfClick(object sender, RoutedEventArgs e) =>
+            await ExportScheduleAsync(ScheduleExportViewForState(), "pdf");
+
+        private async void OnExportHtmlClick(object sender, RoutedEventArgs e) =>
+            await ExportScheduleAsync(ScheduleExportViewForState(), "html");
+
+        private ScheduleExportView ScheduleExportViewForState() =>
+            StateViewModel.ViewMode switch
+            {
+                CalendarViewMode.Day => ScheduleExportView.Day,
+                CalendarViewMode.Month => ScheduleExportView.Month,
+                _ => ScheduleExportView.Week,
+            };
+
+        private async Task ExportScheduleAsync(ScheduleExportView view, string format)
+        {
+            try
+            {
+                var period = StateViewModel.Period;
+                var document = await _scheduleExport.BuildAsync(view, period.FromUtc, period.ToUtc);
+                var picker = new FileSavePicker
+                {
+                    SuggestedFileName = $"{view}-schedule",
+                };
+                picker.FileTypeChoices.Add(
+                    format == "pdf" ? new KeyValuePair<string, IList<string>>("PDF document", [".pdf"]) :
+                    new KeyValuePair<string, IList<string>>("HTML document", [".html"]));
+                InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var bytes = format == "pdf"
+                    ? _scheduleExport.ToPdf(document)
+                    : System.Text.Encoding.UTF8.GetBytes(_scheduleExport.ToHtml(document));
+                await FileIO.WriteBytesAsync(file, bytes);
+                ShowStatus($"Exported {view.ToString().ToLowerInvariant()} schedule.", InfoBarSeverity.Success);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Schedule export failed");
+                ShowStatus("The schedule could not be exported.", InfoBarSeverity.Error);
+            }
+        }
 
     public MainWindowViewModel ViewModel { get; }
 
@@ -554,9 +614,6 @@ public sealed partial class MainWindow : Window
         StatusInfoBar.IsOpen = false;
     }
 
-    private void OnPlaceholderAction(object? sender, EventArgs e) =>
-        OpenNewEvent();
-
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
@@ -588,8 +645,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var now = _clock.UtcNow;
-        var items = await _query.GetItemsAsync(now.AddYears(-1), now.AddYears(1), cancellationToken: token);
+        var criteria = _searchCriteria with { Text = query };
+        var items = await _query.SearchAsync(criteria, token);
 
         if (token.IsCancellationRequested)
         {
@@ -599,7 +656,6 @@ public sealed partial class MainWindow : Window
         _searchResults.Clear();
 
         foreach (var item in items
-            .Where(item => item.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
             .OrderBy(item => item.StartUtc)
             .Take(8))
         {
@@ -607,6 +663,54 @@ public sealed partial class MainWindow : Window
         }
 
         SearchBox.ItemsSource = _searchResults.Values.ToList();
+    }
+
+    private void OnSearchFiltersClick(object sender, RoutedEventArgs e)
+    {
+        SearchFromEnabled.IsChecked = _searchCriteria.FromUtc is not null;
+        SearchToEnabled.IsChecked = _searchCriteria.ToUtc is not null;
+        SearchFromDate.Date = _searchCriteria.FromUtc?.ToLocalTime() ?? _clock.UtcNow.ToLocalTime();
+        SearchToDate.Date = _searchCriteria.ToUtc?.ToLocalTime() ?? _clock.UtcNow.ToLocalTime();
+        SearchTagsBox.Text = string.Join(", ", _searchCriteria.Tags);
+        SearchCategoryBox.Text = _searchCriteria.Category ?? string.Empty;
+    }
+
+    private void OnApplySearchFiltersClick(object sender, RoutedEventArgs e)
+    {
+        _searchCriteria = new EventSearchCriteria
+        {
+            FromUtc = SearchFromEnabled.IsChecked == true
+                ? new DateTimeOffset(SearchFromDate.Date.Date, TimeSpan.Zero)
+                : null,
+            ToUtc = SearchToEnabled.IsChecked == true
+                ? new DateTimeOffset(SearchToDate.Date.Date.AddDays(1), TimeSpan.Zero)
+                : null,
+            Tags = SearchTagsBox.Text
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            Category = string.IsNullOrWhiteSpace(SearchCategoryBox.Text)
+                ? null
+                : SearchCategoryBox.Text.Trim(),
+        };
+
+        SearchFiltersButton.Flyout?.Hide();
+        _searchDebounce.Stop();
+        _ = RefreshSearchResultsAsync(SearchBox.Text);
+    }
+
+    private void OnClearSearchFiltersClick(object sender, RoutedEventArgs e)
+    {
+        _searchCriteria = new EventSearchCriteria();
+        SearchFromEnabled.IsChecked = false;
+        SearchToEnabled.IsChecked = false;
+        SearchFromDate.Date = _clock.UtcNow.ToLocalTime();
+        SearchToDate.Date = _clock.UtcNow.ToLocalTime();
+        SearchTagsBox.Text = string.Empty;
+        SearchCategoryBox.Text = string.Empty;
+        SearchFiltersButton.Flyout?.Hide();
+        _searchDebounce.Stop();
+        _ = RefreshSearchResultsAsync(SearchBox.Text);
     }
 
     private static string FormatSearchResult(CalendarItem item)
@@ -756,18 +860,10 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnNavigated(object? sender, string key)    {
-        var hasView = _navigation.RegisteredViews.Contains(key);
-
-        _logger.LogInformation("Navigated to {ViewKey} (implemented: {IsImplemented})", key, hasView);
-
-        ViewModel.Status = hasView ? key : $"{key} is not available yet";
-        PlaceholderState.Visibility = hasView ? Visibility.Collapsed : Visibility.Visible;
-        ContentFrame.Visibility = hasView ? Visibility.Visible : Visibility.Collapsed;
-
-        if (hasView)
-        {
-            _ = Motion.FadeInAsync(ContentFrame);
-        }
+        _logger.LogInformation("Navigated to {ViewKey}", key);
+        ViewModel.Status = key;
+        ContentFrame.Visibility = Visibility.Visible;
+        _ = Motion.FadeInAsync(ContentFrame);
     }
 
     private async void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -913,6 +1009,9 @@ public sealed partial class MainWindow : Window
             new("Month view", () => ShowView(CalendarViewMode.Month, NavigationKeys.Month)),
             new("Agenda view", () => ShowView(CalendarViewMode.Agenda, NavigationKeys.Agenda)),
             new("Settings", () => _navigation.NavigateTo(NavigationKeys.Settings)),
+            new("Import .ics calendar file", () => _ = ImportIcsAsync()),
+            new("Export calendar to .ics file", () => _ = ExportIcsAsync()),
+            new("Toggle weekends", () => WeekViewModel.ShowWeekends = !WeekViewModel.ShowWeekends),
         };
 
         var list = new ListView
@@ -938,6 +1037,51 @@ public sealed partial class MainWindow : Window
             command.Execute();
         }
     }
+
+    private async Task ExportIcsAsync()
+        {
+            var picker = new FileSavePicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            picker.SuggestedFileName = "calendar";
+            picker.FileTypeChoices.Add("iCalendar file", new List<string> { ".ics" });
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            var events = await _eventRepository.GetInRangeAsync(null, _clock.UtcNow.AddYears(-10), _clock.UtcNow.AddYears(10));
+            await FileIO.WriteTextAsync(file, _ics.Export(events));
+            ShowStatus("Calendar exported.", InfoBarSeverity.Success);
+        }
+
+    private async Task ImportIcsAsync()
+        {
+            var picker = new FileOpenPicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            picker.FileTypeFilter.Add(".ics");
+            var file = await picker.PickSingleFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            var calendar = (await _calendars.GetAllAsync()).FirstOrDefault(item => item.IsLocal && !item.ReadOnly);
+            if (calendar is null)
+            {
+                ShowStatus("Create a local calendar before importing.", InfoBarSeverity.Warning);
+                return;
+            }
+
+            var imported = _ics.Import(await FileIO.ReadTextAsync(file), calendar.Id, _clock.UtcNow);
+            foreach (var calendarEvent in imported)
+            {
+                await _events.UpdateAsync(calendarEvent);
+            }
+
+            await RefreshCalendarsAsync();
+            ShowStatus($"Imported {imported.Count} event(s).", InfoBarSeverity.Success);
+        }
 
     private async void OnUndoAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {

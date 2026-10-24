@@ -5,21 +5,31 @@ using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
+using E2E.Calendar.App.Services;
 
 namespace E2E.Calendar.App.ViewModels;
 
 public abstract partial class TimeGridViewModel : CalendarPageViewModel
 {
     private readonly SettingsService _settings;
+    private readonly WeatherService _weather;
+    private readonly IReminderRepository _reminders;
+    private readonly ITaskRepository _tasks;
 
     protected TimeGridViewModel(
         CalendarStateViewModel state,
         EventQueryService query,
         IEventQueryCache cache,
-        SettingsService settings)
+        SettingsService settings,
+        WeatherService weather,
+        IReminderRepository reminders,
+        ITaskRepository tasks)
         : base(state, query, cache)
     {
         _settings = settings;
+        _weather = weather;
+        _reminders = reminders;
+        _tasks = tasks;
 
         ApplySettings(_settings.Current);
 
@@ -49,12 +59,55 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
     [ObservableProperty]
     private WeekStartDay _weekStart = WeekStartDay.Monday;
 
+    [ObservableProperty]
+    private string _weatherText = "Weather unavailable";
+
+    public async Task RefreshWeatherAsync()
+    {
+        var snapshot = await _weather.GetLocalAsync();
+        WeatherText = snapshot?.Display ?? "Weather unavailable";
+    }
+
     public override async Task RefreshAsync()
     {
         await LoadPeriodAsync(async () =>
         {
             var period = State.Period;
-            var items = await Query.GetItemsAsync(period.FromUtc, period.ToUtc);
+            var items = (await Query.GetItemsAsync(period.FromUtc, period.ToUtc)).ToList();
+            foreach (var reminder in await _reminders.GetInRangeAsync(period.FromUtc, period.ToUtc))
+            {
+                if (reminder.DoneUtc is null && !reminder.Deleted && reminder.DueUtc is { } due)
+                {
+                    items.Add(new CalendarItem
+                    {
+                        Id = reminder.Id,
+                        Title = reminder.Title,
+                        StartUtc = due,
+                        EndUtc = due.AddMinutes(15),
+                        Kind = CalendarItemKind.Reminder,
+                        HasTime = true,
+                        IsDone = false,
+                    });
+                }
+            }
+
+            foreach (var task in await _tasks.GetAllAsync())
+            {
+                if (task.DoneUtc is null && !task.Deleted && task.DueUtc is { } due &&
+                    due >= period.FromUtc && due < period.ToUtc)
+                {
+                    items.Add(new CalendarItem
+                    {
+                        Id = task.Id,
+                        Title = task.Title,
+                        StartUtc = due,
+                        EndUtc = task.HasTime ? due.AddMinutes(15) : due.AddDays(1),
+                        Kind = CalendarItemKind.Task,
+                        HasTime = task.HasTime,
+                        IsDone = false,
+                    });
+                }
+            }
             var timeZone = TimeZoneInfo.Local;
             var today = State.LocalDate;
 

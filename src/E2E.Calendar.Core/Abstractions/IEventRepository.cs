@@ -12,6 +12,10 @@ public interface IEventRepository
         DateTimeOffset toUtc,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CalendarEvent>> SearchAsync(
+        EventSearchCriteria criteria,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<CalendarEvent>> GetSoftDeletedAsync(
         DateTimeOffset deletedBeforeUtc,
         CancellationToken cancellationToken = default);
@@ -23,4 +27,6 @@ public interface IEventRepository
         CancellationToken cancellationToken = default);
 
     Task UpsertAsync(CalendarEvent calendarEvent, CancellationToken cancellationToken = default);
+
+    Task DeleteByCalendarIdsAsync(IReadOnlyList<string> calendarIds, CancellationToken cancellationToken = default);
 }

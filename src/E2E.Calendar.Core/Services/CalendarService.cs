@@ -22,6 +22,33 @@ public sealed class CalendarService
     public Task UpsertAsync(Calendar calendar, CancellationToken cancellationToken = default) =>
         _calendars.UpsertAsync(calendar, cancellationToken);
 
+    public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
+        _calendars.DeleteAsync(id, cancellationToken);
+
+    public async Task<Calendar> CreateLocalAsync(
+        string name,
+        string color,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Calendar name is required.", nameof(name));
+        }
+
+        var calendar = new Calendar
+        {
+            Id = $"cal-{Guid.NewGuid():N}",
+            Name = name.Trim(),
+            Color = CalendarPalette.Normalize(color),
+            Visible = true,
+            ReadOnly = false,
+            IsLocal = true,
+        };
+
+        await _calendars.UpsertAsync(calendar, cancellationToken);
+        return calendar;
+    }
+
     public async Task<IReadOnlyList<Calendar>> EnsureDefaultsAsync(CancellationToken cancellationToken = default)
     {
         var existing = await _calendars.GetAllAsync(cancellationToken);

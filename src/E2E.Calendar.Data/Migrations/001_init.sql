@@ -38,6 +38,8 @@ CREATE TABLE event(
   recurrence_id_utc TEXT NULL,
   color TEXT,
   meeting_url TEXT,
+  tags TEXT,
+  category TEXT,
   travel_minutes INT,
   created_utc TEXT,
   updated_utc TEXT,

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using E2E.Calendar.Core.Sync;
 
 namespace E2E.Calendar.App.Services;
@@ -12,6 +13,9 @@ public sealed class SyncCoordinator
     private readonly IEventRepository _events;
     private readonly IAccountRepository _accounts;
     private readonly IAlertRepository _alerts;
+    private readonly ISecretStore _secrets;
+    private readonly IOutbox _outbox;
+    private readonly ConflictResolutionService _conflicts;
     private readonly IReadOnlyDictionary<Provider, ISyncProvider> _providers;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -20,12 +24,18 @@ public sealed class SyncCoordinator
         IEventRepository events,
         IAccountRepository accounts,
         IAlertRepository alerts,
+        ISecretStore secrets,
+        IOutbox outbox,
+        ConflictResolutionService conflicts,
         IEnumerable<ISyncProvider> providers)
     {
         _calendars = calendars;
         _events = events;
         _accounts = accounts;
         _alerts = alerts;
+        _secrets = secrets;
+        _outbox = outbox;
+        _conflicts = conflicts;
         _providers = providers.ToDictionary(provider => provider.Provider);
     }
 
@@ -71,6 +81,34 @@ public sealed class SyncCoordinator
         }
     }
 
+    public async Task RemoveAccountAsync(string accountId, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            IsSyncing = true;
+            var account = Accounts.FirstOrDefault(item => item.Id == accountId)
+                ?? throw new InvalidOperationException("The account is no longer connected.");
+            var calendars = (await _calendars.GetAllAsync(cancellationToken))
+                .Where(calendar => calendar.AccountId == accountId)
+                .Select(calendar => calendar.Id)
+                .ToList();
+
+            await _events.DeleteByCalendarIdsAsync(calendars, cancellationToken);
+            await _calendars.DeleteByAccountAsync(accountId, cancellationToken);
+            await _accounts.DeleteAsync(accountId, cancellationToken);
+            var secretPrefix = account.Provider == Provider.Microsoft ? "ms" : "google";
+            await _secrets.RemoveAsync($"{secretPrefix}:access:{accountId}", cancellationToken);
+            await _secrets.RemoveAsync($"{secretPrefix}:refresh:{accountId}", cancellationToken);
+            Accounts.Remove(account);
+        }
+        finally
+        {
+            IsSyncing = false;
+            _gate.Release();
+        }
+    }
+
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
         if (!await _gate.WaitAsync(0, cancellationToken))
@@ -90,6 +128,26 @@ public sealed class SyncCoordinator
                     continue;
                 }
 
+                foreach (var pending in await _outbox.GetPendingAsync(cancellationToken: cancellationToken))
+                {
+                    if (pending.Entity != OutboxEntities.Event)
+                    {
+                        continue;
+                    }
+
+                    var pendingEvent = await _events.GetByIdAsync(pending.EntityId, cancellationToken);
+                    if (pendingEvent?.CalendarId != calendar.Id)
+                    {
+                        continue;
+                    }
+
+                    await provider.PushAsync(calendar, pending with
+                    {
+                        Payload = pending.Payload ?? JsonSerializer.Serialize(pendingEvent),
+                    }, cancellationToken);
+                    await _outbox.RemoveAsync(pending.Id, cancellationToken);
+                }
+
                 var result = await provider.PullAsync(calendar, cancellationToken);
                 if (result.ResetRequired)
                 {
@@ -98,7 +156,10 @@ public sealed class SyncCoordinator
 
                 foreach (var calendarEvent in result.Events)
                 {
-                    await _events.UpsertAsync(calendarEvent, cancellationToken);
+                    var existing = await _events.GetByIdAsync(calendarEvent.Id, cancellationToken);
+                    await _events.UpsertAsync(
+                        existing is null ? calendarEvent with { Dirty = false } : _conflicts.Resolve(existing, calendarEvent),
+                        cancellationToken);
                 }
 
                 await _calendars.UpsertAsync(calendar with { SyncToken = result.NextSyncToken }, cancellationToken);

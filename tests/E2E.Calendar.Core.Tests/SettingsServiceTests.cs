@@ -99,6 +99,30 @@ public sealed class SettingsServiceTests
         observed!.Theme.Should().Be(AppTheme.Light);
     }
 
+    [Fact]
+    public async Task Updating_exposes_typed_observable_properties()
+    {
+        var service = new SettingsService(new FakeSettingsRepository());
+        var changed = new List<string?>();
+        service.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        await service.UpdateAsync(new AppSettings
+        {
+            Theme = AppTheme.Dark,
+            WeekStart = WeekStartDay.Sunday,
+            ClockFormat = ClockFormat.TwentyFourHour,
+            ShowWeekends = false,
+            Density = AppDensity.Compact,
+        });
+
+        service.Theme.Should().Be(AppTheme.Dark);
+        service.WeekStart.Should().Be(WeekStartDay.Sunday);
+        service.Clock.Should().Be(ClockFormat.TwentyFourHour);
+        service.ShowWeekends.Should().BeFalse();
+        service.Density.Should().Be(AppDensity.Compact);
+        changed.Should().Contain(nameof(ISettingsService.Theme));
+    }
+
     private sealed class FakeSettingsRepository : ISettingsRepository
     {
         public Dictionary<string, string?> Values { get; } = new(StringComparer.OrdinalIgnoreCase);

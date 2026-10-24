@@ -39,6 +39,7 @@ public partial class WeekView : Page
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await ViewModel.RefreshAsync();
+        await ViewModel.RefreshWeatherAsync();
     }
 
     private async void OnPeriodChanged(object? sender, EventArgs e) =>

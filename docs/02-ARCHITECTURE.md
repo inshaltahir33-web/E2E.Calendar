@@ -54,6 +54,7 @@ CREATE TABLE event(
   rrule TEXT NULL, exdates TEXT NULL,           -- RFC5545
   recurrence_master_id TEXT NULL, recurrence_id_utc TEXT NULL,  -- for edited single occurrences (exceptions)
   color TEXT, meeting_url TEXT, travel_minutes INT,
+  tags TEXT, category TEXT,
   created_utc TEXT, updated_utc TEXT, deleted INT DEFAULT 0, dirty INT DEFAULT 0);
 CREATE INDEX ix_event_range ON event(calendar_id, start_utc, end_utc);
 CREATE TABLE alert(id TEXT PK, owner_type TEXT, owner_id TEXT,  -- 'event'|'reminder'|'task'

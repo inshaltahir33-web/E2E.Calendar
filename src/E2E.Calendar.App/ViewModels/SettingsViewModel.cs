@@ -52,6 +52,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         DensityLabels = ["Comfortable", "Compact"];
         ClockFormatLabels = ["12-hour", "24-hour"];
         WeekStartLabels = ["Sunday", "Monday", "Saturday"];
+        TimeZoneLabels = new ObservableCollection<string>(TimeZoneCatalog.Common.Select(item => item.Label));
         AccentColors = new ObservableCollection<string>(CalendarPalette.All);
     }
 
@@ -66,6 +67,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     public ObservableCollection<string> ClockFormatLabels { get; }
 
     public ObservableCollection<string> WeekStartLabels { get; }
+
+    public ObservableCollection<string> TimeZoneLabels { get; }
 
     public ObservableCollection<string> AccentColors { get; }
 
@@ -105,6 +108,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showSecondaryTimeZone;
+
+    [ObservableProperty]
+    private int _secondaryTimeZoneIndex;
 
     [ObservableProperty]
     private bool _showBirthdays;
@@ -157,6 +163,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowWeekends = settings.ShowWeekends;
         ShowWeekNumbers = settings.ShowWeekNumbers;
         ShowSecondaryTimeZone = settings.ShowSecondaryTimeZone;
+        SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(settings.SecondaryTimeZoneId);
         ShowBirthdays = settings.ShowBirthdays;
         DensityIndex = settings.Density == AppDensity.Compact ? 1 : 0;
 
@@ -179,6 +186,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Accounts.Clear();
         Accounts.Add(new SettingsAccountItem
         {
+            Id = "local",
             Provider = Provider.Local,
             DisplayName = "This device",
             Detail = $"{calendars.Count} calendar(s) · local only",
@@ -187,6 +195,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             Accounts.Add(new SettingsAccountItem
             {
+                Id = account.Id,
                 Provider = account.Provider,
                 DisplayName = account.DisplayName,
                 Detail = account.Email ?? "Connected account",
@@ -206,6 +215,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task AddMicrosoftAccountAsync()
     {
         await AddAccountAsync(Provider.Microsoft);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAddAccount), AllowConcurrentExecutions = false)]
+    private async Task AddCalDavAccountAsync()
+    {
+        await AddAccountAsync(Provider.CalDav);
     }
 
     public bool CanAddAccount => !IsAccountOperationInProgress;
@@ -255,6 +270,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowWeekends = true;
         ShowWeekNumbers = false;
         ShowSecondaryTimeZone = false;
+        SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(null);
         ShowBirthdays = false;
         DensityIndex = 0;
 
@@ -279,6 +295,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowWeekends = ShowWeekends,
         ShowWeekNumbers = ShowWeekNumbers,
         ShowSecondaryTimeZone = ShowSecondaryTimeZone,
+        SecondaryTimeZoneId = TimeZoneCatalog.Common[Math.Clamp(SecondaryTimeZoneIndex, 0, TimeZoneCatalog.Common.Count - 1)].Id,
         ShowBirthdays = ShowBirthdays,
         Density = DensityIndex == 1 ? AppDensity.Compact : AppDensity.Comfortable,
         OnboardingComplete = true,
@@ -312,9 +329,46 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnShowSecondaryTimeZoneChanged(bool value) => Persist();
 
+    partial void OnSecondaryTimeZoneIndexChanged(int value) => Persist();
+
     public async Task ImportBirthdaysAsync(CancellationToken cancellationToken = default)
     {
         await _sync.ImportBirthdaysAsync(cancellationToken);
+        await LoadAsync();
+    }
+
+    public async Task CreateCalendarAsync(string name, string color, CancellationToken cancellationToken = default)
+    {
+        await _calendars.CreateLocalAsync(name, color, cancellationToken);
+        await LoadAsync();
+    }
+
+    public async Task DeleteCalendarAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (id is CalendarService.PersonalCalendarId or CalendarService.WorkCalendarId)
+        {
+            throw new InvalidOperationException("The default calendars cannot be deleted.");
+        }
+
+        await _calendars.DeleteAsync(id, cancellationToken);
+        await LoadAsync();
+    }
+
+    public async Task SetCalendarColorAsync(string id, string color, CancellationToken cancellationToken = default)
+    {
+        var calendar = (await _calendars.GetAllAsync(cancellationToken)).FirstOrDefault(item => item.Id == id);
+        if (calendar is null)
+        {
+            return;
+        }
+
+        await _calendars.UpsertAsync(calendar with { Color = CalendarPalette.Normalize(color) }, cancellationToken);
+        await LoadAsync();
+    }
+
+    public async Task RemoveAccountAsync(string accountId, CancellationToken cancellationToken = default)
+    {
+        await _sync.RemoveAccountAsync(accountId, cancellationToken);
         await LoadAsync();
     }
 
@@ -339,6 +393,8 @@ public sealed partial class SettingsCalendarItem : ObservableObject
 
 public sealed record SettingsAccountItem
 {
+    public required string Id { get; init; }
+
     public required Provider Provider { get; init; }
 
     public required string DisplayName { get; init; }

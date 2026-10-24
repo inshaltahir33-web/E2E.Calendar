@@ -158,11 +158,49 @@
                     ToolTipService.ToolTip="Search events (Ctrl+F)" />
 
                 <Button
+                    x:Name="SearchFiltersButton"
+                    Content="Filters"
+                    Click="OnSearchFiltersClick"
+                    AutomationProperties.Name="Open search filters"
+                    ToolTipService.ToolTip="Filter by date, tags, or category">
+                    <Button.Flyout>
+                        <Flyout>
+                            <StackPanel MinWidth="280" Spacing="{StaticResource SpaceSM}">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Search filters" />
+                                <CheckBox x:Name="SearchFromEnabled" Content="Limit from date" />
+                                <DatePicker x:Name="SearchFromDate" Header="From date" />
+                                <CheckBox x:Name="SearchToEnabled" Content="Limit to date" />
+                                <DatePicker x:Name="SearchToDate" Header="To date" />
+                                <TextBox x:Name="SearchTagsBox" Header="Tags" PlaceholderText="work, travel" />
+                                <TextBox x:Name="SearchCategoryBox" Header="Category" PlaceholderText="Meeting" />
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                    <Button Content="Apply" Click="OnApplySearchFiltersClick" />
+                                    <Button Content="Clear" Click="OnClearSearchFiltersClick" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button
                     Click="OnSyncClick"
                     Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="Sync now"
                     ToolTipService.ToolTip="Sync now">
                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE895;" />
+                </Button>
+
+                <Button
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    AutomationProperties.Name="Export schedule"
+                    ToolTipService.ToolTip="Export schedule">
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE749;" />
+                    <Button.Flyout>
+                        <muxc:MenuFlyout>
+                            <muxc:MenuFlyoutItem Text="Export PDF" Click="OnExportPdfClick" />
+                            <muxc:MenuFlyoutItem Text="Export HTML" Click="OnExportHtmlClick" />
+                        </muxc:MenuFlyout>
+                    </Button.Flyout>
                 </Button>
 
                 <Button
@@ -450,16 +488,6 @@
                     </muxc:InfoBar>
 
                     <Frame x:Name="ContentFrame" />
-
-                    <ctrl:EmptyStateView
-                        x:Name="PlaceholderState"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        ActionText="Create event"
-                        Description="This part of the app is still being built. The calendar views are ready to use."
-                        Glyph="&#xE7F4;"
-                        Title="Coming soon"
-                        Visibility="Collapsed" />
 
                 </Grid>
             </Border>
