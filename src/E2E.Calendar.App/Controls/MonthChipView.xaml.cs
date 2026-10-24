@@ -71,9 +71,10 @@ public sealed partial class MonthChipView : UserControl
     private void ApplyVisual()
     {
         TitleText.Text = Title;
-        TitleText.Foreground = CalendarColors.Text(this, Color);
-        AccentEdge.Background = CalendarColors.Bar(this, Color);
-        ChipBorder.Background = CalendarColors.Fill(this, Color);
+        var chipBrushes = EventColorService.GetChipBrushes(Color, ActualTheme);
+        TitleText.Foreground = chipBrushes.Text;
+        AccentEdge.Background = chipBrushes.Stripe;
+        ChipBorder.Background = chipBrushes.Fill;
 
         AutomationProperties.SetName(this, Title);
         AutomationProperties.SetItemStatus(this, Color);

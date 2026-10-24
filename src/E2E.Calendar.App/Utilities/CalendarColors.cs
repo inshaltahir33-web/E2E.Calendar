@@ -35,7 +35,7 @@ public static class CalendarColors
             ?? Transparent;
     }
 
-    private static Brush Transparent { get; } = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+    private static Brush Transparent { get; } = new SolidColorBrush();
 
     private static Brush? Lookup(string themeKey, string? color, string role)
     {

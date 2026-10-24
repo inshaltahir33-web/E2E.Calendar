@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media;
-using Windows.UI;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -15,5 +14,5 @@ public sealed partial class CalendarListItem : ObservableObject
 
     public required string Color { get; init; }
 
-    public Brush ColorBrush { get; init; } = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+    public Brush ColorBrush { get; init; } = new SolidColorBrush();
 }

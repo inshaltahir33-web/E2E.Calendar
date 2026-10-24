@@ -6,7 +6,7 @@
     <Grid
         Width="36"
         Height="36"
-        Background="Transparent">
+        Background="{ThemeResource App.TransparentBrush}">
 
         <Border
             x:Name="WeekBackground"

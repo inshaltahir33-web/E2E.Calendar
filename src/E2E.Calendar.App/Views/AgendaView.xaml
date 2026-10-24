@@ -6,7 +6,7 @@
     xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="Transparent" RowDefinitions="Auto,*,Auto">
+    <Grid Background="{ThemeResource App.TransparentBrush}" RowDefinitions="Auto,*,Auto">
 
         <Border
             x:Name="StickyHeaderBar"
@@ -78,7 +78,7 @@
                                                 KeyDown="OnAgendaItemKeyDown"
                                                 AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                                                 Padding="12,0"
-                                                Background="Transparent"
+                                                Background="{ThemeResource App.TransparentBrush}"
                                                 ColumnDefinitions="72,Auto,Auto,*,Auto">
                                                 <Border
                                                     x:Name="RowHover"

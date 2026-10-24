@@ -693,11 +693,12 @@ public sealed partial class TimeGrid : UserControl
 
     private Border CreateAllDayBar(CalendarItem item)
     {
+        var chipBrushes = EventColorService.GetChipBrushes(item.Color, ActualTheme);
         var content = new Grid();
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var bar = new Border { Background = CalendarColors.Bar(this, item.Color) };
+        var bar = new Border { Background = chipBrushes.Stripe };
         Grid.SetColumn(bar, 0);
         content.Children.Add(bar);
 
@@ -706,7 +707,7 @@ public sealed partial class TimeGrid : UserControl
             Text = item.Title,
             FontSize = 12,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = CalendarColors.Text(this, item.Color),
+            Foreground = chipBrushes.Text,
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 3, 4, 3),
@@ -718,7 +719,7 @@ public sealed partial class TimeGrid : UserControl
         return new Border
         {
             Child = content,
-            Background = CalendarColors.Fill(this, item.Color),
+            Background = chipBrushes.Fill,
             CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
             Margin = new Thickness(2, 1, 2, 1),
         };
@@ -877,7 +878,8 @@ public sealed partial class TimeGrid : UserControl
         _linesCanvas.Children.Clear();
         _gutterCanvas.Children.Clear();
 
-        var divider = (Brush)Application.Current.Resources["App.DividerBrush"];
+        var divider = (Brush)Application.Current.Resources["App.StrokeGridBrush"];
+        var halfDivider = (Brush)Application.Current.Resources["App.StrokeGridHalfBrush"];
 
         for (var hour = 0; hour <= HoursPerDay; hour++)
         {
@@ -902,8 +904,8 @@ public sealed partial class TimeGrid : UserControl
             {
                 Height = 1,
                 Width = Math.Max(0, width),
-                Fill = divider,
-                Opacity = 0.4,
+                Fill = halfDivider,
+                Opacity = 1,
             };
 
             Canvas.SetTop(half, y + (HourHeight / 2));

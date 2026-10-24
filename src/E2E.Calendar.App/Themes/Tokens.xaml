@@ -21,6 +21,18 @@
 
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
+            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#F3F4F8"/>
+            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#EDEFF4"/>
+            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="#E6E8EF"/>
+            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="#E6E8EF"/>
+            <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#F0F1F5"/>
+            <SolidColorBrush x:Key="App.TextDisabledBrush" Color="#A8ADBA"/>
+            <SolidColorBrush x:Key="App.AccentFillBrush" Color="#4F5BD5"/>
+            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#E6E9FB"/>
+            <SolidColorBrush x:Key="App.ContrastLightBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="#14171F"/>
             <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="#F3F4F8"/>
             <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="#F3F4F8"/>
             <SolidColorBrush x:Key="App.CardBackgroundBrush" Color="#FFFFFF"/>
@@ -83,6 +95,18 @@
             <SolidColorBrush x:Key="Cal.Brown.TextBrush" Color="#4C3B29"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
+            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#0F1115"/>
+            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#181B22"/>
+            <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#0B0D10"/>
+            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="#272B35"/>
+            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="#252A33"/>
+            <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#1B1F27"/>
+            <SolidColorBrush x:Key="App.TextDisabledBrush" Color="#626978"/>
+            <SolidColorBrush x:Key="App.AccentFillBrush" Color="#8B95FF"/>
+            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#20253A"/>
+            <SolidColorBrush x:Key="App.ContrastLightBrush" Color="#ECEEF4"/>
+            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="#0F1115"/>
             <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="#0F1115"/>
             <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="#12151B"/>
             <SolidColorBrush x:Key="App.CardBackgroundBrush" Color="#181B22"/>
@@ -102,7 +126,7 @@
             <SolidColorBrush x:Key="App.NowLineBrush" Color="#FF6369"/>
             <SolidColorBrush x:Key="App.HoverBrush" Color="#222632"/>
             <SolidColorBrush x:Key="App.PressedBrush" Color="#2B303D"/>
-            <SolidColorBrush x:Key="App.SelectedBrush" Color="#262B4D"/>
+            <SolidColorBrush x:Key="App.SelectedBrush" Color="#20253A"/>
             <SolidColorBrush x:Key="App.FocusBrush" Color="#ECEEF4"/>
             <SolidColorBrush x:Key="App.SuccessBrush" Color="#4CC38A"/>
             <SolidColorBrush x:Key="App.WarningBrush" Color="#F0B03A"/>
@@ -145,6 +169,18 @@
             <SolidColorBrush x:Key="Cal.Brown.TextBrush" Color="#D3C7BA"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="HighContrast">
+            <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
+            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
+            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
+            <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="{ThemeResource SystemColorGrayTextColor}"/>
+            <SolidColorBrush x:Key="App.TextDisabledBrush" Color="{ThemeResource SystemColorGrayTextColor}"/>
+            <SolidColorBrush x:Key="App.AccentFillBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
+            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
+            <SolidColorBrush x:Key="App.ContrastLightBrush" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
             <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}"/>
             <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}"/>
             <SolidColorBrush x:Key="App.CardBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}"/>

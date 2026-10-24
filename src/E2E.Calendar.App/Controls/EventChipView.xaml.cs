@@ -216,14 +216,15 @@ public sealed partial class EventChipView : UserControl
             : (Brush)Application.Current.Resources["App.DividerStrongBrush"];
 
         ColorBar.Visibility = isTickable ? Visibility.Collapsed : Visibility.Visible;
-        ColorBar.Background = CalendarColors.Bar(this, ColorHex);
+        var chipBrushes = EventColorService.GetChipBrushes(ColorHex, ActualTheme);
+        ColorBar.Background = chipBrushes.Stripe;
 
         ChipBorder.Background = isTickable
             ? (Brush)Application.Current.Resources["ControlFillColorTransparentBrush"]
-            : CalendarColors.Fill(this, ColorHex);
+            : chipBrushes.Fill;
 
-        TitleText.Foreground = CalendarColors.Text(this, ColorHex);
-        TimeTextBlock.Foreground = CalendarColors.Text(this, ColorHex);
+        TitleText.Foreground = chipBrushes.Text;
+        TimeTextBlock.Foreground = chipBrushes.Text;
         TimeTextBlock.Opacity = 0.8;
 
         if (IsSelected)

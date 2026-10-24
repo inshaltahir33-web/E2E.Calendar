@@ -7,7 +7,7 @@
 
     <Grid
         x:Name="CellRoot"
-        Background="Transparent"
+        Background="{ThemeResource App.TransparentBrush}"
         IsTabStop="True"
         KeyDown="OnCellKeyDown">
 
@@ -102,7 +102,7 @@
                 x:Name="MoreButton"
                 AutomationProperties.Name="Show the remaining events for this day"
                 HorizontalAlignment="Left"
-                Background="Transparent"
+                Background="{ThemeResource App.TransparentBrush}"
                 BorderThickness="0"
                 Padding="4,0"
                 Click="OnMoreClick"

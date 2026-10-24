@@ -21,7 +21,7 @@
 
     <Style x:Key="EventChipStyle" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource App.HoverBrush}" />
-        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.TransparentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusChip}" />
         <Setter Property="MinHeight" Value="{StaticResource ChipMinHeight}" />
@@ -39,11 +39,11 @@
     </Style>
 
     <Style x:Key="SubtleHoverStyle" TargetType="Button">
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Background" Value="{ThemeResource App.TransparentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.TransparentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
         <Setter Property="Padding" Value="{StaticResource InsetSM}" />
@@ -148,10 +148,10 @@
     </Style>
 
     <Style x:Key="SidebarRowStyle" TargetType="Button">
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Background" Value="{ThemeResource App.TransparentBrush}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.TransparentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
         <Setter Property="Height" Value="{StaticResource SidebarRowHeight}" />
@@ -267,8 +267,8 @@
     </Style>
 
     <Style x:Key="ToolbarButtonStyle" TargetType="Button">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{ThemeResource App.TransparentBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.TransparentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
         <Setter Property="MinWidth" Value="32" />

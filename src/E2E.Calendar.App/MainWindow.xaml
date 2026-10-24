@@ -35,7 +35,7 @@
             Grid.Row="0"
             Height="{StaticResource TitleBarHeight}"
             Padding="{StaticResource PaddingTitleBar}"
-            Background="Transparent"
+            Background="{ThemeResource App.TransparentBrush}"
             ColumnDefinitions="Auto,Auto,Auto,Auto">
 
             <Button
@@ -426,7 +426,7 @@
                     Padding="12"
                     BorderBrush="{ThemeResource App.DividerBrush}"
                     BorderThickness="0,1,0,0"
-                    Background="Transparent"
+                    Background="{ThemeResource App.TransparentBrush}"
                     ColumnDefinitions="*,Auto">
                     <StackPanel
                         Grid.Column="0"

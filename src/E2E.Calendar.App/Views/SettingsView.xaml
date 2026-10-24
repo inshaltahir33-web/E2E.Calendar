@@ -27,7 +27,7 @@
             <ListView
                 x:Name="SectionList"
                 Grid.Row="1"
-                Background="Transparent"
+                Background="{ThemeResource App.TransparentBrush}"
                 SelectionChanged="OnSectionSelectionChanged"
                 SelectionMode="Single"
                 AutomationProperties.Name="Settings sections">

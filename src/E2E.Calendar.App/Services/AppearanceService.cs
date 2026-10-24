@@ -1,4 +1,5 @@
 using E2E.Calendar.App.Utilities;
+using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
@@ -14,15 +15,15 @@ namespace E2E.Calendar.App.Services;
 /// </summary>
 public sealed class AppearanceService
 {
-    private readonly SettingsService _settings;
+    private readonly ISettingsService _settings;
     private readonly List<WeakReference<FrameworkElement>> _targets = [];
 
-    public AppearanceService(SettingsService settings)
+    public AppearanceService(ISettingsService settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settings = settings;
 
-        _settings.Changed += (_, updated) => Apply(updated);
+        _settings.PropertyChanged += (_, _) => Apply(_settings.Current);
     }
 
     public void Attach(FrameworkElement target)

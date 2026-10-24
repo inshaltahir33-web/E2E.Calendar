@@ -20,7 +20,7 @@
         <Grid
             x:Name="DragRegion"
             Height="28"
-            Background="Transparent"
+            Background="{ThemeResource App.TransparentBrush}"
             AutomationProperties.Name="Move the quick add window">
             <TextBlock
                 Margin="{StaticResource MarginStartSmall}"

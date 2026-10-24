@@ -11,12 +11,14 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Dispatching;
 using Microsoft.Extensions.Logging;
 using E2E.Calendar.Sync.Ics;
 using Windows.Storage.Pickers;
 using Windows.Storage;
 using WinRT.Interop;
+using Windows.UI;
 
 namespace E2E.Calendar.App;
 
@@ -138,14 +140,46 @@ public sealed partial class MainWindow : Window
 
         this.ExtendsContentIntoTitleBar = true;
         this.SetTitleBar(TitleBarElement);
+        RootGrid.ActualThemeChanged += OnActualThemeChanged;
+        UpdateTitleBarColors();
 
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
         {
-            this.SystemBackdrop = null;
+            this.SystemBackdrop = new MicaBackdrop();
         }
 
         this.SizeChanged += OnWindowSizeChanged;
         RootGrid.Loaded += OnLoaded;
+    }
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args) =>
+        UpdateTitleBarColors();
+
+    private void UpdateTitleBarColors()
+    {
+        var titleBar = AppWindow.TitleBar;
+        titleBar.ButtonForegroundColor = ResourceColor("App.TextPrimaryBrush");
+        titleBar.ButtonBackgroundColor = ResourceColor("App.WindowBackgroundBrush");
+        titleBar.ButtonHoverForegroundColor = ResourceColor("App.TextPrimaryBrush");
+        titleBar.ButtonHoverBackgroundColor = ResourceColor("App.HoverBrush");
+        titleBar.ButtonPressedForegroundColor = ResourceColor("App.TextPrimaryBrush");
+        titleBar.ButtonPressedBackgroundColor = ResourceColor("App.PressedBrush");
+        titleBar.ButtonInactiveForegroundColor = ResourceColor("App.TextSecondaryBrush");
+        titleBar.ButtonInactiveBackgroundColor = ResourceColor("App.WindowBackgroundBrush");
+    }
+
+    private static Color ResourceColor(string key)
+    {
+        if (Application.Current.Resources.TryGetValue(key, out var value)
+            && value is SolidColorBrush brush)
+        {
+            return brush.Color;
+        }
+
+        return Application.Current.Resources.TryGetValue("App.TextPrimaryBrush", out var fallback)
+            && fallback is SolidColorBrush fallbackBrush
+            ? fallbackBrush.Color
+            : default;
     }
 
     private async void OnExportPdfClick(object sender, RoutedEventArgs e) =>
