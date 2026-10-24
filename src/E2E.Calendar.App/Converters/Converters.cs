@@ -4,19 +4,26 @@ using Microsoft.UI.Xaml.Data;
 
 namespace E2E.Calendar.App.Converters;
 
-public sealed partial class ColorToBrushConverter : IValueConverter
+public sealed class ColorToBrushConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        CalendarColors.Resolve(null, value as string, parameter as string ?? "Bar");
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var color = value as string;
+        var role = parameter as string ?? "Bar";
+        return CalendarColors.Resolve(null, color, role);
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();
 }
 
-public sealed partial class BoolToVisibilityConverter : IValueConverter
+public sealed class BoolToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is true ? Visibility.Visible : Visibility.Collapsed;
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var isVisible = value is bool boolean && boolean;
+        return isVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();

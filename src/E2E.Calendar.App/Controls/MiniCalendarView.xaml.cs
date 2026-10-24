@@ -9,6 +9,8 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Text;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using XamlAutomationProperties = Microsoft.UI.Xaml.Automation.AutomationProperties;
 using UiDispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace E2E.Calendar.App.Controls;
@@ -33,7 +35,7 @@ public sealed partial class MiniCalendarView : UserControl
         InitializeComponent();
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-        _wheelDebounce = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _wheelDebounce = DispatcherQueue.GetForCurrentThread().CreateTimer();
         _wheelDebounce.IsRepeating = false;
         _wheelDebounce.Interval = TimeSpan.FromMilliseconds(150);
         _wheelDebounce.Tick += OnWheelDebounceTick;
@@ -230,8 +232,8 @@ public sealed partial class MiniCalendarView : UserControl
 
         var previousYear = new Button { Content = "‹" };
         var nextYear = new Button { Content = "›" };
-        AutomationProperties.SetName(previousYear, "Previous year");
-        AutomationProperties.SetName(nextYear, "Next year");
+        XamlAutomationProperties.SetName(previousYear, "Previous year");
+        XamlAutomationProperties.SetName(nextYear, "Next year");
         previousYear.Click += (_, _) =>
         {
             year--;
