@@ -48,22 +48,6 @@
                 <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE700;" />
             </Button>
 
-            <StackPanel
-                Grid.Column="1"
-                Margin="8,0,12,0"
-                Orientation="Horizontal"
-                Spacing="{StaticResource SpaceXS}">
-                <FontIcon
-                    VerticalAlignment="Center"
-                    FontSize="{StaticResource IconSizeLarge}"
-                    Glyph="&#xE787;" />
-                <TextBlock
-                    VerticalAlignment="Center"
-                    Foreground="{ThemeResource App.TextSecondaryBrush}"
-                    Style="{ThemeResource CaptionTextBlockStyle}"
-                    Text="Calendar" />
-            </StackPanel>
-
             <Grid Grid.Column="2" ColumnDefinitions="Auto,*,Auto">
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
@@ -91,7 +75,7 @@
                         Margin="{StaticResource MarginPeriodLabel}"
                         VerticalAlignment="Center"
                         Style="{ThemeResource SubtitleTextBlockStyle}"
-                        Text="{x:Bind StateViewModel.PeriodLabel, Mode=OneWay}"
+                        Text="{x:Bind ShellState.Title, Mode=OneWay}"
                         AutomationProperties.Name="Current period" />
                 </StackPanel>
 
@@ -140,6 +124,9 @@
                                 AutomationProperties.Name="Show the secondary time zone column"
                                 IsChecked="{x:Bind WeekViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
                                 Text="Secondary time zone" />
+                            <muxc:MenuFlyoutSeparator />
+                            <muxc:MenuFlyoutItem Text="Export PDF" Click="OnExportPdfClick" />
+                            <muxc:MenuFlyoutItem Text="Export HTML" Click="OnExportHtmlClick" />
                         </muxc:MenuFlyout>
                     </Button.Flyout>
                 </Button>
@@ -191,19 +178,6 @@
                 </Button>
 
                 <Button
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    AutomationProperties.Name="Export schedule"
-                    ToolTipService.ToolTip="Export schedule">
-                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE749;" />
-                    <Button.Flyout>
-                        <muxc:MenuFlyout>
-                            <muxc:MenuFlyoutItem Text="Export PDF" Click="OnExportPdfClick" />
-                            <muxc:MenuFlyoutItem Text="Export HTML" Click="OnExportHtmlClick" />
-                        </muxc:MenuFlyout>
-                    </Button.Flyout>
-                </Button>
-
-                <Button
                     Click="OnSettingsClick"
                     Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="Settings"
@@ -218,10 +192,13 @@
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
 
             <Grid
-                x:Name="SidebarHost"
+                x:Name="SidebarColumn"
                 Grid.Column="0"
                 Width="{StaticResource SidebarWidth}"
                 Background="{ThemeResource App.SidebarBackgroundBrush}">
+                <Grid
+                    x:Name="SidebarHost"
+                    Background="{ThemeResource App.SidebarBackgroundBrush}">
 
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -304,7 +281,7 @@
                                                 VerticalAlignment="Center"
                                                 Text="{x:Bind Name, Mode=OneWay}"
                                                 TextTrimming="CharacterEllipsis" />
-                                        </Grid>
+                                            </Grid>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
@@ -459,6 +436,7 @@
                 </Grid>
 
             </Grid>
+            </Grid>
 
             <Border Grid.Column="1" Style="{StaticResource CardStyle}">
                 <Grid>
@@ -503,6 +481,7 @@
         <StackPanel
             x:Name="SidebarIconRail"
             Grid.Row="1"
+            Grid.Column="0"
             Width="{StaticResource SidebarCollapsedWidth}"
             Padding="6,8,6,8"
             Spacing="{StaticResource SpaceXS}"

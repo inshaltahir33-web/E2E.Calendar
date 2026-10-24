@@ -13,3 +13,7 @@
 - Native WinUI screenshots at 1280x800 in Light and Dark themes could not be
   captured here because the available browser capture tools do not attach to
   desktop WinUI windows. Build and XAML compiler validation remain green.
+- The shell now reserves the sidebar column in both expanded and compact-rail
+  states. Calendar titles are period-specific, while todo and search titles
+  identify the active mode; the agenda view intentionally uses its visible
+  date range rather than the old "Upcoming" placeholder.

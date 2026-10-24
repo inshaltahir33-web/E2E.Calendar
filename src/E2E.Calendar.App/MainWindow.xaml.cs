@@ -37,6 +37,7 @@ public sealed partial class MainWindow : Window
     private readonly ILogger<MainWindow> _logger;
     private readonly EventEditorViewModel _editor;
     private readonly SettingsService _settings;
+    private readonly IShellState _shellState;
     private readonly SyncCoordinator _sync;
     private readonly IcsService _ics;
     private readonly ScheduleExportService _scheduleExport;
@@ -76,6 +77,7 @@ public sealed partial class MainWindow : Window
         MiniCalendarViewModel miniCalendar,
         IReminderRepository reminders,
         SettingsService settings,
+        IShellState shellState,
         SyncCoordinator sync,
         IcsService ics,
         ScheduleExportService scheduleExport)
@@ -94,6 +96,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(miniCalendar);
         ArgumentNullException.ThrowIfNull(reminders);
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(shellState);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -110,6 +113,7 @@ public sealed partial class MainWindow : Window
         MiniCalendar = miniCalendar;
         _reminders = reminders;
         _settings = settings;
+        _shellState = shellState;
         _sync = sync;
         _ics = ics;
         _scheduleExport = scheduleExport;
@@ -151,6 +155,8 @@ public sealed partial class MainWindow : Window
         this.SizeChanged += OnWindowSizeChanged;
         RootGrid.Loaded += OnLoaded;
     }
+
+    public IShellState ShellState => _shellState;
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) =>
         UpdateTitleBarColors();
@@ -279,11 +285,13 @@ public sealed partial class MainWindow : Window
     private void ApplySidebarCollapsed(bool collapsed)
     {
         ViewModel.IsSidebarCollapsed = collapsed;
+        _shellState.SetPaneOpen(!collapsed);
 
         var targetWidth = collapsed
             ? Tokens.Double("SidebarCollapsedWidth", 48d)
             : Tokens.Double("SidebarWidth", 272d);
 
+        SidebarColumn.Width = targetWidth;
         SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
 
@@ -326,7 +334,7 @@ public sealed partial class MainWindow : Window
 
         if (Enum.TryParse<CalendarViewMode>(tag, out var mode))
         {
-            StateViewModel.SetViewModeCommand.Execute(mode);
+            ShowView(mode, NavigationKeyFor(mode));
         }
     }
 
@@ -765,6 +773,7 @@ public sealed partial class MainWindow : Window
         }
 
         StatusInfoBar.IsOpen = false;
+        _shellState.ShowSearch(new ShellFilters(Query: sender.Text));
     }
 
     private void OnSearchSuggestionSelected(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)

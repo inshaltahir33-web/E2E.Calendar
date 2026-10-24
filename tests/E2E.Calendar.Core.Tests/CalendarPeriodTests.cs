@@ -101,7 +101,7 @@ public sealed class CalendarPeriodTests
     [Theory]
     [InlineData(CalendarViewMode.Day, "Wed 21 Oct 2026")]
     [InlineData(CalendarViewMode.Month, "October 2026")]
-    [InlineData(CalendarViewMode.Agenda, "Upcoming")]
+    [InlineData(CalendarViewMode.Agenda, "21 Oct – 19 Nov 2026")]
     public void The_period_label_describes_the_visible_period(CalendarViewMode mode, string expected)
     {
         CalendarPeriod.FormatLabel(mode, Wednesday, "en-US").Should().Be(expected);

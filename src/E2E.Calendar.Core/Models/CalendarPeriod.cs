@@ -46,7 +46,11 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
             CalendarViewMode.Day => date.ToString("ddd d MMM yyyy", culture),
             CalendarViewMode.Week => FormatWeekLabel(culture, localDate),
             CalendarViewMode.Month => date.ToString("Y", culture),
-            CalendarViewMode.Agenda => "Upcoming",
+            CalendarViewMode.Agenda => string.Format(
+                culture,
+                "{0} – {1}",
+                date.ToString("d MMM", culture),
+                date.AddDays(AgendaDays - 1).ToString("d MMM yyyy", culture)),
             _ => date.ToString("ddd d MMM yyyy", culture),
         };
     }

@@ -20,7 +20,7 @@ public sealed class ShellStateTests
         state.Mode.Should().Be(ShellMode.Calendar);
         state.CalendarView.Should().Be(CalendarViewMode.Month);
         state.SelectedDate.Should().Be(new DateOnly(2026, 10, 25));
-        state.Title.Should().Be("Calendar");
+        state.Title.Should().Be("October 2026");
         changed.Should().Contain(nameof(IShellState.CalendarView));
     }
 

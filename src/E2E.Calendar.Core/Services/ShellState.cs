@@ -63,21 +63,21 @@ public sealed class ShellState : IShellState
         Mode = ShellMode.Calendar;
         CalendarView = view;
         SelectedDate = selectedDate;
-        Title = "Calendar";
+        Title = CalendarPeriod.FormatLabel(view, selectedDate);
     }
 
     public void ShowTodo(string? filter)
     {
         Mode = ShellMode.Todo;
         TodoFilter = filter;
-        Title = "Tasks";
+        Title = $"Tasks - {filter ?? "Today"}";
     }
 
     public void ShowSearch(ShellFilters filters)
     {
         Mode = ShellMode.Search;
         ActiveFilters = filters;
-        Title = "Search";
+        Title = "Search results";
     }
 
     public void ShowSettings()
