@@ -914,6 +914,7 @@ public sealed partial class MainWindow : Window
         if (e.PropertyName is nameof(CalendarStateViewModel.SelectedDate)
             or nameof(CalendarStateViewModel.LocalDate))
         {
+            _shellState.SetSelectedDate(StateViewModel.SelectedDate);
             await SyncMiniCalendarAsync();
         }
 

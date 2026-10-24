@@ -46,6 +46,7 @@ public sealed class MiniCalendarWeekViewModel
 public sealed partial class MiniCalendarViewModel : ObservableObject
 {
     private readonly CalendarStateViewModel _state;
+    private readonly IShellState _shellState;
     private readonly EventQueryService _query;
     private readonly IClock _clock;
 
@@ -69,14 +70,17 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
 
     public MiniCalendarViewModel(
         CalendarStateViewModel state,
+        IShellState shellState,
         EventQueryService query,
         IClock clock)
     {
         ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(shellState);
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(clock);
 
         _state = state;
+        _shellState = shellState;
         _query = query;
         _clock = clock;
 
@@ -171,6 +175,7 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
         if (day is not null)
         {
             _state.SelectDateCommand.Execute(day.Date);
+            _shellState.SetSelectedDate(day.Date);
         }
     }
 

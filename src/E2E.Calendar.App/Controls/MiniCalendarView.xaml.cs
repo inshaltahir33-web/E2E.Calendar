@@ -1,9 +1,15 @@
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Text;
 using Windows.System;
+using UiDispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace E2E.Calendar.App.Controls;
 
@@ -14,7 +20,10 @@ public sealed partial class MiniCalendarView : UserControl
 
     private readonly MiniCalendarViewModel _viewModel;
     private readonly List<DayCell> _cells = new();
+    private readonly UiDispatcherQueueTimer _wheelDebounce;
     private IReadOnlyList<MiniCalendarDayViewModel>? _builtDays;
+    private int _pendingWheelDirection;
+    private bool _isLoaded;
 
     public MiniCalendarView(MiniCalendarViewModel viewModel)
     {
@@ -24,6 +33,10 @@ public sealed partial class MiniCalendarView : UserControl
         InitializeComponent();
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _wheelDebounce = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _wheelDebounce.IsRepeating = false;
+        _wheelDebounce.Interval = TimeSpan.FromMilliseconds(150);
+        _wheelDebounce.Tick += OnWheelDebounceTick;
 
         this.Loaded += OnLoaded;
     }
@@ -40,6 +53,7 @@ public sealed partial class MiniCalendarView : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = true;
         await _viewModel.RefreshAsync();
         BuildGrid();
     }
@@ -152,14 +166,163 @@ public sealed partial class MiniCalendarView : UserControl
 
     private async void OnPreviousMonthClick(object sender, RoutedEventArgs e)
     {
-        _viewModel.PreviousMonthCommand.Execute(null);
-        await _viewModel.RefreshAsync();
+        await ChangeMonthAsync(-1);
     }
 
     private async void OnNextMonthClick(object sender, RoutedEventArgs e)
     {
-        _viewModel.NextMonthCommand.Execute(null);
-        await _viewModel.RefreshAsync();
+        await ChangeMonthAsync(1);
+    }
+
+    private async void OnHeaderClick(object sender, RoutedEventArgs e)
+    {
+        var year = ViewModel.VisibleYear;
+        var month = ViewModel.VisibleMonth;
+        var dialog = new ContentDialog
+        {
+            Title = "Choose month and year",
+            PrimaryButtonText = "Go to month",
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+
+        var yearText = new TextBlock
+        {
+            Text = year.ToString(),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold,
+        };
+        var months = new Grid { ColumnSpacing = 6, RowSpacing = 6 };
+        for (var column = 0; column < 3; column++)
+        {
+            months.ColumnDefinitions.Add(new ColumnDefinition());
+        }
+
+        for (var index = 0; index < 12; index++)
+        {
+            var monthNumber = index + 1;
+            var button = new Button
+            {
+                Content = new DateTime(year, monthNumber, 1).ToString("MMM"),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Tag = monthNumber,
+            };
+            button.Click += (_, _) =>
+            {
+                month = (int)button.Tag;
+                foreach (var child in months.Children)
+                {
+                    if (child is Button other)
+                    {
+                    }
+                }
+            };
+            Grid.SetColumn(button, index % 3);
+            Grid.SetRow(button, index / 3);
+            months.Children.Add(button);
+        }
+
+        for (var row = 0; row < 4; row++)
+        {
+            months.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
+        var previousYear = new Button { Content = "‹" };
+        var nextYear = new Button { Content = "›" };
+        AutomationProperties.SetName(previousYear, "Previous year");
+        AutomationProperties.SetName(nextYear, "Next year");
+        previousYear.Click += (_, _) =>
+        {
+            year--;
+            yearText.Text = year.ToString();
+            UpdateMonthLabels(months, year);
+        };
+        nextYear.Click += (_, _) =>
+        {
+            year++;
+            yearText.Text = year.ToString();
+            UpdateMonthLabels(months, year);
+        };
+
+        var yearBar = new Grid();
+        yearBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        yearBar.ColumnDefinitions.Add(new ColumnDefinition());
+        yearBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(yearText, 1);
+        Grid.SetColumn(previousYear, 0);
+        Grid.SetColumn(nextYear, 2);
+        yearBar.Children.Add(previousYear);
+        yearBar.Children.Add(yearText);
+        yearBar.Children.Add(nextYear);
+
+        var content = new StackPanel { Spacing = 8, Children = { yearBar, months } };
+        dialog.Content = content;
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            var target = new DateOnly(year, month, 1);
+            var delta = (target.Year - ViewModel.VisibleYear) * 12 + target.Month - ViewModel.VisibleMonth;
+            await ChangeMonthAsync(delta);
+        }
+    }
+
+    private static void UpdateMonthLabels(Grid months, int year)
+    {
+        foreach (var child in months.Children)
+        {
+            if (child is Button button && button.Tag is int month)
+            {
+                button.Content = new DateTime(year, month, 1).ToString("MMM");
+            }
+        }
+    }
+
+    private async Task ChangeMonthAsync(int delta)
+    {
+        if (delta == 0)
+        {
+            return;
+        }
+
+        var direction = Math.Sign(delta);
+        for (var index = 0; index < Math.Abs(delta); index++)
+        {
+            if (direction < 0)
+            {
+                _viewModel.PreviousMonthCommand.Execute(null);
+            }
+            else
+            {
+                _viewModel.NextMonthCommand.Execute(null);
+            }
+
+            await _viewModel.RefreshAsync();
+            await AnimateMonthAsync(direction);
+        }
+    }
+
+    private async Task AnimateMonthAsync(int direction)
+    {
+        if (!_isLoaded)
+        {
+            return;
+        }
+
+        var transform = new TranslateTransform { X = direction > 0 ? CalendarGrid.ActualWidth : -CalendarGrid.ActualWidth };
+        CalendarGrid.RenderTransform = transform;
+        var animation = new DoubleAnimation
+        {
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTarget(animation, transform);
+        Storyboard.SetTargetProperty(animation, "X");
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
+        await Task.Delay(180);
     }
 
     private async void OnCalendarKeyDown(object sender, KeyRoutedEventArgs e)
@@ -202,7 +365,7 @@ public sealed partial class MiniCalendarView : UserControl
         await _viewModel.RefreshAsync();
     }
 
-    private async void OnCalendarPointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    private void OnCalendarPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
         var delta = e.GetCurrentPoint(CalendarGrid).Properties.MouseWheelDelta;
 
@@ -212,16 +375,16 @@ public sealed partial class MiniCalendarView : UserControl
         }
 
         e.Handled = true;
+        _pendingWheelDirection = delta > 0 ? -1 : 1;
+        _wheelDebounce.Stop();
+        _wheelDebounce.Start();
+    }
 
-        if (delta > 0)
-        {
-            _viewModel.PreviousMonthCommand.Execute(null);
-        }
-        else
-        {
-            _viewModel.NextMonthCommand.Execute(null);
-        }
-
-        await _viewModel.RefreshAsync();
+    private async void OnWheelDebounceTick(UiDispatcherQueueTimer sender, object args)
+    {
+        _wheelDebounce.Stop();
+        var direction = _pendingWheelDirection;
+        _pendingWheelDirection = 0;
+        await ChangeMonthAsync(direction);
     }
 }

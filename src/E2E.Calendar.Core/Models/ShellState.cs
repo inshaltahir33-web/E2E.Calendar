@@ -33,5 +33,6 @@ public interface IShellState : INotifyPropertyChanged
     void ShowSearch(ShellFilters filters);
     void ShowSettings();
     void SetPaneOpen(bool isOpen);
+    void SetSelectedDate(DateOnly date);
     void SetFilters(ShellFilters filters);
 }

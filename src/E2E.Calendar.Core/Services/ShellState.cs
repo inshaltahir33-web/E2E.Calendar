@@ -88,6 +88,16 @@ public sealed class ShellState : IShellState
 
     public void SetPaneOpen(bool isOpen) => IsPaneOpen = isOpen;
 
+    public void SetSelectedDate(DateOnly date)
+    {
+        SelectedDate = date;
+
+        if (Mode == ShellMode.Calendar)
+        {
+            Title = CalendarPeriod.FormatLabel(CalendarView, date);
+        }
+    }
+
     public void SetFilters(ShellFilters filters)
     {
         ArgumentNullException.ThrowIfNull(filters);

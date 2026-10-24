@@ -7,6 +7,20 @@ namespace E2E.Calendar.Core.Tests;
 
 public sealed class MiniCalendarGridTests
 {
+    [Fact]
+    public void Advancing_twelve_months_preserves_one_month_per_step()
+    {
+        var start = new DateOnly(2026, 10, 1);
+        var date = start;
+
+        for (var month = 1; month <= 12; month++)
+        {
+            date = date.AddMonths(1);
+            date.Should().Be(start.AddMonths(month));
+        }
+
+        date.Should().Be(new DateOnly(2027, 10, 1));
+    }
     private static readonly DateOnly Today = new(2026, 10, 20);
 
     [Fact]

@@ -18,15 +18,16 @@
                 <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72B;" />
             </Button>
 
-            <TextBlock
+            <Button
                 x:Name="HeaderText"
                 Grid.Column="1"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                FontSize="{StaticResource FontSizeBody}"
-                FontWeight="SemiBold"
-                Text="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
-                AutomationProperties.Name="Month" />
+                Click="OnHeaderClick"
+                Content="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
+                Style="{StaticResource ToolbarButtonStyle}"
+                AutomationProperties.Name="Choose month and year"
+                ToolTipService.ToolTip="Choose month and year" />
 
             <Button
                 x:Name="NextMonthButton"
