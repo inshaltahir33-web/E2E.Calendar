@@ -30,6 +30,9 @@ public sealed partial class MainWindow : Window
     private readonly ILogger<MainWindow> _logger;
     private readonly EventEditorViewModel _editor;
     private readonly SettingsService _settings;
+    private readonly SyncCoordinator _sync;
+    private bool _syncInProgress;
+    private bool _rsvpInProgress;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -61,7 +64,8 @@ public sealed partial class MainWindow : Window
         MonthViewModel monthViewModel,
         MiniCalendarViewModel miniCalendar,
         IReminderRepository reminders,
-        SettingsService settings)
+        SettingsService settings,
+        SyncCoordinator sync)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -92,6 +96,7 @@ public sealed partial class MainWindow : Window
         MiniCalendar = miniCalendar;
         _reminders = reminders;
         _settings = settings;
+        _sync = sync;
 
         this.InitializeComponent();
 
@@ -142,14 +147,22 @@ public sealed partial class MainWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Motion.Refresh();
-
-        await RefreshCalendarsAsync();
-        _navigation.NavigateTo(NavigationKeys.Week);
-
-        if (!_settings.Current.OnboardingComplete)
+        try
         {
-            await Views.OnboardingView.ShowAsync(RootGrid.XamlRoot, _settings);
+            Motion.Refresh();
+
+            await RefreshCalendarsAsync();
+            _navigation.NavigateTo(NavigationKeys.Week);
+
+            if (!_settings.Current.OnboardingComplete)
+            {
+                await Views.OnboardingView.ShowAsync(RootGrid.XamlRoot, _settings);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Initial window load failed");
+            ShowStatus("Calendar data could not be loaded. Try Sync now or restart the app.", InfoBarSeverity.Error);
         }
     }
 
@@ -288,10 +301,17 @@ public sealed partial class MainWindow : Window
 
     private async void OnSyncClick(object sender, RoutedEventArgs e)
     {
+        if (_syncInProgress)
+        {
+            return;
+        }
+
+        _syncInProgress = true;
         ViewModel.SyncStatus = "Syncing…";
 
         try
         {
+            await _sync.SyncAsync();
             await RefreshCalendarsAsync();
 
             ViewModel.SyncStatus = $"Synced just now · {_calendarProviderSummary()}";
@@ -302,10 +322,16 @@ public sealed partial class MainWindow : Window
             ViewModel.SyncStatus = "Sync failed";
             ShowStatus("Sync failed. We will retry automatically.", InfoBarSeverity.Error);
         }
+        finally
+        {
+            _syncInProgress = false;
+        }
     }
 
     private string _calendarProviderSummary() =>
-        ViewModel.Calendars.Count == 0 ? "No calendars" : "Local";
+        ViewModel.Calendars.Any(item => item.Id != CalendarService.PersonalCalendarId && item.Id != CalendarService.WorkCalendarId)
+            ? "Connected accounts"
+            : ViewModel.Calendars.Count == 0 ? "No calendars" : "Local";
 
     private async Task RefreshCalendarsAsync()
     {
@@ -366,7 +392,57 @@ public sealed partial class MainWindow : Window
     private void OnEditorOpened(object? sender, EventArgs e)
     {
         EditorHost.Visibility = Visibility.Visible;
+        InvitationInfoBar.IsOpen = _editor.LoadedEvent is { } loadedEvent &&
+            _sync.HasPendingInvitation(loadedEvent);
         _ = Motion.SlideAndFadeInAsync(EditorHost, 8);
+    }
+
+    private async void OnInvitationRespondClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "Respond to invitation",
+            Content = "Choose how you want to respond.",
+            PrimaryButtonText = "Accept",
+            SecondaryButtonText = "Tentative",
+            CloseButtonText = "Decline",
+            XamlRoot = RootGrid.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        var status = result switch
+        {
+            ContentDialogResult.Primary => RsvpStatus.Accepted,
+            ContentDialogResult.Secondary => RsvpStatus.Tentative,
+            _ => RsvpStatus.Declined,
+        };
+        await RespondToInvitationAsync(status);
+    }
+
+    private async Task RespondToInvitationAsync(RsvpStatus status)
+    {
+        if (_rsvpInProgress || _editor.LoadedEvent is not { } calendarEvent)
+        {
+            return;
+        }
+
+        _rsvpInProgress = true;
+        InvitationInfoBar.IsOpen = false;
+        try
+        {
+            await _sync.RespondToInvitationAsync(calendarEvent, status);
+            ShowStatus($"Invitation marked {status.ToString().ToLowerInvariant()}.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Invitation response failed");
+            InvitationInfoBar.IsOpen = true;
+            ShowStatus("The invitation response could not be sent. Please try again.", InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _rsvpInProgress = false;
+        }
     }
 
     private async void OnEditorCloseRequested(object? sender, EventArgs e)
@@ -378,6 +454,7 @@ public sealed partial class MainWindow : Window
 
         _editor.DiscardChanges();
         EditorHost.Visibility = Visibility.Collapsed;
+        InvitationInfoBar.IsOpen = false;
     }
 
     private void OnEditorKeyDown(object sender, KeyRoutedEventArgs e)

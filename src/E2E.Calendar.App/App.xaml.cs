@@ -6,7 +6,10 @@ using E2E.Calendar.Core.Services;
 using E2E.Calendar.Data;
 using E2E.Calendar.Data.Repos;
 using E2E.Calendar.Platform;
+using E2E.Calendar.Sync.Google;
+using E2E.Calendar.Sync.Microsoft;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -53,32 +56,44 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _host = BuildHost();
-        await _host.StartAsync();
-
-        var settings = _host.Services.GetRequiredService<SettingsService>();
-        var appearance = _host.Services.GetRequiredService<AppearanceService>();
-
-        await settings.LoadAsync();
-
-        _mainWindow = _host.Services.GetRequiredService<MainWindow>();
-        _window = _mainWindow;
-
-        if (_mainWindow.Content is Microsoft.UI.Xaml.FrameworkElement root)
+        try
         {
-            appearance.Attach(root);
+            _host = BuildHost();
+            await _host.StartAsync();
+
+            var settings = _host.Services.GetRequiredService<SettingsService>();
+            var appearance = _host.Services.GetRequiredService<AppearanceService>();
+            var sync = _host.Services.GetRequiredService<SyncCoordinator>();
+
+            await settings.LoadAsync();
+            await sync.LoadAccountsAsync();
+
+            _mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            _window = _mainWindow;
+
+            if (_mainWindow.Content is Microsoft.UI.Xaml.FrameworkElement root)
+            {
+                appearance.Attach(root);
+            }
+
+            _mainWindow.Activate();
+
+            _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
+            _hotkey.Pressed += OnQuickAddHotkey;
+
+            _mainWindow.InitializeQuickAddHotkey(_hotkey);
+
+            if (Environment.GetEnvironmentVariable("E2E_QUICKADD_SELFTEST") == "1")
+            {
+                _mainWindow.DispatcherQueue.TryEnqueue(ShowQuickAdd);
+            }
         }
-
-        _mainWindow.Activate();
-
-        _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
-        _hotkey.Pressed += OnQuickAddHotkey;
-
-        _mainWindow.InitializeQuickAddHotkey(_hotkey);
-
-        if (Environment.GetEnvironmentVariable("E2E_QUICKADD_SELFTEST") == "1")
+        catch (Exception ex)
         {
-            _mainWindow.DispatcherQueue.TryEnqueue(ShowQuickAdd);
+            Log.Fatal(ex, "Application startup failed");
+            _mainWindow?.Close();
+            _mainWindow = null;
+            _window = null;
         }
     }
 
@@ -111,6 +126,8 @@ public partial class App : Application
 
     internal static IHost BuildHost() =>
         Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddUserSecrets<App>(optional: true))
             .ConfigureLogging(logging => logging.ClearProviders())
             .UseSerilog((context, services, configuration) => configuration
                 .MinimumLevel.Information()
@@ -123,6 +140,10 @@ public partial class App : Application
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"))
             .ConfigureServices((context, services) =>
             {
+                services.AddSingleton(new HttpClient
+                {
+                    Timeout = TimeSpan.FromSeconds(30),
+                });
                 services.AddSingleton<IClock, SystemClock>();
                 services.AddSingleton<ISecretStore, CredentialStore>();
 
@@ -131,6 +152,7 @@ public partial class App : Application
                     serviceProvider.GetRequiredService<ISecretStore>()));
 
                 services.AddSingleton<IEventRepository, EventRepository>();
+                services.AddSingleton<IAccountRepository, AccountRepository>();
                 services.AddSingleton<ICalendarRepository, CalendarRepository>();
                 services.AddSingleton<IReminderRepository, ReminderRepository>();
                 services.AddSingleton<ITaskRepository, TaskRepository>();
@@ -164,6 +186,13 @@ public partial class App : Application
                 services.AddSingleton<EventTemplateService>();
                 services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<IEntitlementService, FreeEntitlementService>();
+                services.AddSingleton<GoogleCalendarProvider>();
+                services.AddSingleton<GraphCalendarProvider>();
+                services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
+                    serviceProvider.GetRequiredService<GoogleCalendarProvider>());
+                services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
+                    serviceProvider.GetRequiredService<GraphCalendarProvider>());
+                services.AddSingleton<SyncCoordinator>();
                 services.AddSingleton<CalendarStateViewModel>();
                 services.AddSingleton<NavigationService>();
                 services.AddSingleton<MainWindowViewModel>();

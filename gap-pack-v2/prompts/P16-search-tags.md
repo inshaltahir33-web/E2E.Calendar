@@ -1,0 +1,3 @@
+1. Tags/categories: migration 002 adds tag(id,name,color) and event_tag(event_id,tag_id) (+ tasks/reminders if easy). Tag chips in editor; "#tag" in quick add maps to tags; sidebar "Tags" section filters the views.
+2. Search: SearchService over event_fts (title, notes, location, attendees) kept in sync via triggers or repo writes (include reminders/tasks). Ctrl+F focuses toolbar search; AutoSuggest shows grouped results (Events, Reminders, Tasks) with date + calendar colour; Enter opens full results page with filters (calendar, date range, tag); selecting a result navigates the view to that date and opens the event.
+Perf test: 10k events, query < 100 ms. Commit "feat: search and tags".

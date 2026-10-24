@@ -1,0 +1,5 @@
+Prove the spec numbers; produce docs/QA-REPORT.md with results.
+1. Reminder reliability: (a) Core soak test with fake IClock: 10,000 alerts incl. recurring, DST days, snooze, persistent; assert 100% fire exactly once and max lateness <= 1 s. (b) Real-time harness (Debug page "Reminder self-test"): schedule 200 reminders over 20 minutes at random times, log scheduled vs fired timestamps to CSV; compute % within 5 s. (c) Manual scripts for window closed, sleep/wake, reboot, time-zone change, clock change; record results.
+2. Performance: startup stopwatch to first usable view (<1.0 s, report cold & warm), idle RAM < 150 MB, idle CPU ~0%, scroll FPS with 10k events (use PerfView/WPR notes), fix hotspots (lazy init, ReadyToRun, defer sync/settings).
+3. Accessibility audit: Narrator pass on every screen (AutomationProperties.Name/HelpText), keyboard-only walkthrough, high-contrast themes, 200% text scaling at 900px; fix violations; colour never sole signal (priority/status icons).
+Commit "test: reliability, performance, accessibility".

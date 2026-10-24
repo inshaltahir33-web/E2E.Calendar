@@ -7,6 +7,7 @@ using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Recurrence;
 using E2E.Calendar.Core.Sync;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace E2E.Calendar.Sync.Google;
@@ -28,15 +29,25 @@ public sealed class GoogleCalendarProvider : ISyncProvider
         HttpClient http,
         ISecretStore secrets,
         IEntitlementService entitlements,
-        ILogger<GoogleCalendarProvider> logger)
+        ILogger<GoogleCalendarProvider> logger,
+        IConfiguration? configuration = null)
     {
         _http = http;
         _secrets = secrets;
         _entitlements = entitlements;
         _logger = logger;
+        ClientId = configuration?["Google:ClientId"]
+            ?? Environment.GetEnvironmentVariable("E2E_GOOGLE_CLIENT_ID")
+            ?? Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")
+            ?? string.Empty;
+        ClientSecret = configuration?["Google:ClientSecret"]
+            ?? Environment.GetEnvironmentVariable("E2E_GOOGLE_CLIENT_SECRET")
+            ?? Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET");
     }
 
-    public string ClientId { get; set; } = Environment.GetEnvironmentVariable("E2E_GOOGLE_CLIENT_ID") ?? string.Empty;
+    public string ClientId { get; set; }
+
+    public string? ClientSecret { get; set; }
 
     public E2E.Calendar.Core.Models.Provider Provider => E2E.Calendar.Core.Models.Provider.Google;
 
@@ -62,7 +73,7 @@ public sealed class GoogleCalendarProvider : ISyncProvider
             $"{AuthEndpoint}?client_id={Uri.EscapeDataString(ClientId)}" +
             $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
             "&response_type=code" +
-            "&scope=" + Uri.EscapeDataString("https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile") +
+            "&scope=" + Uri.EscapeDataString("https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile") +
             "&code_challenge=" + Uri.EscapeDataString(challenge) +
             "&code_challenge_method=S256" +
             "&state=" + Uri.EscapeDataString(state) +
@@ -146,6 +157,18 @@ public sealed class GoogleCalendarProvider : ISyncProvider
             ["grant_type"] = "authorization_code",
             ["code_verifier"] = verifier,
         });
+        if (!string.IsNullOrWhiteSpace(ClientSecret))
+        {
+            content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["client_id"] = ClientId,
+                ["client_secret"] = ClientSecret,
+                ["code"] = code,
+                ["redirect_uri"] = redirectUri,
+                ["grant_type"] = "authorization_code",
+                ["code_verifier"] = verifier,
+            });
+        }
 
         using var response = await _http.PostAsync(TokenEndpoint, content, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -438,6 +461,9 @@ public sealed class GoogleCalendarProvider : ISyncProvider
         var updated = element.TryGetProperty("updated", out var updatedEl) && DateTimeOffset.TryParse(updatedEl.GetString(), out var updatedUtc)
             ? updatedUtc
             : DateTimeOffset.UtcNow;
+        string? attendees = element.TryGetProperty("attendees", out var attendeeElement)
+            ? attendeeElement.GetRawText()
+            : null;
 
         return new CalendarEvent
         {
@@ -457,6 +483,7 @@ public sealed class GoogleCalendarProvider : ISyncProvider
             ExDates = exDates,
             Color = null,
             MeetingUrl = meetingUrl,
+            Attendees = attendees,
             CreatedUtc = created,
             UpdatedUtc = updated,
             Deleted = deleted,
@@ -554,6 +581,7 @@ public sealed class GoogleCalendarProvider : ISyncProvider
                 var entry = new Dictionary<string, object?>
                 {
                     ["email"] = email,
+                    ["self"] = self,
                     ["responseStatus"] = self ? responseStatus : (a.TryGetProperty("responseStatus", out var rs) ? rs.GetString() : "needsAction"),
                 };
                 attendees.Add(entry);

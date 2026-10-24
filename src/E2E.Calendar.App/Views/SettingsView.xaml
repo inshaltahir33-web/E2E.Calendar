@@ -182,9 +182,21 @@
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
                                 Text="Google, Microsoft and CalDAV sync will appear here. The free plan includes one account." />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="{x:Bind ViewModel.AccountStatus, Mode=OneWay}"
+                                TextWrapping="Wrap" />
                             <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
-                                <Button Content="Google" IsEnabled="False" AutomationProperties.Name="Add Google account" />
-                                <Button Content="Microsoft" IsEnabled="False" AutomationProperties.Name="Add Microsoft account" />
+                                <Button
+                                    Content="Google"
+                                    Command="{x:Bind ViewModel.AddGoogleAccountCommand}"
+                                    IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
+                                    AutomationProperties.Name="Add Google account" />
+                                <Button
+                                    Content="Microsoft"
+                                    Command="{x:Bind ViewModel.AddMicrosoftAccountCommand}"
+                                    IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
+                                    AutomationProperties.Name="Add Microsoft account" />
                                 <Button Content="CalDAV" IsEnabled="False" AutomationProperties.Name="Add CalDAV account" />
                             </StackPanel>
                         </StackPanel>
@@ -194,6 +206,22 @@
                 <!--  Calendars  -->
                 <StackPanel x:Name="SectionCalendars" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Calendars" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Show birthdays" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Import read-only birthdays from your connected accounts. Permission is requested only when enabled." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                IsOn="{x:Bind ViewModel.ShowBirthdays, Mode=TwoWay}"
+                                Toggled="OnBirthdaysToggled"
+                                AutomationProperties.Name="Show birthdays" />
+                        </Grid>
+                    </Border>
 
                     <ItemsControl ItemsSource="{x:Bind ViewModel.Calendars, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>

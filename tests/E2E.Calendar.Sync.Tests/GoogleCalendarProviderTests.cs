@@ -48,7 +48,7 @@ public class GoogleCalendarProviderTests
         var http = new HttpClient(handler);
         var secrets = new InMemorySecretStore();
         var entitlements = new FreeEntitlementService();
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<GoogleCalendarProvider>.Instance;
+        var logger = global::Microsoft.Extensions.Logging.Abstractions.NullLogger<GoogleCalendarProvider>.Instance;
         var provider = new GoogleCalendarProvider(http, secrets, entitlements, logger);
 
         var accountId = Guid.NewGuid().ToString("N");

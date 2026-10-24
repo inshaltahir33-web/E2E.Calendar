@@ -434,6 +434,21 @@
                         Closed="OnStatusInfoBarClosed"
                         AutomationProperties.Name="Status message" />
 
+                    <muxc:InfoBar
+                        x:Name="InvitationInfoBar"
+                        Margin="12,64,12,0"
+                        VerticalAlignment="Top"
+                        IsClosable="False"
+                        IsOpen="False"
+                        Severity="Informational"
+                        Title="Invitation"
+                        Message="You have been invited to this event."
+                        AutomationProperties.Name="Event invitation">
+                        <muxc:InfoBar.ActionButton>
+                            <Button Click="OnInvitationRespondClick" Content="Respond" AutomationProperties.Name="Respond to invitation" />
+                        </muxc:InfoBar.ActionButton>
+                    </muxc:InfoBar>
+
                     <Frame x:Name="ContentFrame" />
 
                     <ctrl:EmptyStateView

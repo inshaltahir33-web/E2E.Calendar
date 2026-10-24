@@ -39,6 +39,31 @@ public sealed partial class SettingsView : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e) => await ViewModel.LoadAsync();
 
+    private async void OnBirthdaysToggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleSwitch { IsOn: true })
+        {
+            return;
+        }
+
+        try
+        {
+            await ViewModel.ImportBirthdaysAsync();
+        }
+        catch (Exception ex)
+        {
+            ViewModel.ShowBirthdays = false;
+            var dialog = new ContentDialog
+            {
+                Title = "Birthdays could not be enabled",
+                Content = ex.Message,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            };
+            await dialog.ShowAsync();
+        }
+    }
+
     private void OnSectionSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         var index = SectionList.SelectedIndex;

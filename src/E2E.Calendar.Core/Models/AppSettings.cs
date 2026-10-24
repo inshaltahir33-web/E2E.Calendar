@@ -58,6 +58,8 @@ public sealed record AppSettings
 
     public bool ShowSecondaryTimeZone { get; init; }
 
+    public bool ShowBirthdays { get; init; }
+
     public AppDensity Density { get; init; } = AppDensity.Comfortable;
 
     public string? SecondaryTimeZoneId { get; init; }

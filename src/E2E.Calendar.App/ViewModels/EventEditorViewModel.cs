@@ -175,6 +175,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public bool HasTitleError => !string.IsNullOrEmpty(TitleError);
 
+    public CalendarEvent? LoadedEvent => _master;
+
     public bool HasTimeError => !string.IsNullOrEmpty(TimeError);
 
     public bool HasLinkError => !string.IsNullOrEmpty(LinkError);
@@ -529,6 +531,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         IsNew = true;
         _master = null;
         EventId = string.Empty;
+        OnPropertyChanged(nameof(LoadedEvent));
         Title = string.Empty;
         Location = null;
         MeetingUrl = null;
@@ -562,6 +565,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         LinkError = null;
         IsNew = false;
         _master = calendarEvent;
+        OnPropertyChanged(nameof(LoadedEvent));
         EventId = calendarEvent.Id;
         Title = calendarEvent.Title;
         Location = calendarEvent.Location;

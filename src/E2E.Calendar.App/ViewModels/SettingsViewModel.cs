@@ -5,6 +5,7 @@ using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Entitlements;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
+using E2E.Calendar.App.Services;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -17,17 +18,20 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly SettingsService _settings;
     private readonly CalendarService _calendars;
     private readonly IEntitlementService _entitlements;
+    private readonly SyncCoordinator _sync;
 
     private bool _loading;
 
     public SettingsViewModel(
         SettingsService settings,
         CalendarService calendars,
-        IEntitlementService entitlements)
+        IEntitlementService entitlements,
+        SyncCoordinator sync)
     {
         _settings = settings;
         _calendars = calendars;
         _entitlements = entitlements;
+        _sync = sync;
 
         Sections =
         [
@@ -103,7 +107,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _showSecondaryTimeZone;
 
     [ObservableProperty]
+    private bool _showBirthdays;
+
+    [ObservableProperty]
     private int _densityIndex;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddGoogleAccountCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddMicrosoftAccountCommand))]
+    private bool _isAccountOperationInProgress;
+
+    [ObservableProperty]
+    private string? _accountStatus;
 
     public double MinHourHeight => AppSettings.MinHourHeight;
 
@@ -114,6 +129,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _loading = true;
 
         var settings = await _settings.LoadAsync();
+        await _sync.LoadAccountsAsync();
 
         ThemeIndex = settings.Theme switch
         {
@@ -141,6 +157,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowWeekends = settings.ShowWeekends;
         ShowWeekNumbers = settings.ShowWeekNumbers;
         ShowSecondaryTimeZone = settings.ShowSecondaryTimeZone;
+        ShowBirthdays = settings.ShowBirthdays;
         DensityIndex = settings.Density == AppDensity.Compact ? 1 : 0;
 
         var calendars = await _calendars.GetAllAsync();
@@ -166,8 +183,62 @@ public sealed partial class SettingsViewModel : ObservableObject
             DisplayName = "This device",
             Detail = $"{calendars.Count} calendar(s) · local only",
         });
+        foreach (var account in _sync.Accounts)
+        {
+            Accounts.Add(new SettingsAccountItem
+            {
+                Provider = account.Provider,
+                DisplayName = account.DisplayName,
+                Detail = account.Email ?? "Connected account",
+            });
+        }
 
         _loading = false;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAddAccount), AllowConcurrentExecutions = false)]
+    private async Task AddGoogleAccountAsync()
+    {
+        await AddAccountAsync(Provider.Google);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAddAccount), AllowConcurrentExecutions = false)]
+    private async Task AddMicrosoftAccountAsync()
+    {
+        await AddAccountAsync(Provider.Microsoft);
+    }
+
+    public bool CanAddAccount => !IsAccountOperationInProgress;
+
+    private async Task AddAccountAsync(Provider provider)
+    {
+        if (!_entitlements.Can(Feature.CalendarSets) && _sync.Accounts.Count > 0)
+        {
+            AccountStatus = "The free plan supports one connected account.";
+            return;
+        }
+
+        IsAccountOperationInProgress = true;
+        AccountStatus = $"Opening {provider} sign-in...";
+
+        try
+        {
+            await _sync.AddAccountAsync(provider);
+            await LoadAsync();
+            AccountStatus = $"{provider} account connected.";
+        }
+        catch (OperationCanceledException)
+        {
+            AccountStatus = $"{provider} sign-in was cancelled.";
+        }
+        catch (Exception ex)
+        {
+            AccountStatus = $"{provider} sign-in failed: {ex.Message}";
+        }
+        finally
+        {
+            IsAccountOperationInProgress = false;
+        }
     }
 
     [RelayCommand]
@@ -184,6 +255,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowWeekends = true;
         ShowWeekNumbers = false;
         ShowSecondaryTimeZone = false;
+        ShowBirthdays = false;
         DensityIndex = 0;
 
         _loading = false;
@@ -207,6 +279,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowWeekends = ShowWeekends,
         ShowWeekNumbers = ShowWeekNumbers,
         ShowSecondaryTimeZone = ShowSecondaryTimeZone,
+        ShowBirthdays = ShowBirthdays,
         Density = DensityIndex == 1 ? AppDensity.Compact : AppDensity.Comfortable,
         OnboardingComplete = true,
     };
@@ -238,6 +311,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnShowWeekNumbersChanged(bool value) => Persist();
 
     partial void OnShowSecondaryTimeZoneChanged(bool value) => Persist();
+
+    public async Task ImportBirthdaysAsync(CancellationToken cancellationToken = default)
+    {
+        await _sync.ImportBirthdaysAsync(cancellationToken);
+        await LoadAsync();
+    }
 
     partial void OnDensityIndexChanged(int value) => Persist();
 }

@@ -59,7 +59,7 @@ public sealed class GraphCalendarProvider : ISyncProvider
             $"{AuthEndpoint}?client_id={Uri.EscapeDataString(ClientId)}" +
             $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
             "&response_type=code" +
-            "&scope=" + Uri.EscapeDataString("Calendars.ReadWrite offline_access User.Read") +
+            "&scope=" + Uri.EscapeDataString("Calendars.ReadWrite Contacts.Read offline_access User.Read") +
             "&code_challenge=" + Uri.EscapeDataString(challenge) +
             "&code_challenge_method=S256" +
             "&state=" + Uri.EscapeDataString(state);
@@ -403,6 +403,9 @@ public sealed class GraphCalendarProvider : ISyncProvider
         }
 
         var deleted = false;
+        string? attendees = element.TryGetProperty("attendees", out var attendeeElement)
+            ? attendeeElement.GetRawText()
+            : null;
 
         return new CalendarEvent
         {
@@ -422,6 +425,7 @@ public sealed class GraphCalendarProvider : ISyncProvider
             ExDates = null,
             Color = null,
             MeetingUrl = meetingUrl,
+            Attendees = attendees,
             TravelMinutes = null,
             CreatedUtc = created,
             UpdatedUtc = updated,

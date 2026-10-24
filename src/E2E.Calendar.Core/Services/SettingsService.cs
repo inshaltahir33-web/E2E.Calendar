@@ -18,6 +18,7 @@ public sealed class SettingsService
     private const string ShowWeekendsKey = "general.show_weekends";
     private const string ShowWeekNumbersKey = "general.show_week_numbers";
     private const string ShowSecondaryTimeZoneKey = "general.show_secondary_time_zone";
+    private const string ShowBirthdaysKey = "calendars.show_birthdays";
     private const string SecondaryTimeZoneIdKey = "general.secondary_time_zone_id";
     private const string DensityKey = "appearance.density";
     private const string LastViewModeKey = "general.last_view_mode";
@@ -64,6 +65,7 @@ public sealed class SettingsService
             ShowSecondaryTimeZoneKey,
             settings.ShowSecondaryTimeZone ? "1" : "0",
             cancellationToken);
+        await _repository.SetAsync(ShowBirthdaysKey, settings.ShowBirthdays ? "1" : "0", cancellationToken);
         await _repository.SetAsync(SecondaryTimeZoneIdKey, settings.SecondaryTimeZoneId, cancellationToken);
         await _repository.SetAsync(DensityKey, settings.Density.ToString(), cancellationToken);
         await _repository.SetAsync(LastViewModeKey, settings.LastViewMode, cancellationToken);
@@ -90,6 +92,7 @@ public sealed class SettingsService
             ShowWeekends = ParseBool(values, ShowWeekendsKey, defaults.ShowWeekends),
             ShowWeekNumbers = ParseBool(values, ShowWeekNumbersKey, defaults.ShowWeekNumbers),
             ShowSecondaryTimeZone = ParseBool(values, ShowSecondaryTimeZoneKey, defaults.ShowSecondaryTimeZone),
+            ShowBirthdays = ParseBool(values, ShowBirthdaysKey, defaults.ShowBirthdays),
             SecondaryTimeZoneId = Get(values, SecondaryTimeZoneIdKey),
             Density = ParseEnum(values, DensityKey, defaults.Density),
             LastViewMode = Get(values, LastViewModeKey),

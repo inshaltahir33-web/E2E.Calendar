@@ -26,7 +26,16 @@ public sealed class MigrationRunner
             await using (var command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
-                command.CommandText = migration.Sql;
+                if (migration.Version == 3 &&
+                    await ColumnExistsAsync(connection, transaction, "event", "attendees", cancellationToken))
+                {
+                    command.CommandText = "SELECT 1;";
+                }
+                else
+                {
+                    command.CommandText = migration.Sql;
+                }
+
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
 
@@ -86,5 +95,28 @@ public sealed class MigrationRunner
         }
 
         return migrations.OrderBy(m => m.Version).ToList();
+    }
+
+    private static async Task<bool> ColumnExistsAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string table,
+        string column,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"PRAGMA table_info({table});";
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -1,7 +1,5 @@
 using E2E.Calendar.Core.Models;
 
-using E2E.Calendar.Core.Models;
-
 namespace E2E.Calendar.Core.Sync;
 
 public interface ISyncProvider
