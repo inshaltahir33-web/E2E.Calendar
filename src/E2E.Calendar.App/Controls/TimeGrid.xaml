@@ -21,7 +21,9 @@
             SizeChanged="OnBodyScrollSizeChanged"
             ViewChanged="OnViewChanged">
 
-            <Grid x:Name="BodyGrid">
+            <Grid
+                x:Name="BodyGrid"
+                Background="{ThemeResource App.SurfaceBaseBrush}">
                 <Canvas x:Name="GutterCanvas" Grid.Column="0" />
                 <Canvas
                     x:Name="OverlayCanvas"
