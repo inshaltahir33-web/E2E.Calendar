@@ -1,3 +1,4 @@
+using E2E.Calendar.App.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -56,6 +57,9 @@ public sealed class DialogService : IDialogService
             return ContentDialogResult.None;
         }
 
+        // Remember who opened the dialog so focus goes back there once it closes.
+        var opener = OverlayFocus.Capture(dialog.XamlRoot);
+
         try
         {
             return await dialog.ShowAsync();
@@ -63,6 +67,7 @@ public sealed class DialogService : IDialogService
         finally
         {
             Interlocked.Exchange(ref _isOpen, 0);
+            OverlayFocus.Restore(opener);
         }
     }
 

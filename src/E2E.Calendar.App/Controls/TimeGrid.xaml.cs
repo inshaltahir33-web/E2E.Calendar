@@ -1137,7 +1137,7 @@ public sealed partial class TimeGrid : UserControl
 
         var flyout = BuildContextMenu(item);
 
-        flyout.ShowAt(chip, new FlyoutShowOptions { Position = e.GetPosition(chip) });
+        OverlayFocus.ShowAt(flyout, chip, new FlyoutShowOptions { Position = e.GetPosition(chip) });
         e.Handled = true;
     }
 
@@ -1234,7 +1234,7 @@ public sealed partial class TimeGrid : UserControl
         newReminder.Click += (_, _) => SlotActionRequested?.Invoke(this, new TimeGridSlotActionEventArgs(days[dayIndex].Date, startUtc, TimeGridSlotAction.NewReminder));
         flyout.Items.Add(newReminder);
 
-        flyout.ShowAt(canvas, new FlyoutShowOptions { Position = e.GetPosition(canvas) });
+        OverlayFocus.ShowAt(flyout, canvas, new FlyoutShowOptions { Position = e.GetPosition(canvas) });
     }
 
     private void OnChipPointerPressed(object sender, PointerRoutedEventArgs e)

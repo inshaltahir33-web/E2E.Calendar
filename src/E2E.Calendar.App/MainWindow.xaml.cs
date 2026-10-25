@@ -884,7 +884,7 @@ public sealed partial class MainWindow : Window
 
         var flyout = BuildCalendarContextFlyout(item);
 
-        flyout.ShowAt(list, new FlyoutShowOptions { Position = e.GetPosition(list) });
+        OverlayFocus.ShowAt(flyout, list, new FlyoutShowOptions { Position = e.GetPosition(list) });
     }
 
     private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject

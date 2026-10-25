@@ -146,7 +146,7 @@ public sealed partial class SettingsView : UserControl
             flyout.Items.Add(item);
         }
 
-        flyout.ShowAt(button);
+        OverlayFocus.ShowAt(flyout, button);
     }
 
     private async void OnRemoveAccountClick(object sender, RoutedEventArgs e)

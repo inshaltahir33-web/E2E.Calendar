@@ -296,7 +296,7 @@ public sealed partial class MonthDayCell : UserControl
             Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
         };
 
-        flyout.ShowAt(MoreButton);
+        OverlayFocus.ShowAt(flyout, MoreButton);
     }
 
     private void OnDragOver(object sender, DragEventArgs e)
