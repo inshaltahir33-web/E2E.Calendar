@@ -205,11 +205,17 @@ public partial class App : Application
                 services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<TodoService>();
                 services.AddSingleton<IEntitlementService, FreeEntitlementService>();
+                // Google two-way sync stays opt-in until our Google OAuth app is approved.
+                // Enable with: dotnet build -p:GoogleSyncEnabled=true
+#if GoogleSyncEnabled
                 services.AddSingleton<GoogleCalendarProvider>();
+#endif
                 services.AddSingleton<GraphCalendarProvider>();
                 services.AddSingleton<CalDavProvider>();
+#if GoogleSyncEnabled
                 services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
                     serviceProvider.GetRequiredService<GoogleCalendarProvider>());
+#endif
                 services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>
                     serviceProvider.GetRequiredService<GraphCalendarProvider>());
                 services.AddSingleton<E2E.Calendar.Core.Sync.ISyncProvider>(serviceProvider =>

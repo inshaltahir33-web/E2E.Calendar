@@ -19,6 +19,13 @@
     <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
 
+  <!-- Google two-way sync stays behind a build flag (default off) until the Google OAuth
+       app is approved. Enable with: dotnet build -p:GoogleSyncEnabled=true -->
+  <PropertyGroup>
+    <GoogleSyncEnabled Condition="'$(GoogleSyncEnabled)' == ''">false</GoogleSyncEnabled>
+    <DefineConstants Condition="'$(GoogleSyncEnabled)' == 'true'">$(DefineConstants);GoogleSyncEnabled</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
