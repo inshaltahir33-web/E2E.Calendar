@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
     private readonly IcsService _ics;
     private readonly ScheduleExportService _scheduleExport;
     private readonly TodoService _todo;
+    private readonly IDialogService _dialogs;
     private bool _syncInProgress;
     private bool _rsvpInProgress;
 
@@ -81,7 +82,8 @@ public sealed partial class MainWindow : Window
         SyncCoordinator sync,
         IcsService ics,
         ScheduleExportService scheduleExport,
-        TodoService todo)
+        TodoService todo,
+        IDialogService dialogs)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -99,6 +101,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(shellState);
         ArgumentNullException.ThrowIfNull(todo);
+        ArgumentNullException.ThrowIfNull(dialogs);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -120,6 +123,7 @@ public sealed partial class MainWindow : Window
         _ics = ics;
         _scheduleExport = scheduleExport;
         _todo = todo;
+        _dialogs = dialogs;
 
         this.InitializeComponent();
 
@@ -134,7 +138,7 @@ public sealed partial class MainWindow : Window
         StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
         EditorHost.Children.Add(new Views.EventEditorView(editor));
-        MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar));
+        MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar, dialogs));
 
         editor.Opened += OnEditorOpened;
         editor.CloseRequested += OnEditorCloseRequested;
@@ -269,7 +273,7 @@ public sealed partial class MainWindow : Window
 
             if (!_settings.Current.OnboardingComplete)
             {
-                await Views.OnboardingView.ShowAsync(RootGrid.XamlRoot, _settings);
+                await Views.OnboardingView.ShowAsync(_dialogs, RootGrid.XamlRoot, _settings);
             }
         }
         catch (Exception ex)
@@ -524,7 +528,7 @@ public sealed partial class MainWindow : Window
             XamlRoot = RootGrid.XamlRoot,
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await _dialogs.ShowAsync(dialog);
         var status = result switch
         {
             ContentDialogResult.Primary => RsvpStatus.Accepted,
@@ -610,7 +614,7 @@ public sealed partial class MainWindow : Window
 
         AutomationProperties.SetName(dialog, "Discard changes");
 
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        return await _dialogs.ShowAsync(dialog) == ContentDialogResult.Primary;
     }
 
     private async void OnEditorSaveRequested(object? sender, EventArgs e)
@@ -619,7 +623,7 @@ public sealed partial class MainWindow : Window
 
         if (_editor.IsRecurring)
         {
-            scope = await Views.RecurrenceEditDialog.ShowAsync(RootGrid.XamlRoot);
+            scope = await Views.RecurrenceEditDialog.ShowAsync(_dialogs, RootGrid.XamlRoot);
 
             if (scope is null)
             {
@@ -1087,7 +1091,7 @@ public sealed partial class MainWindow : Window
             Content = list,
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await _dialogs.ShowAsync(dialog);
 
         if (result == ContentDialogResult.None && list.SelectedItem is PaletteCommand command)
         {

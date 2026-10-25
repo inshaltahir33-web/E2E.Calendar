@@ -15,11 +15,15 @@ public sealed class ReminderQuickAdd
 {
     private readonly IReminderRepository _reminders;
     private readonly IClock _clock;
+    private readonly IDialogService _dialogs;
 
-    public ReminderQuickAdd(IReminderRepository reminders, IClock clock)
+    public ReminderQuickAdd(IReminderRepository reminders, IClock clock, IDialogService dialogs)
     {
+        ArgumentNullException.ThrowIfNull(dialogs);
+
         _reminders = reminders;
         _clock = clock;
+        _dialogs = dialogs;
     }
 
     public async Task<Reminder?> ShowAndCreateAsync(XamlRoot xamlRoot, DateTimeOffset dueUtc)
@@ -47,7 +51,7 @@ public sealed class ReminderQuickAdd
             DefaultButton = ContentDialogButton.Primary,
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await _dialogs.ShowAsync(dialog);
 
         if (result != ContentDialogResult.Primary)
         {

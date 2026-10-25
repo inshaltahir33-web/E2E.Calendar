@@ -1,3 +1,4 @@
+using E2E.Calendar.App.Services;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -6,8 +7,10 @@ namespace E2E.Calendar.App.Views;
 
 public static class RecurrenceEditDialog
 {
-    public static async Task<RecurrenceEditScope?> ShowAsync(XamlRoot? xamlRoot)
+    public static async Task<RecurrenceEditScope?> ShowAsync(IDialogService dialogs, XamlRoot? xamlRoot)
     {
+        ArgumentNullException.ThrowIfNull(dialogs);
+
         var thisEvent = new RadioButton { Content = "This event", IsChecked = true };
         var thisAndFollowing = new RadioButton { Content = "This and following" };
         var allEvents = new RadioButton { Content = "All events" };
@@ -26,7 +29,7 @@ public static class RecurrenceEditDialog
             CloseButtonText = "Cancel",
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await dialogs.ShowAsync(dialog);
 
         if (result != ContentDialogResult.Primary)
         {

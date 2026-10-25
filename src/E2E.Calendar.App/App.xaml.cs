@@ -151,6 +151,9 @@ public partial class App : Application
                 });
                 services.AddSingleton<IClock, SystemClock>();
                 services.AddSingleton<ISecretStore, CredentialStore>();
+                services.AddSingleton<IDialogService>(serviceProvider => new DialogService(
+                    () => App.Current.MainWindow?.Content?.XamlRoot,
+                    serviceProvider.GetRequiredService<ILogger<DialogService>>()));
                 // WidgetAgendaCardService (v1.1 Windows 11 widgets) is not surfaced in the UI yet,
                 // so it is intentionally not registered. Re-register when the widget host is wired up.
                 services.AddSingleton<WeatherService>();

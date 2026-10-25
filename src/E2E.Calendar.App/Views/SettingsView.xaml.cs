@@ -1,3 +1,4 @@
+using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
@@ -10,10 +11,14 @@ namespace E2E.Calendar.App.Views;
 public sealed partial class SettingsView : UserControl
 {
     private readonly (string Name, FrameworkElement Panel)[] _sections;
+    private readonly IDialogService _dialogs;
 
-    public SettingsView(SettingsViewModel viewModel)
+    public SettingsView(SettingsViewModel viewModel, IDialogService dialogs)
     {
+        ArgumentNullException.ThrowIfNull(dialogs);
+
         ViewModel = viewModel;
+        _dialogs = dialogs;
 
         InitializeComponent();
 
@@ -60,9 +65,8 @@ public sealed partial class SettingsView : UserControl
                 Title = "Birthdays could not be enabled",
                 Content = ex.Message,
                 CloseButtonText = "Close",
-                XamlRoot = XamlRoot,
             };
-            await dialog.ShowAsync();
+            await _dialogs.ShowAsync(dialog);
         }
     }
 
@@ -94,10 +98,9 @@ public sealed partial class SettingsView : UserControl
             Content = nameBox,
             PrimaryButtonText = "Create",
             CloseButtonText = "Cancel",
-            XamlRoot = XamlRoot,
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary ||
+        if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary ||
             string.IsNullOrWhiteSpace(nameBox.Text))
         {
             return;
@@ -119,13 +122,12 @@ public sealed partial class SettingsView : UserControl
         }
         catch (InvalidOperationException ex)
         {
-            await new ContentDialog
+            await _dialogs.ShowAsync(new ContentDialog
             {
                 Title = "Calendar cannot be deleted",
                 Content = ex.Message,
                 CloseButtonText = "Close",
-                XamlRoot = XamlRoot,
-            }.ShowAsync();
+            });
         }
     }
 
@@ -160,10 +162,9 @@ public sealed partial class SettingsView : UserControl
             Content = "This removes the account, its synced calendars, and their local event copies. The remote account is not changed.",
             PrimaryButtonText = "Remove",
             CloseButtonText = "Cancel",
-            XamlRoot = XamlRoot,
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await _dialogs.ShowAsync(dialog) == ContentDialogResult.Primary)
         {
             try
             {
@@ -171,13 +172,12 @@ public sealed partial class SettingsView : UserControl
             }
             catch (Exception ex)
             {
-                await new ContentDialog
+                await _dialogs.ShowAsync(new ContentDialog
                 {
                     Title = "Account could not be removed",
                     Content = ex.Message,
                     CloseButtonText = "Close",
-                    XamlRoot = XamlRoot,
-                }.ShowAsync();
+                });
             }
         }
     }

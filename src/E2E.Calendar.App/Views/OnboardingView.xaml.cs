@@ -1,3 +1,4 @@
+using E2E.Calendar.App.Services;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
@@ -33,8 +34,9 @@ public sealed partial class OnboardingView : UserControl
 
     public event EventHandler? Completed;
 
-    public static async Task ShowAsync(XamlRoot? xamlRoot, SettingsService settings)
+    public static async Task ShowAsync(IDialogService dialogs, XamlRoot? xamlRoot, SettingsService settings)
     {
+        ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(settings);
 
         if (xamlRoot is null)
@@ -68,7 +70,7 @@ public sealed partial class OnboardingView : UserControl
             dialog.Hide();
         };
 
-        var result = await dialog.ShowAsync();
+        var result = await dialogs.ShowAsync(dialog);
 
         if (result == ContentDialogResult.None)
         {

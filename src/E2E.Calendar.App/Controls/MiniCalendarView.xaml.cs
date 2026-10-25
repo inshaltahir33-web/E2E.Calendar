@@ -1,3 +1,4 @@
+using E2E.Calendar.App.Services;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
@@ -21,16 +22,20 @@ public sealed partial class MiniCalendarView : UserControl
     private const double HeaderHeight = 16;
 
     private readonly MiniCalendarViewModel _viewModel;
+    private readonly IDialogService _dialogs;
     private readonly List<DayCell> _cells = new();
     private readonly UiDispatcherQueueTimer _wheelDebounce;
     private IReadOnlyList<MiniCalendarDayViewModel>? _builtDays;
     private int _pendingWheelDirection;
     private bool _isLoaded;
 
-    public MiniCalendarView(MiniCalendarViewModel viewModel)
+    public MiniCalendarView(MiniCalendarViewModel viewModel, IDialogService dialogs)
     {
+        ArgumentNullException.ThrowIfNull(dialogs);
+
         ViewModel = viewModel;
         _viewModel = viewModel;
+        _dialogs = dialogs;
 
         InitializeComponent();
 
@@ -185,7 +190,6 @@ public sealed partial class MiniCalendarView : UserControl
             Title = "Choose month and year",
             PrimaryButtonText = "Go to month",
             CloseButtonText = "Cancel",
-            XamlRoot = XamlRoot,
         };
 
         var yearText = new TextBlock
@@ -261,7 +265,7 @@ public sealed partial class MiniCalendarView : UserControl
         var content = new StackPanel { Spacing = 8, Children = { yearBar, months } };
         dialog.Content = content;
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await _dialogs.ShowAsync(dialog) == ContentDialogResult.Primary)
         {
             var target = new DateOnly(year, month, 1);
             var delta = (target.Year - ViewModel.VisibleYear) * 12 + target.Month - ViewModel.VisibleMonth;
