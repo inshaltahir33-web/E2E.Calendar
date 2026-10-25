@@ -41,6 +41,7 @@ public sealed partial class MainWindow : Window
     private readonly SyncCoordinator _sync;
     private readonly IcsService _ics;
     private readonly ScheduleExportService _scheduleExport;
+    private readonly TodoService _todo;
     private bool _syncInProgress;
     private bool _rsvpInProgress;
 
@@ -49,7 +50,6 @@ public sealed partial class MainWindow : Window
     private CancellationTokenSource? _searchCts;
     private EventSearchCriteria _searchCriteria = new();
 
-    private bool _lastAutoCollapsed;
     private HotkeyService? _hotkey;
 
     public void InitializeQuickAddHotkey(HotkeyService hotkey)
@@ -80,7 +80,8 @@ public sealed partial class MainWindow : Window
         IShellState shellState,
         SyncCoordinator sync,
         IcsService ics,
-        ScheduleExportService scheduleExport)
+        ScheduleExportService scheduleExport,
+        TodoService todo)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(stateViewModel);
@@ -97,6 +98,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(reminders);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(shellState);
+        ArgumentNullException.ThrowIfNull(todo);
 
         ViewModel = viewModel;
         StateViewModel = stateViewModel;
@@ -117,6 +119,7 @@ public sealed partial class MainWindow : Window
         _sync = sync;
         _ics = ics;
         _scheduleExport = scheduleExport;
+        _todo = todo;
 
         this.InitializeComponent();
 
@@ -147,6 +150,12 @@ public sealed partial class MainWindow : Window
         RootGrid.ActualThemeChanged += OnActualThemeChanged;
         UpdateTitleBarColors();
 
+        // Sidebar counts follow every add / complete / delete made on the to-do page.
+        _todo.Changed += (_, _) => _ = RefreshReminderCountsAsync();
+
+        // Single-key shortcuts (N, R, T, D, W, M, A) must not fire while the user is typing in a text box.
+        RootGrid.GotFocus += OnRootGotFocus;
+
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
         {
             this.SystemBackdrop = new MicaBackdrop();
@@ -174,19 +183,23 @@ public sealed partial class MainWindow : Window
         titleBar.ButtonInactiveBackgroundColor = ResourceColor("App.WindowBackgroundBrush");
     }
 
-    private static Color ResourceColor(string key)
+    private void OnRootGotFocus(object sender, RoutedEventArgs e)
     {
-        if (Application.Current.Resources.TryGetValue(key, out var value)
-            && value is SolidColorBrush brush)
-        {
-            return brush.Color;
-        }
+        var typing = e.OriginalSource is TextBox or PasswordBox or RichEditBox;
 
-        return Application.Current.Resources.TryGetValue("App.TextPrimaryBrush", out var fallback)
-            && fallback is SolidColorBrush fallbackBrush
-            ? fallbackBrush.Color
-            : default;
+        foreach (var accelerator in RootGrid.KeyboardAccelerators)
+        {
+            if (accelerator.Modifiers == Windows.System.VirtualKeyModifiers.None)
+            {
+                accelerator.IsEnabled = !typing;
+            }
+        }
     }
+
+    // Resolves against the window's ActualTheme. Application.Current.Resources[...] ignores the
+    // per-window theme override and returned Light colours (white caption buttons) in a Dark window.
+    private Color ResourceColor(string key) =>
+        ThemeBrushes.Get(RootGrid, key) is SolidColorBrush brush ? brush.Color : default;
 
     private async void OnExportPdfClick(object sender, RoutedEventArgs e) =>
             await ExportScheduleAsync(ScheduleExportViewForState(), "pdf");
@@ -268,13 +281,8 @@ public sealed partial class MainWindow : Window
 
     private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
     {
-        var collapsed = args.Size.Width < CompactWidthThreshold;
-
-        if (collapsed != _lastAutoCollapsed)
-        {
-            _lastAutoCollapsed = collapsed;
-            ApplySidebarCollapsed(collapsed);
-        }
+        // The sidebar is always visible now (hamburger removed), so there is nothing to auto-collapse.
+        _ = args;
     }
 
     private void OnPaneToggleClick(object sender, RoutedEventArgs e)
@@ -310,13 +318,23 @@ public sealed partial class MainWindow : Window
 
     private void OnSidebarRowClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement element || element.Tag is not NavigationListItem item)
+        if (sender is not FrameworkElement element)
         {
             return;
         }
 
-        ViewModel.SelectTarget(item);
-        _navigation.NavigateTo(item.TargetKey, item.TargetParameter);
+        if (element.DataContext is NavigationListItem item)
+        {
+            ViewModel.SelectItem(item);
+            _navigation.NavigateTo(item.TargetKey, item.Label);
+            return;
+        }
+
+        if (element.Tag is string targetKey)
+        {
+            ViewModel.SelectTarget(targetKey);
+            _navigation.NavigateTo(targetKey);
+        }
     }
 
     private void OnTodayClick(object sender, RoutedEventArgs e) => StateViewModel.GoToTodayCommand.Execute(null);
@@ -346,7 +364,14 @@ public sealed partial class MainWindow : Window
 
     private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
 
-    private void OnNewTaskClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Tasks);
+    private void OnNewTaskClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
+
+    private void OpenTodo(string filter)
+    {
+        ViewModel.SelectItem(ViewModel.TaskLists.FirstOrDefault(item => item.Label == filter)
+            ?? ViewModel.ReminderLists.FirstOrDefault(item => item.Label == filter));
+        _navigation.NavigateTo(NavigationKeys.Tasks, filter);
+    }
 
     private async void OpenNewEvent()
     {
@@ -363,7 +388,7 @@ public sealed partial class MainWindow : Window
 
     private void OnAgendaViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Agenda, NavigationKeys.Agenda);
 
-    private void OnTasksClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Tasks);
+    private void OnTasksClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
 
     private void OnSettingsClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Settings);
 
@@ -371,6 +396,7 @@ public sealed partial class MainWindow : Window
 
     private void ShowView(CalendarViewMode mode, string key)
     {
+        ViewModel.ClearNavigationSelection();
         SelectViewInSwitcher(mode);
 
         if (StateViewModel.ViewMode != mode)
@@ -460,34 +486,21 @@ public sealed partial class MainWindow : Window
 
     private async Task RefreshReminderCountsAsync()
     {
-        var now = _clock.UtcNow;
-        var timeZone = _clock.LocalTimeZone;
-        var today = DateOnly.FromDateTime(timeZone.ToLocal(now));
-        var endOfToday = timeZone.ToUtc(today.AddDays(1).ToDateTime(TimeOnly.MinValue));
-
-        var reminders = await _reminders.GetInRangeAsync(now.AddYears(-5), endOfToday.AddYears(5));
-
-        var open = reminders.Where(reminder => reminder.DoneUtc is null).ToList();
-
-        SetCount("Today", open.Count(reminder => reminder.DueUtc is not null &&
-            DateOnly.FromDateTime(timeZone.ToLocal(reminder.DueUtc.Value)) == today));
-
-        SetCount("Scheduled", open.Count(reminder => reminder.DueUtc is not null && reminder.DueUtc > now));
-
-        SetCount("Overdue", open.Count(reminder => reminder.DueUtc is not null && reminder.DueUtc < now));
-
-        SetCount("Completed", reminders.Count(reminder => reminder.DoneUtc is not null));
-
-        SetCount("Flagged", open.Count(reminder => reminder.Flagged));
-    }
-
-    private void SetCount(string label, int count)
-    {
-        var item = ViewModel.ReminderLists.FirstOrDefault(entry => entry.Label == label);
-
-        if (item is not null)
+        try
         {
-            item.Count = count;
+            var counts = await _todo.GetCountsAsync();
+
+            foreach (var item in ViewModel.ReminderLists.Concat(ViewModel.TaskLists))
+            {
+                if (counts.TryGetValue(item.Label, out var count))
+                {
+                    item.Count = count;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not refresh sidebar counts");
         }
     }
 

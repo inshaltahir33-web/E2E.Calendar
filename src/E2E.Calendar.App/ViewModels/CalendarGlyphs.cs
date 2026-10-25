@@ -14,7 +14,7 @@ public static class CalendarGlyphs
 
     public static string Inbox { get; } = Glyph(0xE8A5);
 
-    public static string Work { get; } = Glyph(0xE7B3);
+    public static string Work { get; } = Glyph(0xE8B7);
 
     public static string New { get; } = Glyph(0xE710);
 

@@ -202,6 +202,7 @@ public partial class App : Application
                 services.AddSingleton<RecurrenceEditService>();
                 services.AddSingleton<EventTemplateService>();
                 services.AddSingleton<ReminderQuickAdd>();
+                services.AddSingleton<TodoService>();
                 services.AddSingleton<IEntitlementService, FreeEntitlementService>();
                 services.AddSingleton<GoogleCalendarProvider>();
                 services.AddSingleton<GraphCalendarProvider>();
@@ -222,7 +223,6 @@ public partial class App : Application
                 services.AddSingleton<DayViewModel>();
                 services.AddSingleton<AgendaViewModel>();
                 services.AddSingleton<MiniCalendarViewModel>();
-                services.AddSingleton<TodoViewModel>();
                 services.AddSingleton<EventEditorViewModel>();
                 services.AddSingleton<MainWindow>();
 

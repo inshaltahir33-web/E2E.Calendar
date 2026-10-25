@@ -51,22 +51,23 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<AgendaViewModel>(),
                 _services.GetRequiredService<EventEditorViewModel>()));
 
+        // One shared page for Reminders and Tasks; the sidebar row label (Today, Inbox, ...) is the filter.
+        TodoView? todoPage = null;
+        object? CreateTodo(object? _)
+        {
+            todoPage ??= new TodoView(
+                _services.GetRequiredService<TodoService>(),
+                _services.GetRequiredService<IShellState>());
+            return todoPage;
+        }
+
+        _navigation.RegisterFactory(NavigationKeys.Reminders, CreateTodo);
+        _navigation.RegisterFactory(NavigationKeys.Tasks, CreateTodo);
+
         _navigation.RegisterFactory(
             NavigationKeys.Settings,
             _ => new SettingsView(
                 _services.GetRequiredService<SettingsViewModel>()));
-
-        _navigation.RegisterFactory(
-            NavigationKeys.Tasks,
-            parameter => new TodoView(
-                _services.GetRequiredService<TodoViewModel>(),
-                parameter as string));
-
-        _navigation.RegisterFactory(
-            NavigationKeys.Reminders,
-            parameter => new TodoView(
-                _services.GetRequiredService<TodoViewModel>(),
-                parameter as string ?? "Reminders"));
 
         return Task.CompletedTask;
     }

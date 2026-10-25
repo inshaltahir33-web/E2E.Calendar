@@ -65,7 +65,7 @@ public sealed partial class SkeletonView : UserControl
         BarsHost.Children.Clear();
 
         var count = Math.Max(1, Rows);
-        var brush = (Brush)Application.Current.Resources["App.HoverBrush"];
+        var brush = ThemeBrushes.Get(this, "App.HoverBrush");
 
         for (var index = 0; index < count; index++)
         {

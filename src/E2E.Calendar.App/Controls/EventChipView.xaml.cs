@@ -209,18 +209,18 @@ public sealed partial class EventChipView : UserControl
         CheckBox.Visibility = isTickable ? Visibility.Visible : Visibility.Collapsed;
         CheckGlyph.Visibility = IsDone ? Visibility.Visible : Visibility.Collapsed;
         CheckBox.Background = IsDone
-            ? (Brush)Application.Current.Resources["App.AccentBrush"]
-            : (Brush)Application.Current.Resources["ControlFillColorTransparentBrush"];
+            ? ThemeBrushes.Get(this, "App.AccentBrush")
+            : ThemeBrushes.Get(this, "ControlFillColorTransparentBrush");
         CheckBox.BorderBrush = IsDone
-            ? (Brush)Application.Current.Resources["App.AccentBrush"]
-            : (Brush)Application.Current.Resources["App.DividerStrongBrush"];
+            ? ThemeBrushes.Get(this, "App.AccentBrush")
+            : ThemeBrushes.Get(this, "App.DividerStrongBrush");
 
         ColorBar.Visibility = isTickable ? Visibility.Collapsed : Visibility.Visible;
         var chipBrushes = EventColorService.GetChipBrushes(ColorHex, ActualTheme);
         ColorBar.Background = chipBrushes.Stripe;
 
         ChipBorder.Background = isTickable
-            ? (Brush)Application.Current.Resources["ControlFillColorTransparentBrush"]
+            ? ThemeBrushes.Get(this, "ControlFillColorTransparentBrush")
             : chipBrushes.Fill;
 
         TitleText.Foreground = chipBrushes.Text;
@@ -229,13 +229,12 @@ public sealed partial class EventChipView : UserControl
 
         if (IsSelected)
         {
-            ChipBorder.BorderBrush = (Brush)Application.Current.Resources["App.AccentBrush"];
+            ChipBorder.BorderBrush = ThemeBrushes.Get(this, "App.AccentBrush");
             ChipBorder.BorderThickness = new Thickness(2);
         }
         else
         {
-            ChipBorder.BorderBrush = (Brush)Application.Current.Resources[
-                _isHovered ? "App.DividerStrongBrush" : "App.DividerBrush"];
+            ChipBorder.BorderBrush = ThemeBrushes.Get(this, _isHovered ? "App.DividerStrongBrush" : "App.DividerBrush");
             ChipBorder.BorderThickness = new Thickness(1);
         }
 

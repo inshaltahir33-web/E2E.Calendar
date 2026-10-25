@@ -62,10 +62,7 @@ public static class CalendarColors
     {
         if (Application.Current?.Resources is { } resources)
         {
-            if (resources.ThemeDictionaries.TryGetValue(themeKey, out var value) &&
-                value is ResourceDictionary dictionary &&
-                dictionary.TryGetValue(key, out var brush) &&
-                brush is Brush themed)
+            if (ThemeBrushes.TryGetThemed(themeKey, key, out var themed))
             {
                 return themed;
             }

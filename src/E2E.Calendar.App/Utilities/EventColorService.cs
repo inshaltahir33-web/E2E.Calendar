@@ -36,10 +36,8 @@ public static class EventColorService
 
         var themeKey = theme == ElementTheme.Dark ? "Dark" : "Light";
         var key = $"Cal.{CalendarPalette.Normalize(value)}.BarBrush";
-        if (Application.Current?.Resources.ThemeDictionaries.TryGetValue(themeKey, out var dictionaryValue) == true
-            && dictionaryValue is ResourceDictionary dictionary
-            && dictionary.TryGetValue(key, out var brushValue)
-            && brushValue is SolidColorBrush brush)
+        if (ThemeBrushes.TryGetThemed(themeKey, key, out var themedBrush)
+            && themedBrush is SolidColorBrush brush)
         {
             return brush.Color;
         }
@@ -50,10 +48,8 @@ public static class EventColorService
     private static Color ResourceColor(ElementTheme theme, string key)
     {
         var themeKey = theme == ElementTheme.Dark ? "Dark" : theme == ElementTheme.Light ? "Light" : "Light";
-        if (Application.Current?.Resources.ThemeDictionaries.TryGetValue(themeKey, out var dictionaryValue) == true
-            && dictionaryValue is ResourceDictionary dictionary
-            && dictionary.TryGetValue(key, out var value)
-            && value is SolidColorBrush brush)
+        if (ThemeBrushes.TryGetThemed(themeKey, key, out var themedValue)
+            && themedValue is SolidColorBrush brush)
         {
             return brush.Color;
         }

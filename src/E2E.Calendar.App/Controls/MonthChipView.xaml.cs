@@ -82,8 +82,7 @@ public sealed partial class MonthChipView : UserControl
 
     private void ApplyHover(bool hovered)
     {
-        ChipBorder.BorderBrush = (Brush)Application.Current.Resources[
-            hovered ? "App.DividerStrongBrush" : "App.DividerBrush"];
+        ChipBorder.BorderBrush = ThemeBrushes.Get(this, hovered ? "App.DividerStrongBrush" : "App.DividerBrush");
     }
 
     private void OnDragStarting(UIElement sender, DragStartingEventArgs args)

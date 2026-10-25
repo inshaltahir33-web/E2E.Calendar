@@ -313,7 +313,7 @@
                                             <Grid MinHeight="{StaticResource SidebarRowHeight}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="380" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox
@@ -441,7 +441,7 @@
             <!-- EDITOR DRAWER (right). The New event editor MUST be added as a child of THIS host. -->
             <Grid
                 x:Name="EditorHost"
-                Grid.Column="2"
+                
                 Width="{StaticResource EditorPaneWidth}"
                 Visibility="Collapsed" />
 
