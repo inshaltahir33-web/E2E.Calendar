@@ -151,7 +151,8 @@ public partial class App : Application
                 });
                 services.AddSingleton<IClock, SystemClock>();
                 services.AddSingleton<ISecretStore, CredentialStore>();
-                services.AddSingleton<WidgetAgendaCardService>();
+                // WidgetAgendaCardService (v1.1 Windows 11 widgets) is not surfaced in the UI yet,
+                // so it is intentionally not registered. Re-register when the widget host is wired up.
                 services.AddSingleton<WeatherService>();
                 services.AddSingleton<CrashReportingService>();
                 services.AddHostedService<UpdateCheckService>();
@@ -176,7 +177,7 @@ public partial class App : Application
 
                 services.AddSingleton<IRecurrenceExpander, RecurrenceExpander>();
                 services.AddSingleton<EventQueryService>();
-                services.AddSingleton<ProductivityAnalyticsService>();
+                // ProductivityAnalyticsService has no consumer yet (v1.1 metrics), so it is not registered.
                 services.AddSingleton<IEventQueryCache>(serviceProvider => serviceProvider.GetRequiredService<EventQueryService>());
                 services.AddSingleton<EventService>(serviceProvider => new EventService(
                     serviceProvider.GetRequiredService<IEventRepository>(),
