@@ -1,4 +1,5 @@
 using System.Globalization;
+using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
@@ -22,7 +23,7 @@ public sealed class IcsService
             {
                 Uid = source.Id,
                 Summary = source.Title,
-                Description = source.Notes,
+                Description = NotesText.ToPlainText(source.Notes),
                 Location = source.Location,
                 DtStart = new CalDateTime(source.StartUtc.UtcDateTime, "UTC"),
                 DtEnd = new CalDateTime(source.EndUtc.UtcDateTime, "UTC"),

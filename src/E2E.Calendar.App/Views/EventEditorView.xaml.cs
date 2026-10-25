@@ -1,6 +1,8 @@
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
+using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -10,6 +12,9 @@ namespace E2E.Calendar.App.Views;
 
 public partial class EventEditorView : UserControl
 {
+    private string? _notesSnapshot;
+    private bool _syncingNotes = true;
+
     public EventEditorView(EventEditorViewModel viewModel)
     {
         ViewModel = viewModel;
@@ -22,6 +27,7 @@ public partial class EventEditorView : UserControl
         UpdateAllDayVisibility();
         UpdateColorSwatch();
         UpdateHeader();
+        LoadNotesIntoEditor();
     }
 
     public EventEditorViewModel ViewModel { get; }
@@ -31,6 +37,7 @@ public partial class EventEditorView : UserControl
         UpdateAllDayVisibility();
         UpdateColorSwatch();
         UpdateHeader();
+        LoadNotesIntoEditor();
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -47,7 +54,46 @@ public partial class EventEditorView : UserControl
             case nameof(EventEditorViewModel.IsNew):
                 UpdateHeader();
                 break;
+            case nameof(EventEditorViewModel.Notes):
+                LoadNotesIntoEditor();
+                break;
         }
+    }
+
+    /// <summary>Pushes the view model's sanitised HTML notes into the rich-text editor.</summary>
+    private void LoadNotesIntoEditor()
+    {
+        var html = ViewModel.Notes;
+        if (string.Equals(html, _notesSnapshot, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _notesSnapshot = html;
+
+        // RichEditBox raises TextChanged asynchronously, so stay guarded until the
+        // document has settled; otherwise loading would mark the editor dirty.
+        _syncingNotes = true;
+        NotesBox.Document.SetText(TextSetOptions.FormatRtf, NotesText.HtmlToRtf(html));
+        DispatcherQueue.TryEnqueue(() => _syncingNotes = false);
+    }
+
+    private void OnNotesTextChanged(object sender, RoutedEventArgs e)
+    {
+        if (_syncingNotes)
+        {
+            return;
+        }
+
+        NotesBox.Document.GetText(TextGetOptions.FormatRtf, out var rtf);
+        var html = NotesText.RtfToHtml(rtf);
+        if (string.Equals(html, _notesSnapshot, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _notesSnapshot = html;
+        ViewModel.Notes = html;
     }
 
     private void UpdateAllDayVisibility()

@@ -521,7 +521,11 @@ public sealed class GraphCalendarProvider : ISyncProvider
         var payload = new Dictionary<string, object?>
         {
             ["subject"] = ev.Title,
-            ["body"] = new { contentType = "text", content = ev.Notes },
+            ["body"] = new
+            {
+                contentType = ev.Notes?.Contains('<') == true ? "html" : "text",
+                content = ev.Notes,
+            },
             ["location"] = new { displayName = ev.Location },
             ["start"] = new { dateTime = ev.StartUtc.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = ev.TimeZoneId },
             ["end"] = new { dateTime = ev.EndUtc.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = ev.TimeZoneId },

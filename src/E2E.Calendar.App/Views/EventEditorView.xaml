@@ -305,12 +305,13 @@
                 <Border Style="{StaticResource EditorCardStyle}">
                     <StackPanel Spacing="{StaticResource SpaceSM}">
                         <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="NOTES" />
-                        <TextBox
-                            AcceptsReturn="True"
+                        <RichEditBox
+                            x:Name="NotesBox"
                             AutomationProperties.Name="Event notes"
+                            FontSize="{StaticResource FontSizeBody}"
                             Height="{StaticResource NotesBoxHeight}"
                             PlaceholderText="Add notes"
-                            Text="{x:Bind ViewModel.Notes, Mode=TwoWay}"
+                            TextChanged="OnNotesTextChanged"
                             TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>

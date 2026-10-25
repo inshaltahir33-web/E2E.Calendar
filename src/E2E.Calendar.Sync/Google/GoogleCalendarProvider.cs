@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Recurrence;
@@ -520,7 +521,7 @@ public sealed class GoogleCalendarProvider : ISyncProvider
         var payload = new Dictionary<string, object?>
         {
             ["summary"] = ev.Title,
-            ["description"] = ev.Notes,
+            ["description"] = NotesText.ToPlainText(ev.Notes),
             ["location"] = ev.Location,
             ["start"] = start,
             ["end"] = end,

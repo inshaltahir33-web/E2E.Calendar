@@ -598,7 +598,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
             OccurrenceCount = options.Count ?? 10;
         }
 
-        DetectedMeeting = MeetingLinkDetector.Detect(MeetingUrl ?? Notes);
+        DetectedMeeting = MeetingLinkDetector.Detect(MeetingUrl ?? NotesText.ToPlainText(Notes));
 
         await LoadCalendarsAsync();
         await LoadAlertsAsync(calendarEvent.Id);
@@ -786,7 +786,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     [RelayCommand]
     public void DetectMeetingLink()
     {
-        DetectedMeeting = MeetingLinkDetector.Detect(MeetingUrl ?? Notes);
+        DetectedMeeting = MeetingLinkDetector.Detect(MeetingUrl ?? NotesText.ToPlainText(Notes));
     }
 
     [RelayCommand]
@@ -804,13 +804,14 @@ public sealed partial class EventEditorViewModel : ObservableObject
         }
 
         var rule = Frequency == RecurrenceFrequency.None ? null : BuildRecurrenceRule();
+        var notes = NotesText.SanitizeHtml(Notes);
 
         var edited = new CalendarEvent
         {
             Id = EventId,
             CalendarId = CalendarId ?? "cal-local",
             Title = Title,
-            Notes = Notes,
+            Notes = notes,
             Location = Location,
             Url = Url,
             MeetingUrl = MeetingUrl,
