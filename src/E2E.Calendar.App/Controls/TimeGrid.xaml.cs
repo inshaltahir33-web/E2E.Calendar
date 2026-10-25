@@ -462,7 +462,7 @@ public sealed partial class TimeGrid : UserControl
 
         _ghostLabel = new TextBlock
         {
-            FontSize = 11,
+            FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush"),
             Visibility = Visibility.Collapsed,
@@ -513,7 +513,7 @@ public sealed partial class TimeGrid : UserControl
         var tzLabel = new TextBlock
         {
             Text = FormatTimeZoneOffset(LocalTimeZone),
-            FontSize = 11,
+            FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
             Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
@@ -623,7 +623,7 @@ public sealed partial class TimeGrid : UserControl
         var label = new TextBlock
         {
             Text = "all-day",
-            FontSize = 11,
+            FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
             Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
@@ -689,7 +689,7 @@ public sealed partial class TimeGrid : UserControl
             var chip = new TextBlock
             {
                 Text = $"+{pair.Value} more",
-                FontSize = 11,
+                FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
                 Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -717,7 +717,7 @@ public sealed partial class TimeGrid : UserControl
         var text = new TextBlock
         {
             Text = item.Title,
-            FontSize = 12,
+            FontSize = Tokens.Double("FontSizeCaption", 12d),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Foreground = chipBrushes.Text,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -833,7 +833,7 @@ public sealed partial class TimeGrid : UserControl
                     var more = new TextBlock
                     {
                         Text = $"+{hidden}",
-                        FontSize = 11,
+                        FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
                         Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                         HorizontalAlignment = HorizontalAlignment.Left,
                     };
@@ -915,7 +915,7 @@ public sealed partial class TimeGrid : UserControl
             var label = new TextBlock
             {
                 Text = FormatHour(hour),
-                FontSize = 11,
+                FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
                 Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -969,7 +969,7 @@ public sealed partial class TimeGrid : UserControl
             var label = new TextBlock
             {
                 Text = FormatLocalTime(local),
-                FontSize = 12,
+                FontSize = Tokens.Double("FontSizeCaption", 12d),
                 Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,

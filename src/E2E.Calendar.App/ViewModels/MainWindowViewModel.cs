@@ -38,6 +38,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<NavigationListItem> TaskLists { get; } = new();
 
+    /// <summary>Distinct tags found on stored events. Populated by the window from the event store.</summary>
+    public ObservableCollection<NavigationListItem> Tags { get; } = new();
+
     public MainWindowViewModel()
     {
         ReminderLists.Add(new NavigationListItem { Label = "Today", Glyph = CalendarGlyphs.Today, TargetKey = NavigationKeys.Reminders });
@@ -70,7 +73,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         SelectedTargetKey = selected?.TargetKey ?? string.Empty;
 
-        foreach (var item in ReminderLists.Concat(TaskLists))
+        foreach (var item in ReminderLists.Concat(TaskLists).Concat(Tags))
         {
             item.IsSelected = ReferenceEquals(item, selected);
         }
@@ -81,8 +84,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public void SelectTarget(string targetKey)
     {
-        SelectItem(ReminderLists.Concat(TaskLists).FirstOrDefault(item =>
+        SelectItem(ReminderLists.Concat(TaskLists).Concat(Tags).FirstOrDefault(item =>
             string.Equals(item.TargetKey, targetKey, StringComparison.Ordinal)));
+    }
+
+    /// <summary>Rebuilds the tag list from the distinct tags stored on events.</summary>
+    public void SetTags(IEnumerable<string> tags)
+    {
+        Tags.Clear();
+
+        foreach (var tag in tags)
+        {
+            Tags.Add(new NavigationListItem
+            {
+                Label = tag,
+                Glyph = CalendarGlyphs.Tag,
+                TargetKey = NavigationKeys.Tags,
+            });
+        }
     }
 
     partial void OnLastDeletedEventIdChanged(string value)

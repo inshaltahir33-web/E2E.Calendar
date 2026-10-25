@@ -34,6 +34,8 @@ public static class CalendarGlyphs
 
     public static string Tasks { get; } = Glyph(0xE9D5);
 
+    public static string Tag { get; } = Glyph(0xE8EC);
+
     public static string Menu { get; } = Glyph(0xE700);
 
     public static string Previous { get; } = Glyph(0xE72B);

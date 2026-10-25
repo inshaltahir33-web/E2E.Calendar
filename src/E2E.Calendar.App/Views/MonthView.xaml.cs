@@ -125,7 +125,7 @@ public partial class MonthView : Page
                 var label = new TextBlock
                 {
                     Text = number.ToString(),
-                    FontSize = 11,
+                    FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
                     Opacity = 0.6,
                     Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -220,7 +220,7 @@ public partial class MonthView : Page
                 Child = new TextBlock
                 {
                     Text = name.ToUpper(culture),
-                    FontSize = 11,
+                    FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
                     Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,

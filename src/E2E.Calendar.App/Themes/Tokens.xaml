@@ -32,6 +32,7 @@
     <CornerRadius x:Key="RadiusCard">12</CornerRadius>
     <CornerRadius x:Key="RadiusChip">6</CornerRadius>
     <CornerRadius x:Key="RadiusSwatch">6</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">12</CornerRadius>
 
     <x:Double x:Key="TitleBarHeight">48</x:Double>
     <x:Double x:Key="SidebarWidth">272</x:Double>
@@ -67,6 +68,7 @@
     <x:Double x:Key="IconSizeMedium">14</x:Double>
     <x:Double x:Key="IconSizeLarge">16</x:Double>
     <x:Double x:Key="SearchBoxWidth">280</x:Double>
+    <x:Double x:Key="SyncStatusMaxWidth">150</x:Double>
     <x:Double x:Key="EditorPaneWidth">400</x:Double>
     <x:Double x:Key="SnackbarWidth">420</x:Double>
     <x:Double x:Key="MiniCalendarMinWidth">240</x:Double>
@@ -113,6 +115,10 @@
     <x:Double x:Key="FontSizeTitle">28</x:Double>
     <x:Double x:Key="FontSizeEventTitle">12</x:Double>
     <x:Double x:Key="FontSizeEventTime">11</x:Double>
+    <x:Double x:Key="FontSizeChip">11</x:Double>
+    <x:Double x:Key="FontSizeChipMeta">10</x:Double>
+    <x:Double x:Key="FontSizeGlyphLarge">18</x:Double>
+    <x:Double x:Key="FontSizeHero">40</x:Double>
 
     <FontFamily x:Key="FontFamilyDefault">Segoe UI Variable Text, Segoe UI Variable Display, Segoe UI</FontFamily>
 

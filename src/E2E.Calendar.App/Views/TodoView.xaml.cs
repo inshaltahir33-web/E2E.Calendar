@@ -145,7 +145,7 @@ public sealed partial class TodoView : Page
 
         var flag = new Button
         {
-            Content = new FontIcon { Glyph = "\uE734", FontSize = 14 },
+            Content = new FontIcon { Glyph = "\uE734", FontSize = Tokens.Double("IconSizeMedium", 14d) },
             Padding = new Thickness(6),
             Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
             BorderThickness = new Thickness(0),
@@ -159,7 +159,7 @@ public sealed partial class TodoView : Page
 
         var delete = new Button
         {
-            Content = new FontIcon { Glyph = "\uE74D", FontSize = 14 },
+            Content = new FontIcon { Glyph = "\uE74D", FontSize = Tokens.Double("IconSizeMedium", 14d) },
             Padding = new Thickness(6),
             Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
             BorderThickness = new Thickness(0),

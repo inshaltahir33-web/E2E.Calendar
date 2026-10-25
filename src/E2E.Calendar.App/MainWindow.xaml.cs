@@ -285,8 +285,15 @@ public sealed partial class MainWindow : Window
 
     private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
     {
-        // The sidebar is always visible now (hamburger removed), so there is nothing to auto-collapse.
-        _ = args;
+        // MASTER §4: the window must resize cleanly down to a narrow width and the sidebar
+        // must collapse to an icon rail. Below the threshold the full sidebar is replaced by
+        // the rail; above it the full sidebar comes back.
+        var collapsed = args.Size.Width < CompactWidthThreshold;
+
+        if (collapsed != ViewModel.IsSidebarCollapsed)
+        {
+            ApplySidebarCollapsed(collapsed);
+        }
     }
 
     private void OnPaneToggleClick(object sender, RoutedEventArgs e)
@@ -306,6 +313,10 @@ public sealed partial class MainWindow : Window
         SidebarColumn.Width = targetWidth;
         SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+
+        // At narrow widths the toolbar would overflow, so the sync-status text drops out and
+        // only the sync icon stays (the status is still available via its tooltip).
+        SyncStatusText.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
 
         // Apply the final layout width in a single step. Animating the layout
         // Width would reflow the time grid on every frame and trigger a full
@@ -330,6 +341,13 @@ public sealed partial class MainWindow : Window
         if (element.DataContext is NavigationListItem item)
         {
             ViewModel.SelectItem(item);
+
+            if (item.TargetKey == NavigationKeys.Tags)
+            {
+                ApplyTagFilter(item.Label);
+                return;
+            }
+
             _navigation.NavigateTo(item.TargetKey, item.Label);
             return;
         }
@@ -367,6 +385,8 @@ public sealed partial class MainWindow : Window
     private void OnNewEventClick(object sender, RoutedEventArgs e) => OpenNewEvent();
 
     private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
+
+    private void OnQuickAddClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
 
     private void OnNewTaskClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
 
@@ -486,6 +506,7 @@ public sealed partial class MainWindow : Window
         }
 
         await RefreshReminderCountsAsync();
+        await RefreshTagsAsync();
     }
 
     private async Task RefreshReminderCountsAsync()
@@ -506,6 +527,45 @@ public sealed partial class MainWindow : Window
         {
             _logger.LogError(ex, "Could not refresh sidebar counts");
         }
+    }
+
+    /// <summary>Rebuilds the sidebar TAGS section from the distinct tags stored on events.</summary>
+    private async Task RefreshTagsAsync()
+    {
+        try
+        {
+            var events = await _eventRepository.SearchAsync(new EventSearchCriteria());
+
+            var tags = events
+                .SelectMany(calendarEvent => (calendarEvent.Tags ?? string.Empty)
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .Where(tag => tag.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(tag => tag, StringComparer.CurrentCultureIgnoreCase);
+
+            ViewModel.SetTags(tags);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not refresh the tag list");
+        }
+    }
+
+    /// <summary>Filters the event list by a tag by reusing the search pipeline.</summary>
+    private async void ApplyTagFilter(string tag)
+    {
+        _searchCriteria = _searchCriteria with { Tags = new[] { tag } };
+        SearchBox.Text = tag;
+
+        await RefreshSearchResultsAsync(tag);
+
+        if (_searchResults.Count == 0)
+        {
+            ShowStatus($"No events tagged \u201c{tag}\u201d", InfoBarSeverity.Informational);
+            return;
+        }
+
+        SearchBox.IsSuggestionListOpen = true;
     }
 
     private void OnEditorOpened(object? sender, EventArgs e)

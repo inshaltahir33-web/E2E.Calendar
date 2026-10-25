@@ -113,7 +113,7 @@
                 Visibility="Collapsed">
                 <TextBlock
                     x:Name="MoreText"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeChip}"
                     Foreground="{ThemeResource App.TextSecondaryBrush}" />
             </Button>
 

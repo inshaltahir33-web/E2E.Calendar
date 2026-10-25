@@ -8,6 +8,7 @@ public static class NavigationKeys
     public const string Agenda = "Agenda";
     public const string Reminders = "Reminders";
     public const string Tasks = "Tasks";
+    public const string Tags = "Tags";
     public const string Settings = "Settings";
     public const string Premium = "Premium";
     public const string NewEvent = "NewEvent";

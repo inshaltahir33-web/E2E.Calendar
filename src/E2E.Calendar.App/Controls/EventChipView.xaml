@@ -39,7 +39,7 @@
                     x:Name="CheckGlyph"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    FontSize="10"
+                    FontSize="{StaticResource FontSizeChipMeta}"
                     Text="&#x2713;"
                     Visibility="Collapsed" />
             </Border>
@@ -47,13 +47,13 @@
             <StackPanel Grid.Column="1">
                 <TextBlock
                     x:Name="TitleText"
-                    FontSize="12"
+                    FontSize="{StaticResource FontSizeEventTitle}"
                     FontWeight="SemiBold"
                     Foreground="{ThemeResource App.TextPrimaryBrush}"
                     TextTrimming="CharacterEllipsis" />
                 <TextBlock
                     x:Name="TimeTextBlock"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeEventTime}"
                     Foreground="{ThemeResource App.TextSecondaryBrush}"
                     TextTrimming="CharacterEllipsis" />
             </StackPanel>

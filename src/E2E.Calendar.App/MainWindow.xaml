@@ -194,12 +194,37 @@
                     </Button.Flyout>
                 </Button>
 
+                <!-- MASTER §4: quick add in the toolbar (opens the natural-language quick-add overlay). -->
+                <Button
+                    x:Name="QuickAddButton"
+                    Click="OnQuickAddClick"
+                    Style="{StaticResource AccentButtonStyle}"
+                    AutomationProperties.Name="Quick add"
+                    ToolTipService.ToolTip="Quick add (Win+Alt+C)">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
+                        <TextBlock VerticalAlignment="Center" Text="Quick add" />
+                    </StackPanel>
+                </Button>
+
+                <!-- MASTER §4: sync status lives in the toolbar. Clicking it syncs now. -->
                 <Button
                     Click="OnSyncClick"
                     Style="{StaticResource ToolbarButtonStyle}"
-                    AutomationProperties.Name="Sync now"
+                    AutomationProperties.Name="Sync status, click to sync now"
                     ToolTipService.ToolTip="Sync now">
-                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE895;" />
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE895;" />
+                        <TextBlock
+                            x:Name="SyncStatusText"
+                            MaxWidth="{StaticResource SyncStatusMaxWidth}"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource App.TextSecondaryBrush}"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTipService.ToolTip="{x:Bind ViewModel.SyncStatus, Mode=OneWay}" />
+                    </StackPanel>
                 </Button>
 
                 <Button
@@ -357,38 +382,29 @@
                                 ItemTemplate="{StaticResource NavItemTemplate}"
                                 AutomationProperties.Name="Task lists" />
 
+                            <TextBlock
+                                Style="{StaticResource SectionHeaderStyle}"
+                                Text="TAGS" />
+                            <ItemsControl
+                                x:Name="TagList"
+                                ItemsSource="{x:Bind ViewModel.Tags, Mode=OneWay}"
+                                ItemTemplate="{StaticResource NavItemTemplate}"
+                                AutomationProperties.Name="Tags" />
+
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- FIX 8: footer no longer clips ("Synced just now - Connecte"): text trims with ellipsis + tooltip. -->
+                    <!-- FIX 8: footer is a pinned strip outside the scrolling list. Sync status now
+                         lives in the top toolbar (MASTER §4), so the footer only carries the badge. -->
                     <Grid
                         Grid.Row="3"
                         Padding="12,10"
                         BorderBrush="{ThemeResource App.DividerBrush}"
                         BorderThickness="0,1,0,0"
-                        Background="{ThemeResource App.TransparentBrush}"
-                        ColumnDefinitions="*,Auto"
-                        ColumnSpacing="8">
-                        <Grid
-                            Grid.Column="0"
-                            VerticalAlignment="Center"
-                            ColumnDefinitions="Auto,*"
-                            ColumnSpacing="8">
-                            <FontIcon
-                                FontSize="{StaticResource IconSizeSmall}"
-                                Glyph="&#xE73E;" />
-                            <TextBlock
-                                Grid.Column="1"
-                                Style="{ThemeResource CaptionTextBlockStyle}"
-                                Text="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
-                                TextTrimming="CharacterEllipsis"
-                                ToolTipService.ToolTip="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
-                                AutomationProperties.Name="Sync status" />
-                        </Grid>
+                        Background="{ThemeResource App.TransparentBrush}">
                         <Border
-                            Grid.Column="1"
+                            HorizontalAlignment="Right"
                             Padding="8,2"
-                            VerticalAlignment="Center"
                             Background="{ThemeResource App.HoverBrush}"
                             CornerRadius="{StaticResource RadiusControl}">
                             <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXXS}">
@@ -403,6 +419,25 @@
                     </Grid>
 
                 </Grid>
+
+                <!-- ICON RAIL: shown instead of the full sidebar when the window is narrow.
+                     It lives inside SidebarColumn so ApplySidebarCollapsed can actually reveal it. -->
+                <StackPanel
+                    x:Name="SidebarIconRail"
+                    Width="{StaticResource SidebarCollapsedWidth}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    Padding="{StaticResource PaddingIconRail}"
+                    Spacing="{StaticResource SpaceXXS}"
+                    Visibility="Collapsed">
+                    <Button Click="OnNewSplitButtonClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Create a new event or reminder" ToolTipService.ToolTip="New (N)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" /></Button>
+                    <Button Click="OnTodayClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Go to today" ToolTipService.ToolTip="Today (T)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE787;" /></Button>
+                    <Button Click="OnDayViewClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Day view" ToolTipService.ToolTip="Day view (D)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE7B3;" /></Button>
+                    <Button Click="OnWeekViewClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Week view" ToolTipService.ToolTip="Week view (W)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE7B4;" /></Button>
+                    <Button Click="OnMonthViewClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Month view" ToolTipService.ToolTip="Month view (M)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE7B5;" /></Button>
+                    <Button Click="OnAgendaViewClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Agenda view" ToolTipService.ToolTip="Agenda view (A)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE8A5;" /></Button>
+                    <Button Click="OnTasksClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Tasks" ToolTipService.ToolTip="Tasks"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE9D5;" /></Button>
+                </StackPanel>
             </Grid>
 
             <!-- MAIN CONTENT -->
@@ -447,8 +482,9 @@
 
         </Grid>
 
-        <!-- FIX 10: hamburger + icon rail are NOT deleted (code-behind still references their names, deleting would break the build).
-             They live inside a permanently collapsed host, so they can never render or overlap anything again. -->
+        <!-- FIX 10: the leftover hamburger is not deleted (code-behind still references its name,
+             deleting would break the build). It lives in a permanently collapsed host so it can
+             never render. The icon rail now lives inside SidebarColumn (see above). -->
         <Grid
             x:Name="LegacyControlsHost"
             Grid.Row="1"
@@ -460,18 +496,6 @@
                 AutomationProperties.Name="Toggle the navigation pane">
                 <FontIcon Glyph="&#xE700;" />
             </Button>
-            <StackPanel
-                x:Name="SidebarIconRail"
-                Width="{StaticResource SidebarCollapsedWidth}"
-                VerticalAlignment="Top">
-                <Button Click="OnNewSplitButtonClick" AutomationProperties.Name="Create a new event or reminder"><FontIcon Glyph="&#xE710;" /></Button>
-                <Button Click="OnTodayClick" AutomationProperties.Name="Go to today"><FontIcon Glyph="&#xE787;" /></Button>
-                <Button Click="OnDayViewClick" AutomationProperties.Name="Day view"><FontIcon Glyph="&#xE7B3;" /></Button>
-                <Button Click="OnWeekViewClick" AutomationProperties.Name="Week view"><FontIcon Glyph="&#xE7B4;" /></Button>
-                <Button Click="OnMonthViewClick" AutomationProperties.Name="Month view"><FontIcon Glyph="&#xE7B5;" /></Button>
-                <Button Click="OnAgendaViewClick" AutomationProperties.Name="Agenda view"><FontIcon Glyph="&#xE8A5;" /></Button>
-                <Button Click="OnTasksClick" AutomationProperties.Name="Tasks"><FontIcon Glyph="&#xE9D5;" /></Button>
-            </StackPanel>
         </Grid>
 
         <ctrl:SnackbarView

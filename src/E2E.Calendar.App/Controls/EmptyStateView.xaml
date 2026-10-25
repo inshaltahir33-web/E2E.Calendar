@@ -16,12 +16,12 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Spacing="{StaticResource SpaceSM}"
-            MaxWidth="320">
+            MaxWidth="{StaticResource EmptyStateMaxWidth}">
 
             <FontIcon
                 x:Name="GlyphIcon"
                 HorizontalAlignment="Center"
-                FontSize="28"
+                FontSize="{StaticResource EmptyStateGlyphSize}"
                 Foreground="{ThemeResource App.TextSecondaryBrush}" />
 
             <TextBlock

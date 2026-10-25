@@ -20,7 +20,7 @@
             Spacing="{StaticResource SpaceMD}">
             <FontIcon
                 HorizontalAlignment="Center"
-                FontSize="40"
+                FontSize="{StaticResource FontSizeHero}"
                 Glyph="&#xE77B;" />
             <TextBlock
                 HorizontalAlignment="Center"
@@ -50,7 +50,7 @@
             Visibility="Collapsed">
             <FontIcon
                 HorizontalAlignment="Center"
-                FontSize="40"
+                FontSize="{StaticResource FontSizeHero}"
                 Glyph="&#xE790;" />
             <TextBlock
                 HorizontalAlignment="Center"
@@ -76,7 +76,7 @@
             Visibility="Collapsed">
             <FontIcon
                 HorizontalAlignment="Center"
-                FontSize="40"
+                FontSize="{StaticResource FontSizeHero}"
                 Glyph="&#xEA8F;" />
             <TextBlock
                 HorizontalAlignment="Center"

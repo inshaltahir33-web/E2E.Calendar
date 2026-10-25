@@ -19,7 +19,7 @@
                     Grid.Column="1"
                     Margin="6,0,0,0"
                     VerticalAlignment="Center"
-                    FontSize="11"
+                    FontSize="{StaticResource FontSizeChip}"
                     FontWeight="SemiBold"
                     Foreground="{ThemeResource App.TextPrimaryBrush}"
                     TextTrimming="CharacterEllipsis" />

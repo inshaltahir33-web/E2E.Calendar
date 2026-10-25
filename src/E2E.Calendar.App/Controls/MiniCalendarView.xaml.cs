@@ -1,4 +1,5 @@
 using E2E.Calendar.App.Services;
+using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
@@ -93,7 +94,7 @@ public sealed partial class MiniCalendarView : UserControl
         {
             var header = new TextBlock
             {
-                FontSize = 12,
+                FontSize = Tokens.Double("FontSizeCaption", 12d),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextAlignment = TextAlignment.Center,
@@ -196,7 +197,7 @@ public sealed partial class MiniCalendarView : UserControl
         {
             Text = year.ToString(),
             HorizontalAlignment = HorizontalAlignment.Center,
-            FontSize = 18,
+            FontSize = Tokens.Double("FontSizeGlyphLarge", 18d),
             FontWeight = FontWeights.SemiBold,
         };
         var months = new Grid { ColumnSpacing = 6, RowSpacing = 6 };

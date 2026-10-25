@@ -59,7 +59,7 @@
             Visibility="Collapsed">
             <TextBlock
                 Foreground="{ThemeResource App.TextSecondaryBrush}"
-                FontSize="12"
+                FontSize="{StaticResource FontSizeCaption}"
                 Text="Nothing scheduled. Double-click or press N." />
         </Border>
 
