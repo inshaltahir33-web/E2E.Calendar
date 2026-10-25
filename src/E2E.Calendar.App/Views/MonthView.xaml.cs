@@ -127,6 +127,7 @@ public partial class MonthView : Page
                     Text = number.ToString(),
                     FontSize = 11,
                     Opacity = 0.6,
+                    Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                 };
@@ -212,14 +213,19 @@ public partial class MonthView : Page
             var name = culture.DateTimeFormat.GetAbbreviatedDayName(dayOfWeek);
             var isWeekend = dayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
-            var label = new TextBlock
+            var label = new Border
             {
-                Text = name.ToUpper(culture),
-                FontSize = 11,
-                Opacity = isWeekend ? 0.6 : 0.85,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 6, 0, 6),
+                BorderBrush = ThemeBrushes.Get(this, "App.GridHourBrush"),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Child = new TextBlock
+                {
+                    Text = name.ToUpper(culture),
+                    FontSize = 11,
+                    Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 6, 0, 6),
+                },
             };
 
             Grid.SetColumn(label, firstColumn + index);

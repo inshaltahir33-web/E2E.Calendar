@@ -5,11 +5,15 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid
-        x:Name="CellRoot"
-        Background="{ThemeResource App.TransparentBrush}"
-        IsTabStop="True"
-        KeyDown="OnCellKeyDown">
+    <Border
+        x:Name="CellBorder"
+        MinHeight="{StaticResource MonthCellMinHeight}"
+        BorderThickness="0,0,1,1">
+        <Grid
+            x:Name="CellRoot"
+            Background="{ThemeResource App.TransparentBrush}"
+            IsTabStop="True"
+            KeyDown="OnCellKeyDown">
 
         <Border
             x:Name="WeekendTint"
@@ -96,7 +100,7 @@
                 </StackPanel>
             </Grid>
 
-            <StackPanel x:Name="ChipsHost" Spacing="1" />
+            <StackPanel x:Name="ChipsHost" Spacing="2" />
 
             <Button
                 x:Name="MoreButton"
@@ -107,11 +111,15 @@
                 Padding="4,0"
                 Click="OnMoreClick"
                 Visibility="Collapsed">
-                <TextBlock x:Name="MoreText" FontSize="11" />
+                <TextBlock
+                    x:Name="MoreText"
+                    FontSize="11"
+                    Foreground="{ThemeResource App.TextSecondaryBrush}" />
             </Button>
 
         </StackPanel>
 
-    </Grid>
+        </Grid>
+    </Border>
 
 </UserControl>

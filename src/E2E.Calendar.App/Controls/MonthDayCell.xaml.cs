@@ -1,4 +1,5 @@
 using E2E.Calendar.App.ViewModels;
+using E2E.Calendar.App.Utilities;
 using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -213,14 +214,15 @@ public sealed partial class MonthDayCell : UserControl
         DayText.Visibility = IsToday ? Visibility.Collapsed : Visibility.Visible;
         TodayText.Visibility = IsToday ? Visibility.Visible : Visibility.Collapsed;
         SelectionBorder.Visibility = IsSelected ? Visibility.Visible : Visibility.Collapsed;
-        WeekendTint.Visibility = IsWeekend ? Visibility.Visible : Visibility.Collapsed;
+        WeekendTint.Visibility = IsWeekend && !IsToday ? Visibility.Visible : Visibility.Collapsed;
         MoreButton.Visibility = MoreVisible ? Visibility.Visible : Visibility.Collapsed;
+        CellBorder.BorderBrush = ThemeBrushes.Get(this, "App.GridHourBrush");
 
         HeatDot1.Visibility = EventCount >= 1 ? Visibility.Visible : Visibility.Collapsed;
         HeatDot2.Visibility = EventCount >= 3 ? Visibility.Visible : Visibility.Collapsed;
         HeatDot3.Visibility = EventCount >= 6 ? Visibility.Visible : Visibility.Collapsed;
 
-        var opacity = IsCurrentMonth ? 1d : 0.4d;
+        var opacity = IsCurrentMonth ? 1d : 0.45d;
         DayText.Opacity = opacity;
         TodayText.Opacity = opacity;
         TodayCircle.Opacity = opacity;
