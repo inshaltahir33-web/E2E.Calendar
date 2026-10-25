@@ -30,6 +30,7 @@
             <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#F0F1F5"/>
             <SolidColorBrush x:Key="App.GridHourBrush" Color="#14000000"/>
             <SolidColorBrush x:Key="App.GridHalfHourBrush" Color="#0A000000"/>
+            <SolidColorBrush x:Key="App.GridVerticalBrush" Color="#0F000000"/>
             <SolidColorBrush x:Key="App.TextDisabledBrush" Color="#A8ADBA"/>
             <SolidColorBrush x:Key="App.AccentFillBrush" Color="#4F5BD5"/>
             <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#E6E9FB"/>
@@ -49,8 +50,8 @@
             <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#3A44A8"/>
             <SolidColorBrush x:Key="App.AccentSubtleBrush" Color="#EEF0FD"/>
             <SolidColorBrush x:Key="App.OnAccentBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#144F5BD5"/>
-            <SolidColorBrush x:Key="App.WeekendTintBrush" Color="#144F5BD5"/>
+            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#0A4F5BD5"/>
+            <SolidColorBrush x:Key="App.WeekendTintBrush" Color="#06000000"/>
             <SolidColorBrush x:Key="App.NowLineBrush" Color="#E5484D"/>
             <SolidColorBrush x:Key="App.HoverBrush" Color="#EAECF3"/>
             <SolidColorBrush x:Key="App.PressedBrush" Color="#DFE2EB"/>
@@ -106,6 +107,7 @@
             <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#1B1F27"/>
             <SolidColorBrush x:Key="App.GridHourBrush" Color="#14FFFFFF"/>
             <SolidColorBrush x:Key="App.GridHalfHourBrush" Color="#0AFFFFFF"/>
+            <SolidColorBrush x:Key="App.GridVerticalBrush" Color="#0DFFFFFF"/>
             <SolidColorBrush x:Key="App.TextDisabledBrush" Color="#626978"/>
             <SolidColorBrush x:Key="App.AccentFillBrush" Color="#8B95FF"/>
             <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#20253A"/>
@@ -125,8 +127,8 @@
             <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#7580F0"/>
             <SolidColorBrush x:Key="App.AccentSubtleBrush" Color="#232748"/>
             <SolidColorBrush x:Key="App.OnAccentBrush" Color="#0F1115"/>
-            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#148B95FF"/>
-            <SolidColorBrush x:Key="App.WeekendTintBrush" Color="#148B95FF"/>
+            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#0F8B95FF"/>
+            <SolidColorBrush x:Key="App.WeekendTintBrush" Color="#08FFFFFF"/>
             <SolidColorBrush x:Key="App.NowLineBrush" Color="#FF6369"/>
             <SolidColorBrush x:Key="App.HoverBrush" Color="#222632"/>
             <SolidColorBrush x:Key="App.PressedBrush" Color="#2B303D"/>
@@ -182,6 +184,7 @@
             <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="{ThemeResource SystemColorGrayTextColor}"/>
             <SolidColorBrush x:Key="App.GridHourBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
             <SolidColorBrush x:Key="App.GridHalfHourBrush" Color="{ThemeResource SystemColorGrayTextColor}"/>
+            <SolidColorBrush x:Key="App.GridVerticalBrush" Color="{ThemeResource SystemColorGrayTextColor}"/>
             <SolidColorBrush x:Key="App.TextDisabledBrush" Color="{ThemeResource SystemColorGrayTextColor}"/>
             <SolidColorBrush x:Key="App.AccentFillBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
             <SolidColorBrush x:Key="App.SelectionFillBrush" Color="{ThemeResource SystemColorHighlightColor}"/>

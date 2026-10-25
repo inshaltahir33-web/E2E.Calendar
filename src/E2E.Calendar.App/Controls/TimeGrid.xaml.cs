@@ -112,6 +112,7 @@ public sealed partial class TimeGrid : UserControl
         SizeChanged += OnSizeChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        ActualThemeChanged += (_, _) => OnThemeChanged();
         IsTabStop = true;
     }
 
@@ -236,6 +237,20 @@ public sealed partial class TimeGrid : UserControl
             _rebuildQueued = false;
             Rebuild();
         }
+    }
+
+    /// <summary>
+    /// Brushes are baked into code-built elements, so a theme switch must discard the cached
+    /// render signatures and rebuild the layers; otherwise the grid keeps the previous theme.
+    /// </summary>
+    private void OnThemeChanged()
+    {
+        _headerSignature = null;
+        _allDaySignature = null;
+        _bodySignature = null;
+        _linesSignature = null;
+        _layersHourHeight = -1;
+        RequestRebuild();
     }
 
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -387,9 +402,9 @@ public sealed partial class TimeGrid : UserControl
             {
                 Height = HourHeight * HoursPerDay,
                 Width = ComputeColumnWidth(dayCount),
-                Background = day?.IsToday == true || day?.IsWeekend == true
-                    ? (Brush)Application.Current.Resources["App.WeekendTintBrush"]
-                    : (Brush)Application.Current.Resources["App.SurfaceBaseBrush"],
+                Background = day?.IsToday == true
+                    ? ThemeBrushes.Get(this, "App.TodayTintBrush")
+                    : ThemeBrushes.Get(this, "App.TransparentBrush"),
             };
 
             Grid.SetColumn(canvas, index + 1);
@@ -404,7 +419,7 @@ public sealed partial class TimeGrid : UserControl
 
         _gutterCanvas = new Canvas
         {
-            Background = (Brush)Application.Current.Resources["App.SurfaceBaseBrush"],
+            Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
         };
         Grid.SetColumn(_gutterCanvas, 0);
         BodyGrid.Children.Add(_gutterCanvas);
@@ -417,7 +432,7 @@ public sealed partial class TimeGrid : UserControl
         _nowLine = new Rectangle
         {
             Height = 2,
-            Fill = (Brush)Application.Current.Resources["App.NowLineBrush"],
+            Fill = ThemeBrushes.Get(this, "App.NowLineBrush"),
             Visibility = Visibility.Collapsed,
         };
 
@@ -427,7 +442,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Width = 8,
             Height = 8,
-            Fill = (Brush)Application.Current.Resources["App.NowLineBrush"],
+            Fill = ThemeBrushes.Get(this, "App.NowLineBrush"),
             Visibility = Visibility.Collapsed,
         };
 
@@ -435,8 +450,8 @@ public sealed partial class TimeGrid : UserControl
 
         _ghost = new Border
         {
-            Background = (Brush)Application.Current.Resources["App.AccentBrush"],
-            BorderBrush = (Brush)Application.Current.Resources["App.AccentBrush"],
+            Background = ThemeBrushes.Get(this, "App.AccentBrush"),
+            BorderBrush = ThemeBrushes.Get(this, "App.AccentBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
             Opacity = 0.35,
@@ -449,7 +464,7 @@ public sealed partial class TimeGrid : UserControl
         {
             FontSize = 11,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.Resources["App.TextPrimaryBrush"],
+            Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush"),
             Visibility = Visibility.Collapsed,
         };
 
@@ -499,7 +514,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Text = FormatTimeZoneOffset(LocalTimeZone),
             FontSize = 11,
-            Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+            Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
             Margin = new Thickness(0, 0, 8, 6),
@@ -536,7 +551,7 @@ public sealed partial class TimeGrid : UserControl
             FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             CharacterSpacing = 40,
-            Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+            Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
         });
 
@@ -558,35 +573,25 @@ public sealed partial class TimeGrid : UserControl
 
         if (day.IsToday)
         {
-            dateHost.Background = (Brush)Application.Current.Resources["App.AccentBrush"];
+            dateHost.Background = ThemeBrushes.Get(this, "App.AccentBrush");
             dateHost.CornerRadius = new CornerRadius(16);
-            dateText.Foreground = (Brush)Application.Current.Resources["App.OnAccentBrush"];
+            dateText.Foreground = ThemeBrushes.Get(this, "App.OnAccentBrush");
         }
         else
         {
-            dateText.Foreground = (Brush)Application.Current.Resources["App.TextPrimaryBrush"];
+            dateText.Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush");
         }
 
         dateHost.Children.Add(dateText);
         content.Children.Add(dateHost);
 
-        Brush? background = null;
-
-        if (day.IsToday)
-        {
-            background = (Brush)Application.Current.Resources["App.TodayTintBrush"];
-        }
-        else if (day.IsWeekend)
-        {
-            background = (Brush)Application.Current.Resources["App.WeekendTintBrush"];
-        }
-
         return new Border
         {
             Child = content,
-            Background = background,
             MinHeight = Tokens.Double("GridDayHeaderHeight", 60d),
             Padding = new Thickness(0, 4, 0, 4),
+            BorderBrush = ThemeBrushes.Get(this, "App.StrokeSubtleBrush"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
         };
     }
 
@@ -619,7 +624,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Text = "all-day",
             FontSize = 11,
-            Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+            Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 6, 8, 0),
@@ -685,7 +690,7 @@ public sealed partial class TimeGrid : UserControl
             {
                 Text = $"+{pair.Value} more",
                 FontSize = 11,
-                Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+                Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 2, 4, 2),
@@ -829,7 +834,7 @@ public sealed partial class TimeGrid : UserControl
                     {
                         Text = $"+{hidden}",
                         FontSize = 11,
-                        Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+                        Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                         HorizontalAlignment = HorizontalAlignment.Left,
                     };
 
@@ -885,8 +890,8 @@ public sealed partial class TimeGrid : UserControl
         _linesCanvas.Children.Clear();
         _gutterCanvas.Children.Clear();
 
-        var divider = (Brush)Application.Current.Resources["App.GridHourBrush"];
-        var halfDivider = (Brush)Application.Current.Resources["App.GridHalfHourBrush"];
+        var divider = ThemeBrushes.Get(this, "App.GridHourBrush");
+        var days = Days ?? Array.Empty<TimeGridDay>();
 
         for (var hour = 0; hour <= HoursPerDay; hour++)
         {
@@ -902,23 +907,7 @@ public sealed partial class TimeGrid : UserControl
             Canvas.SetTop(line, y);
             _linesCanvas.Children.Add(line);
 
-            if (hour == HoursPerDay)
-            {
-                continue;
-            }
-
-            var half = new Rectangle
-            {
-                Height = 1,
-                Width = Math.Max(0, width - GutterWidth),
-                Fill = halfDivider,
-                Opacity = 1,
-            };
-
-            Canvas.SetTop(half, y + (HourHeight / 2));
-            _linesCanvas.Children.Add(half);
-
-            if (hour == 0)
+            if (hour == 0 || hour == HoursPerDay)
             {
                 continue;
             }
@@ -926,34 +915,35 @@ public sealed partial class TimeGrid : UserControl
             var label = new TextBlock
             {
                 Text = FormatHour(hour),
-                FontSize = 12,
-                Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+                FontSize = 11,
+                Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Center,
                 Height = 18,
-                Padding = new Thickness(0, 0, 0, 2),
             };
 
-            Canvas.SetTop(label, y - 8);
-            Canvas.SetLeft(label, GutterWidth - 54);
-            label.Width = 46;
+            Canvas.SetTop(label, y - (label.Height / 2));
+            Canvas.SetLeft(label, 0);
+            label.Width = Math.Max(0, GutterWidth - 8);
             _gutterCanvas.Children.Add(label);
         }
 
-        var days = Days ?? Array.Empty<TimeGridDay>();
-
-        for (var index = 1; index < days.Count; index++)
+        if (days.Count > 1)
         {
-            var separator = new Rectangle
+            var verticalBrush = ThemeBrushes.Get(this, "App.GridVerticalBrush");
+            for (var index = 1; index < days.Count; index++)
             {
-                Width = 1,
-                Height = HourHeight * HoursPerDay,
-                Fill = divider,
-                Opacity = 0.6,
-            };
+                var separator = new Rectangle
+                {
+                    Width = 1,
+                    Height = HourHeight * HoursPerDay,
+                    Fill = verticalBrush,
+                    Opacity = 1,
+                };
 
-            Canvas.SetLeft(separator, index * _columnWidth);
-            _linesCanvas.Children.Add(separator);
+                Canvas.SetLeft(separator, index * _columnWidth);
+                _linesCanvas.Children.Add(separator);
+            }
         }
 
         if (ShowSecondaryTimeZone)
@@ -980,7 +970,7 @@ public sealed partial class TimeGrid : UserControl
             {
                 Text = FormatLocalTime(local),
                 FontSize = 12,
-                Foreground = (Brush)Application.Current.Resources["App.TextSecondaryBrush"],
+                Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
