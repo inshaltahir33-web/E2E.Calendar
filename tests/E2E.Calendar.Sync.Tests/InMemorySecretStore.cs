@@ -1,6 +1,8 @@
 using E2E.Calendar.Core.Abstractions;
 
-namespace E2E.Calendar.Sync;
+// Kept in the test project only. The production project (E2E.Calendar.Sync) no longer
+// contains this type. Import via E2E.Calendar.Sync.Tests namespace for test use only.
+namespace E2E.Calendar.Sync.Tests;
 
 public sealed class InMemorySecretStore : ISecretStore
 {
