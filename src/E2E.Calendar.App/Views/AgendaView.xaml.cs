@@ -15,6 +15,7 @@ public partial class AgendaView : Page
 {
     private readonly EventEditorViewModel _editor;
     private readonly List<DayHeaderAnchor> _anchors = new();
+    private bool _scrolledToToday;
 
     public AgendaView(AgendaViewModel viewModel, EventEditorViewModel editor)
     {
@@ -35,6 +36,7 @@ public partial class AgendaView : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _scrolledToToday = false;
         await ViewModel.RefreshAsync();
 
         UpdateEmptyState();
@@ -117,6 +119,16 @@ public partial class AgendaView : Page
 
         _anchors.RemoveAll(anchor => ReferenceEquals(anchor.Day, day));
         _anchors.Add(new DayHeaderAnchor(day, header));
+
+        if (day.IsToday && !_scrolledToToday)
+        {
+            _scrolledToToday = true;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                var point = header.TransformToVisual(AgendaScroll).TransformPoint(new Point(0, 0));
+                AgendaScroll.ChangeView(null, Math.Max(0, AgendaScroll.VerticalOffset + point.Y - 8), null, true);
+            });
+        }
     }
 
     private void UpdateStickyHeader()

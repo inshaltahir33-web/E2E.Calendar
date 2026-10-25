@@ -23,6 +23,8 @@ public sealed partial class AgendaItemViewModel : ObservableObject
 
     public bool HasTime { get; init; }
 
+    public string DisplayTimeLabel => HasTime ? TimeLabel : "All day";
+
     public bool IsReminder { get; init; }
 
     public bool IsTask { get; init; }
@@ -33,7 +35,7 @@ public sealed partial class AgendaItemViewModel : ObservableObject
 
     public Visibility CheckboxVisibility => IsTickable ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility TimeVisibility => HasTime ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility TimeVisibility => Visibility.Visible;
 
     public Visibility LocationVisibility => string.IsNullOrWhiteSpace(Location) ? Visibility.Collapsed : Visibility.Visible;
 
@@ -70,6 +72,8 @@ public sealed class AgendaDayViewModel : ObservableObject
     public required bool IsToday { get; init; }
 
     public string CountLabel => Items.Count == 1 ? "1 item" : $"{Items.Count} items";
+
+    public Visibility TodayVisibility => IsToday ? Visibility.Visible : Visibility.Collapsed;
 
     public required IReadOnlyList<AgendaItemViewModel> Items { get; init; }
 }

@@ -14,9 +14,9 @@
             Background="{ThemeResource App.CardBackgroundBrush}"
             BorderBrush="{ThemeResource App.DividerBrush}"
             BorderThickness="0,0,0,1"
-            Padding="12,6"
+            Padding="24,8"
             Visibility="Collapsed">
-            <Grid MaxWidth="720" HorizontalAlignment="Center">
+            <Grid>
                 <TextBlock
                     x:Name="StickyHeaderText"
                     Style="{ThemeResource BodyStrongTextBlockStyle}"
@@ -30,12 +30,11 @@
             Grid.Row="1"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto"
+            Padding="24,8"
             ViewChanged="OnViewChanged">
 
             <muxc:ItemsRepeater
                 x:Name="DaysRepeater"
-                MaxWidth="720"
-                HorizontalAlignment="Center"
                 ItemsSource="{x:Bind ViewModel.Days, Mode=OneWay}"
                 ElementPrepared="OnDayElementPrepared">
                 <muxc:ItemsRepeater.Layout>
@@ -45,17 +44,17 @@
                         <DataTemplate x:DataType="vm:AgendaDayViewModel">
                             <StackPanel>
                                 <Border
-                                    Margin="12,14,12,2"
+                                    Margin="0,14,0,2"
                                     Padding="0,0,0,6"
-                                    BorderBrush="{ThemeResource App.StrokeSubtleBrush}"
+                                    BorderBrush="{ThemeResource App.GridHourBrush}"
                                     BorderThickness="0,0,0,1">
                                 <Grid ColumnDefinitions="Auto,Auto,Auto,*">
                                     <TextBlock
                                         x:Name="AgendaDayHeader"
                                         Grid.Column="0"
                                         VerticalAlignment="Center"
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Foreground="{ThemeResource App.AccentBrush}"
+                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                        Foreground="{ThemeResource App.TextPrimaryBrush}"
                                         Text="{x:Bind Header, Mode=OneTime}" />
                                     <TextBlock
                                         Grid.Column="1"
@@ -63,8 +62,20 @@
                                         VerticalAlignment="Center"
                                         Style="{ThemeResource BodyStrongTextBlockStyle}"
                                         Text="{x:Bind DayText, Mode=OneTime}" />
-                                    <TextBlock
+                                    <Border
                                         Grid.Column="2"
+                                        Margin="8,0,0,0"
+                                        Padding="6,2"
+                                        Background="{ThemeResource App.AccentSubtleBrush}"
+                                        CornerRadius="{StaticResource RadiusPill}"
+                                        Visibility="{x:Bind TodayVisibility, Mode=OneTime}">
+                                        <TextBlock
+                                            Foreground="{ThemeResource App.AccentBrush}"
+                                            Style="{ThemeResource CaptionTextBlockStyle}"
+                                            Text="Today" />
+                                    </Border>
+                                    <TextBlock
+                                        Grid.Column="3"
                                         Margin="8,0,0,0"
                                         VerticalAlignment="Center"
                                         Style="{ThemeResource CaptionTextBlockStyle}"
@@ -80,13 +91,12 @@
                                         <DataTemplate x:DataType="vm:AgendaItemViewModel">
                                             <Grid
                                                 MinHeight="{StaticResource AgendaRowHeight}"
-                                                MaxWidth="720"
                                                 IsTabStop="True"
                                                 KeyDown="OnAgendaItemKeyDown"
                                                 AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                                                 Padding="12,0"
                                                 Background="{ThemeResource App.TransparentBrush}"
-                                                ColumnDefinitions="72,Auto,Auto,*,Auto">
+                                                ColumnDefinitions="88,Auto,8,*,Auto">
                                                 <Border
                                                     x:Name="RowHover"
                                                     Grid.Column="0"
@@ -101,7 +111,8 @@
                                                     VerticalAlignment="Center"
                                                     Opacity="0.7"
                                                     Style="{ThemeResource CaptionTextBlockStyle}"
-                                                    Text="{x:Bind TimeLabel, Mode=OneTime}"
+                                                    Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                                    Text="{x:Bind DisplayTimeLabel, Mode=OneTime}"
                                                     Visibility="{x:Bind TimeVisibility, Mode=OneTime}" />
                                                 <CheckBox
                                                     Grid.Column="1"
@@ -145,7 +156,8 @@
                                                     Grid.Column="4"
                                                     Margin="12,0,0,0"
                                                     VerticalAlignment="Center"
-                                                    Opacity="0.7"
+                                                    HorizontalAlignment="Right"
+                                                    Foreground="{ThemeResource App.TextTertiaryBrush}"
                                                     Style="{ThemeResource CaptionTextBlockStyle}"
                                                     Text="{x:Bind CalendarName, Mode=OneTime}"
                                                     Visibility="{x:Bind CalendarVisibility, Mode=OneTime}" />

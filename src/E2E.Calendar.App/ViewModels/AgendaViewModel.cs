@@ -194,9 +194,9 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
 
             agendaDays.Add(new AgendaDayViewModel
             {
-                Header = isToday ? "Today" : weekday,
+                Header = weekday,
                 Weekday = weekday,
-                DayText = isToday ? $"{weekday} {dayMonth}" : dayMonth,
+                DayText = dayMonth,
                 IsToday = isToday,
                 Items = dayItems.Select(item => new AgendaItemViewModel
                 {
