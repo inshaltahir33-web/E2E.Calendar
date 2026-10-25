@@ -44,7 +44,12 @@
                 <muxc:ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="vm:AgendaDayViewModel">
                             <StackPanel>
-                                <Grid Margin="12,14,12,2" ColumnDefinitions="Auto,Auto,Auto,*">
+                                <Border
+                                    Margin="12,14,12,2"
+                                    Padding="0,0,0,6"
+                                    BorderBrush="{ThemeResource App.StrokeSubtleBrush}"
+                                    BorderThickness="0,0,0,1">
+                                <Grid ColumnDefinitions="Auto,Auto,Auto,*">
                                     <TextBlock
                                         x:Name="AgendaDayHeader"
                                         Grid.Column="0"
@@ -66,6 +71,7 @@
                                         Foreground="{ThemeResource App.TextTertiaryBrush}"
                                         Text="{x:Bind CountLabel, Mode=OneTime}" />
                                 </Grid>
+                                </Border>
                                 <muxc:ItemsRepeater ItemsSource="{x:Bind Items, Mode=OneTime}">
                                     <muxc:ItemsRepeater.Layout>
                                         <muxc:StackLayout Orientation="Vertical" />
@@ -73,7 +79,8 @@
                                     <muxc:ItemsRepeater.ItemTemplate>
                                         <DataTemplate x:DataType="vm:AgendaItemViewModel">
                                             <Grid
-                                                Height="48"
+                                                MinHeight="{StaticResource AgendaRowHeight}"
+                                                MaxWidth="720"
                                                 IsTabStop="True"
                                                 KeyDown="OnAgendaItemKeyDown"
                                                 AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"

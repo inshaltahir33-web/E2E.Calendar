@@ -40,14 +40,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public MainWindowViewModel()
     {
-        ReminderLists.Add(new NavigationListItem { Label = "Today", Glyph = CalendarGlyphs.Today, TargetKey = NavigationKeys.Reminders });
-        ReminderLists.Add(new NavigationListItem { Label = "Scheduled", Glyph = CalendarGlyphs.Scheduled, TargetKey = NavigationKeys.Reminders });
-        ReminderLists.Add(new NavigationListItem { Label = "Overdue", Glyph = CalendarGlyphs.Overdue, TargetKey = NavigationKeys.Reminders });
-        ReminderLists.Add(new NavigationListItem { Label = "Completed", Glyph = CalendarGlyphs.Completed, TargetKey = NavigationKeys.Reminders });
-        ReminderLists.Add(new NavigationListItem { Label = "Flagged", Glyph = CalendarGlyphs.Flagged, TargetKey = NavigationKeys.Reminders });
+        ReminderLists.Add(new NavigationListItem { Label = "Today", Glyph = CalendarGlyphs.Today, TargetKey = NavigationKeys.Reminders, TargetParameter = "Reminders|Today" });
+        ReminderLists.Add(new NavigationListItem { Label = "Scheduled", Glyph = CalendarGlyphs.Scheduled, TargetKey = NavigationKeys.Reminders, TargetParameter = "Reminders|Scheduled" });
+        ReminderLists.Add(new NavigationListItem { Label = "Overdue", Glyph = CalendarGlyphs.Overdue, TargetKey = NavigationKeys.Reminders, TargetParameter = "Reminders|Overdue" });
+        ReminderLists.Add(new NavigationListItem { Label = "Completed", Glyph = CalendarGlyphs.Completed, TargetKey = NavigationKeys.Reminders, TargetParameter = "Reminders|Completed" });
+        ReminderLists.Add(new NavigationListItem { Label = "Flagged", Glyph = CalendarGlyphs.Flagged, TargetKey = NavigationKeys.Reminders, TargetParameter = "Reminders|Flagged" });
 
-        TaskLists.Add(new NavigationListItem { Label = "Inbox", Glyph = CalendarGlyphs.Inbox, TargetKey = NavigationKeys.Tasks });
-        TaskLists.Add(new NavigationListItem { Label = "Work", Glyph = CalendarGlyphs.Work, TargetKey = NavigationKeys.Tasks });
+        TaskLists.Add(new NavigationListItem { Label = "Inbox", Glyph = CalendarGlyphs.Inbox, TargetKey = NavigationKeys.Tasks, TargetParameter = "Tasks|Inbox" });
+        TaskLists.Add(new NavigationListItem { Label = "Work", Glyph = CalendarGlyphs.Work, TargetKey = NavigationKeys.Tasks, TargetParameter = "Tasks|Work" });
     }
 
     public bool CanUndoLastDelete => !string.IsNullOrEmpty(LastDeletedEventId);
@@ -65,13 +65,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(CanUndoLastDelete));
     }
 
-    public void SelectTarget(string targetKey)
+    public void SelectTarget(NavigationListItem selectedItem)
     {
-        SelectedTargetKey = targetKey;
+        SelectedTargetKey = selectedItem.TargetParameter ?? selectedItem.TargetKey;
 
         foreach (var item in ReminderLists.Concat(TaskLists))
         {
-            item.IsSelected = string.Equals(item.TargetKey, targetKey, StringComparison.Ordinal);
+            item.IsSelected = ReferenceEquals(item, selectedItem);
         }
     }
 

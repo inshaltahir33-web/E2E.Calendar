@@ -310,13 +310,13 @@ public sealed partial class MainWindow : Window
 
     private void OnSidebarRowClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement element || element.Tag is not string targetKey)
+        if (sender is not FrameworkElement element || element.Tag is not NavigationListItem item)
         {
             return;
         }
 
-        ViewModel.SelectTarget(targetKey);
-        _navigation.NavigateTo(targetKey);
+        ViewModel.SelectTarget(item);
+        _navigation.NavigateTo(item.TargetKey, item.TargetParameter);
     }
 
     private void OnTodayClick(object sender, RoutedEventArgs e) => StateViewModel.GoToTodayCommand.Execute(null);

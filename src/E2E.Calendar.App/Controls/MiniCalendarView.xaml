@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <StackPanel
+        Margin="10,4,10,4"
         Spacing="{StaticResource SpaceXXS}"
         KeyDown="OnCalendarKeyDown"
         PointerWheelChanged="OnCalendarPointerWheelChanged">
@@ -40,8 +41,7 @@
             </Button>
         </Grid>
 
-        <Grid x:Name="CalendarGrid" />
-
+        <Grid x:Name="CalendarGrid" HorizontalAlignment="Center" />
 
     </StackPanel>
 

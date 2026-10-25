@@ -1,0 +1,74 @@
+<Page
+    x:Class="E2E.Calendar.App.Views.TodoView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctrl="using:E2E.Calendar.App.Controls"
+    xmlns:vm="using:E2E.Calendar.App.ViewModels">
+
+    <Grid
+        Background="{ThemeResource App.SurfaceBaseBrush}"
+        RowDefinitions="Auto,*">
+        <Border
+            Grid.Row="0"
+            Padding="{StaticResource PaddingSection}"
+            Background="{ThemeResource App.SurfaceRaisedBrush}"
+            BorderBrush="{ThemeResource App.StrokeSubtleBrush}"
+            BorderThickness="0,0,0,1">
+            <TextBlock
+                Style="{ThemeResource SubtitleTextBlockStyle}"
+                Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
+        </Border>
+
+        <Grid Grid.Row="1">
+            <ListView
+                x:Name="TodoList"
+                Padding="{StaticResource PaddingSection}"
+                ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}"
+                SelectionMode="None"
+                IsItemClickEnabled="False"
+                AutomationProperties.Name="Tasks and reminders">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TodoRow">
+                        <Grid
+                            MinHeight="{StaticResource SidebarRowHeight}"
+                            Padding="8,4"
+                            ColumnDefinitions="Auto,*,Auto">
+                            <CheckBox
+                                Grid.Column="0"
+                                VerticalAlignment="Center"
+                                IsChecked="{x:Bind IsCompleted, Mode=OneTime}"
+                                Tag="{x:Bind}"
+                                Click="OnItemCheckClick"
+                                AutomationProperties.Name="{x:Bind Title, Mode=OneTime}" />
+                            <StackPanel
+                                Grid.Column="1"
+                                Margin="{StaticResource MarginStartMedium}"
+                                VerticalAlignment="Center">
+                                <TextBlock
+                                    Text="{x:Bind Title, Mode=OneTime}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind DueLabel, Mode=OneTime}" />
+                            </StackPanel>
+                            <TextBlock
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                Text="{x:Bind Priority, Mode=OneTime}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <ctrl:EmptyStateView
+                x:Name="EmptyState"
+                ActionText="New"
+                Description="Create a task or reminder from the New menu."
+                Glyph="&#xE710;"
+                Title="Nothing here"
+                Visibility="Collapsed" />
+        </Grid>
+    </Grid>
+</Page>

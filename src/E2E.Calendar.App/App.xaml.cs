@@ -222,6 +222,7 @@ public partial class App : Application
                 services.AddSingleton<DayViewModel>();
                 services.AddSingleton<AgendaViewModel>();
                 services.AddSingleton<MiniCalendarViewModel>();
+                services.AddSingleton<TodoViewModel>();
                 services.AddSingleton<EventEditorViewModel>();
                 services.AddSingleton<MainWindow>();
 

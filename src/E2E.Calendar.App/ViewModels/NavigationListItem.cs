@@ -17,6 +17,8 @@ public sealed partial class NavigationListItem : ObservableObject
 
     public required string TargetKey { get; init; }
 
+    public string? TargetParameter { get; init; }
+
     public Visibility AccentVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
     partial void OnIsSelectedChanged(bool value)

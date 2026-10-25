@@ -56,6 +56,18 @@ public sealed class NavigationRegistrationService : IHostedService
             _ => new SettingsView(
                 _services.GetRequiredService<SettingsViewModel>()));
 
+        _navigation.RegisterFactory(
+            NavigationKeys.Tasks,
+            parameter => new TodoView(
+                _services.GetRequiredService<TodoViewModel>(),
+                parameter as string));
+
+        _navigation.RegisterFactory(
+            NavigationKeys.Reminders,
+            parameter => new TodoView(
+                _services.GetRequiredService<TodoViewModel>(),
+                parameter as string ?? "Reminders"));
+
         return Task.CompletedTask;
     }
 

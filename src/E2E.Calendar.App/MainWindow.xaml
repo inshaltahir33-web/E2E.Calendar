@@ -8,11 +8,63 @@
     xmlns:views="using:E2E.Calendar.App.Views"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
+    <!-- FIX 1: KeyboardAcceleratorPlacementMode="Hidden" removes the stray "N" badge that followed the cursor. -->
     <Grid
         x:Name="RootGrid"
         Background="{ThemeResource App.WindowBackgroundBrush}"
-       
+        KeyboardAcceleratorPlacementMode="Hidden"
         RowDefinitions="Auto,*">
+
+        <Grid.Resources>
+            <!-- FIX 2: one shared template for Reminders + Tasks rows (was copy-pasted twice). -->
+            <DataTemplate x:Key="NavItemTemplate" x:DataType="vm:NavigationListItem">
+                <Grid>
+                    <Border
+                        Background="{ThemeResource App.SelectedBrush}"
+                        CornerRadius="{StaticResource RadiusControl}"
+                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
+                    <Border
+                        Width="{StaticResource AccentBarWidth}"
+                        HorizontalAlignment="Left"
+                        Background="{ThemeResource App.AccentBrush}"
+                        CornerRadius="{StaticResource RadiusControl}"
+                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
+                    <Button
+                        Click="OnSidebarRowClicked"
+                        Style="{StaticResource SidebarRowStyle}"
+                        Tag="{x:Bind}"
+                        AutomationProperties.Name="{x:Bind Label, Mode=OneWay}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource IconSizeMedium}"
+                                Glyph="{x:Bind Glyph, Mode=OneWay}" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Margin="{StaticResource MarginStartMedium}"
+                                VerticalAlignment="Center"
+                                Text="{x:Bind Label, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+                            <Border
+                                Grid.Column="2"
+                                MinWidth="20"
+                                Padding="6,0"
+                                VerticalAlignment="Center"
+                                Background="{ThemeResource App.HoverBrush}"
+                                CornerRadius="8">
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Count, Mode=OneWay}" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </Grid>
+            </DataTemplate>
+        </Grid.Resources>
+
+        <!-- FIX 3: Up/Down arrow accelerators removed (they hijacked scrolling and list navigation).
+             Left/Right kept. Single-key shortcuts must be guarded in code-behind (see ApplyShellFixes). -->
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="N" Invoked="OnNewAccelerator"/>
             <KeyboardAccelerator Key="R" Invoked="OnNewReminderAccelerator"/>
@@ -26,85 +78,135 @@
             <KeyboardAccelerator Key="Z" Modifiers="Control" Invoked="OnUndoAccelerator"/>
             <KeyboardAccelerator Key="Left" Invoked="OnPreviousAccelerator"/>
             <KeyboardAccelerator Key="Right" Invoked="OnNextAccelerator"/>
-            <KeyboardAccelerator Key="Up" Invoked="OnPreviousAccelerator"/>
-            <KeyboardAccelerator Key="Down" Invoked="OnNextAccelerator"/>
         </Grid.KeyboardAccelerators>
 
+        <!-- ================= TOP BAR ================= -->
+        <!-- FIX 4: hamburger removed from the layout. 3 columns: [date nav] [view switcher] [actions]. -->
         <Grid
             x:Name="TitleBarElement"
             Grid.Row="0"
             Height="{StaticResource TitleBarHeight}"
-            Padding="{StaticResource PaddingTitleBar}"
+            Padding="12,0,0,0"
             Background="{ThemeResource App.TransparentBrush}"
-            ColumnDefinitions="Auto,Auto,Auto,Auto">
-
-            <Button
-                x:Name="PaneToggleButton"
-                Grid.Column="0"
-                Click="OnPaneToggleClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Toggle the navigation pane"
-                ToolTipService.ToolTip="Toggle the navigation pane">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE700;" />
-            </Button>
-
-            <Grid Grid.Column="2" ColumnDefinitions="Auto,*,Auto">
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Button
-                        Click="OnTodayClick"
-                        Content="Today"
-                        AutomationProperties.Name="Go to today"
-                        ToolTipService.ToolTip="Go to today (T)" />
-                    <Button
-                        Click="OnPreviousClick"
-                        Style="{StaticResource ToolbarButtonStyle}"
-                        AutomationProperties.Name="Previous period"
-                        ToolTipService.ToolTip="Previous period (Left arrow)">
-                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
-                    </Button>
-                    <Button
-                        Click="OnNextClick"
-                        Style="{StaticResource ToolbarButtonStyle}"
-                        AutomationProperties.Name="Next period"
-                        ToolTipService.ToolTip="Next period (Right arrow)">
-                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
-                    </Button>
-                    <TextBlock
-                        x:Name="PeriodLabelText"
-                        Margin="{StaticResource MarginPeriodLabel}"
-                        VerticalAlignment="Center"
-                        Style="{ThemeResource SubtitleTextBlockStyle}"
-                        Text="{x:Bind ShellState.Title, Mode=OneWay}"
-                        AutomationProperties.Name="Current period" />
-                </StackPanel>
-
-                <muxc:SelectorBar
-                    x:Name="ViewSwitcher"
-                    Grid.Column="2"
-                    VerticalAlignment="Center"
-                    SelectionChanged="OnViewSwitcherSelectionChanged"
-                    AutomationProperties.Name="Calendar view">
-                    <muxc:SelectorBarItem Tag="Day" Text="Day" />
-                    <muxc:SelectorBarItem Tag="Week" Text="Week" IsSelected="True" />
-                    <muxc:SelectorBarItem Tag="Month" Text="Month" />
-                    <muxc:SelectorBarItem Tag="Agenda" Text="Agenda" />
-                </muxc:SelectorBar>
-
-            </Grid>
+            ColumnDefinitions="Auto,*,Auto">
 
             <StackPanel
-                Grid.Column="3"
+                Grid.Column="0"
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Spacing="{StaticResource SpaceXS}">
+                <Button
+                    Click="OnTodayClick"
+                    Content="Today"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Go to today"
+                    ToolTipService.ToolTip="Go to today (T)" />
+                <Button
+                    Click="OnPreviousClick"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    AutomationProperties.Name="Previous period"
+                    ToolTipService.ToolTip="Previous period (Left arrow)">
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
+                </Button>
+                <Button
+                    Click="OnNextClick"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    AutomationProperties.Name="Next period"
+                    ToolTipService.ToolTip="Next period (Right arrow)">
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
+                </Button>
+                <!-- FIX 5: MinWidth stops the view switcher from jumping when the title text changes length. -->
+                <TextBlock
+                    x:Name="PeriodLabelText"
+                    MinWidth="200"
+                    Margin="12,0,16,0"
+                    VerticalAlignment="Center"
+                    Style="{ThemeResource SubtitleTextBlockStyle}"
+                    Text="{x:Bind ShellState.Title, Mode=OneWay}"
+                    TextTrimming="CharacterEllipsis"
+                    AutomationProperties.Name="Current period" />
+            </StackPanel>
+
+            <muxc:SelectorBar
+                x:Name="ViewSwitcher"
+                Grid.Column="1"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                SelectionChanged="OnViewSwitcherSelectionChanged"
+                AutomationProperties.Name="Calendar view">
+                <muxc:SelectorBarItem Tag="Day" Text="Day" />
+                <muxc:SelectorBarItem Tag="Week" Text="Week" IsSelected="True" />
+                <muxc:SelectorBarItem Tag="Month" Text="Month" />
+                <muxc:SelectorBarItem Tag="Agenda" Text="Agenda" />
+            </muxc:SelectorBar>
+
+            <StackPanel
+                Grid.Column="2"
                 Margin="{StaticResource MarginEndCaption}"
                 HorizontalAlignment="Right"
+                VerticalAlignment="Center"
                 Orientation="Horizontal"
                 Spacing="{StaticResource SpaceXS}">
+
+                <AutoSuggestBox
+                    x:Name="SearchBox"
+                    Width="{StaticResource SearchBoxWidth}"
+                    VerticalAlignment="Center"
+                    PlaceholderText="Search"
+                    QueryIcon="Find"
+                    Text="{x:Bind ViewModel.SearchText, Mode=TwoWay}"
+                    TextChanged="OnSearchTextChanged"
+                    QuerySubmitted="OnSearchSubmitted"
+                    SuggestionChosen="OnSearchSuggestionSelected"
+                    AutomationProperties.Name="Search events"
+                    ToolTipService.ToolTip="Search events (Ctrl+F)" />
+
+                <!-- FIX 6: Filters now explains what it does (it narrows search results). Control names unchanged. -->
+                <Button
+                    x:Name="SearchFiltersButton"
+                    Content="Filters"
+                    Click="OnSearchFiltersClick"
+                    AutomationProperties.Name="Open search filters"
+                    ToolTipService.ToolTip="Narrow search results by date, tags or category">
+                    <Button.Flyout>
+                        <Flyout>
+                            <StackPanel MinWidth="300" Spacing="{StaticResource SpaceSM}">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Filter search results" />
+                                <TextBlock
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Opacity="0.7"
+                                    TextWrapping="Wrap"
+                                    Text="Type in Search first, then choose filters here and press Apply. Only matching events are shown." />
+                                <CheckBox x:Name="SearchFromEnabled" Content="Limit from date" />
+                                <DatePicker x:Name="SearchFromDate" Header="From date" />
+                                <CheckBox x:Name="SearchToEnabled" Content="Limit to date" />
+                                <DatePicker x:Name="SearchToDate" Header="To date" />
+                                <TextBox x:Name="SearchTagsBox" Header="Tags (comma separated)" PlaceholderText="work, travel" />
+                                <TextBox x:Name="SearchCategoryBox" Header="Category" PlaceholderText="Meeting" />
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                    <Button Content="Apply" Click="OnApplySearchFiltersClick" Style="{StaticResource AccentButtonStyle}" />
+                                    <Button Content="Clear" Click="OnClearSearchFiltersClick" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button
+                    Click="OnSyncClick"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    AutomationProperties.Name="Sync now"
+                    ToolTipService.ToolTip="Sync now">
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE895;" />
+                </Button>
 
                 <Button
                     x:Name="ViewOptionsButton"
                     Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="View options"
-                    ToolTipService.ToolTip="View options (weekends, week numbers, time zone)">
+                    ToolTipService.ToolTip="View options (weekends, week numbers, time zone, export)">
                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE712;" />
                     <Button.Flyout>
                         <muxc:MenuFlyout>
@@ -131,52 +233,6 @@
                     </Button.Flyout>
                 </Button>
 
-                <AutoSuggestBox
-                    x:Name="SearchBox"
-                    Width="{StaticResource SearchBoxWidth}"
-                    VerticalAlignment="Center"
-                    PlaceholderText="Search"
-                    QueryIcon="Find"
-                    Text="{x:Bind ViewModel.SearchText, Mode=TwoWay}"
-                    TextChanged="OnSearchTextChanged"
-                    QuerySubmitted="OnSearchSubmitted"
-                    SuggestionChosen="OnSearchSuggestionSelected"
-                    AutomationProperties.Name="Search events"
-                    ToolTipService.ToolTip="Search events (Ctrl+F)" />
-
-                <Button
-                    x:Name="SearchFiltersButton"
-                    Content="Filters"
-                    Click="OnSearchFiltersClick"
-                    AutomationProperties.Name="Open search filters"
-                    ToolTipService.ToolTip="Filter by date, tags, or category">
-                    <Button.Flyout>
-                        <Flyout>
-                            <StackPanel MinWidth="280" Spacing="{StaticResource SpaceSM}">
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Search filters" />
-                                <CheckBox x:Name="SearchFromEnabled" Content="Limit from date" />
-                                <DatePicker x:Name="SearchFromDate" Header="From date" />
-                                <CheckBox x:Name="SearchToEnabled" Content="Limit to date" />
-                                <DatePicker x:Name="SearchToDate" Header="To date" />
-                                <TextBox x:Name="SearchTagsBox" Header="Tags" PlaceholderText="work, travel" />
-                                <TextBox x:Name="SearchCategoryBox" Header="Category" PlaceholderText="Meeting" />
-                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
-                                    <Button Content="Apply" Click="OnApplySearchFiltersClick" />
-                                    <Button Content="Clear" Click="OnClearSearchFiltersClick" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Flyout>
-                    </Button.Flyout>
-                </Button>
-
-                <Button
-                    Click="OnSyncClick"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    AutomationProperties.Name="Sync now"
-                    ToolTipService.ToolTip="Sync now">
-                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE895;" />
-                </Button>
-
                 <Button
                     Click="OnSettingsClick"
                     Style="{StaticResource ToolbarButtonStyle}"
@@ -189,8 +245,10 @@
 
         </Grid>
 
+        <!-- ================= BODY ================= -->
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
 
+            <!-- SIDEBAR: fixed width, always visible. Order: New, mini calendar, Calendars, lists, footer. -->
             <Grid
                 x:Name="SidebarColumn"
                 Grid.Column="0"
@@ -198,345 +256,223 @@
                 Background="{ThemeResource App.SidebarBackgroundBrush}">
                 <Grid
                     x:Name="SidebarHost"
-                    Background="{ThemeResource App.SidebarBackgroundBrush}">
+                    Background="{ThemeResource App.SidebarBackgroundBrush}"
+                    RowDefinitions="Auto,Auto,*,Auto">
 
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+                    <!-- FIX 7: New button moved to the top (primary action), mini calendar below it. -->
+                    <muxc:SplitButton
+                        x:Name="NewSplitButton"
+                        Grid.Row="0"
+                        Margin="{StaticResource InsetSM}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Click="OnNewSplitButtonClick"
+                        AutomationProperties.Name="Create a new event, reminder or task"
+                        ToolTipService.ToolTip="New event (N)">
+                        <muxc:SplitButton.Content>
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
+                                <TextBlock Text="New" />
+                            </StackPanel>
+                        </muxc:SplitButton.Content>
+                        <muxc:SplitButton.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem AutomationProperties.Name="New event" Click="OnNewEventClick" Text="Event" KeyboardAcceleratorTextOverride="N" />
+                                <MenuFlyoutItem AutomationProperties.Name="New reminder" Click="OnNewReminderClick" Text="Reminder" KeyboardAcceleratorTextOverride="R" />
+                                <MenuFlyoutItem AutomationProperties.Name="New task" Click="OnNewTaskClick" Text="Task" />
+                            </MenuFlyout>
+                        </muxc:SplitButton.Flyout>
+                    </muxc:SplitButton>
 
-                <Grid x:Name="MiniCalendarHost" Grid.Row="0" />
+                    <Grid x:Name="MiniCalendarHost" Grid.Row="1" />
 
-                <muxc:SplitButton
-                    x:Name="NewSplitButton"
-                    Grid.Row="1"
-                    Margin="{StaticResource InsetSM}"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Click="OnNewSplitButtonClick"
-                    AutomationProperties.Name="Create a new event or reminder">
-                    <muxc:SplitButton.Content>
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
-                            <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
-                            <TextBlock Text="New" />
-                        </StackPanel>
-                    </muxc:SplitButton.Content>
-                    <muxc:SplitButton.Flyout>
-                        <MenuFlyout>
-                            <MenuFlyoutItem AutomationProperties.Name="New event" Click="OnNewEventClick" Text="Event" />
-                            <MenuFlyoutItem AutomationProperties.Name="New reminder" Click="OnNewReminderClick" Text="Reminder" />
-                            <MenuFlyoutItem AutomationProperties.Name="New task" Click="OnNewTaskClick" Text="Task" />
-                        </MenuFlyout>
-                    </muxc:SplitButton.Flyout>
-                </muxc:SplitButton>
+                    <ScrollViewer
+                        Grid.Row="2"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <StackPanel Padding="{StaticResource PaddingSidebar}" Spacing="{StaticResource SpaceXS}">
 
-                <ScrollViewer
-                    Grid.Row="2"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-                    <StackPanel Padding="{StaticResource PaddingSidebar}" Spacing="{StaticResource SpaceXS}">
-
-                        <muxc:Expander
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            IsExpanded="True"
-                            AutomationProperties.Name="Calendars">
-                            <muxc:Expander.Header>
-                                <TextBlock
-                                    Style="{StaticResource SectionHeaderStyle}"
-                                    Text="CALENDARS" />
-                            </muxc:Expander.Header>
-                            <ListView
-                                x:Name="CalendarList"
-                                ItemsSource="{x:Bind ViewModel.Calendars, Mode=OneWay}"
-                                SelectionMode="None"
-                                RightTapped="OnCalendarListRightTapped"
+                            <muxc:Expander
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                IsExpanded="True"
                                 AutomationProperties.Name="Calendars">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:CalendarListItem">
-                                        <Grid MinHeight="{StaticResource SidebarRowHeight}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox
-                                                MinWidth="0"
-                                                VerticalAlignment="Center"
-                                                AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
-                                                IsChecked="{x:Bind IsVisible, Mode=TwoWay}" />
-                                            <Border
-                                                Grid.Column="1"
-                                                Width="{StaticResource CalendarSwatchSize}"
-                                                Height="{StaticResource CalendarSwatchSize}"
-                                                Margin="{StaticResource MarginStartSmall}"
-                                                VerticalAlignment="Center"
-                                                Background="{x:Bind ColorBrush, Mode=OneWay}"
-                                                CornerRadius="{StaticResource RadiusSwatch}" />
-                                            <TextBlock
-                                                Grid.Column="2"
-                                                Margin="{StaticResource MarginStartMedium}"
-                                                VerticalAlignment="Center"
-                                                Text="{x:Bind Name, Mode=OneWay}"
-                                                TextTrimming="CharacterEllipsis" />
+                                <muxc:Expander.Header>
+                                    <TextBlock
+                                        Style="{StaticResource SectionHeaderStyle}"
+                                        Text="CALENDARS" />
+                                </muxc:Expander.Header>
+                                <ListView
+                                    x:Name="CalendarList"
+                                    ItemsSource="{x:Bind ViewModel.Calendars, Mode=OneWay}"
+                                    SelectionMode="None"
+                                    RightTapped="OnCalendarListRightTapped"
+                                    AutomationProperties.Name="Calendars">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:CalendarListItem">
+                                            <Grid MinHeight="{StaticResource SidebarRowHeight}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox
+                                                    MinWidth="0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
+                                                    IsChecked="{x:Bind IsVisible, Mode=TwoWay}" />
+                                                <Border
+                                                    Grid.Column="1"
+                                                    Width="{StaticResource CalendarSwatchSize}"
+                                                    Height="{StaticResource CalendarSwatchSize}"
+                                                    Margin="{StaticResource MarginStartSmall}"
+                                                    VerticalAlignment="Center"
+                                                    Background="{x:Bind ColorBrush, Mode=OneWay}"
+                                                    CornerRadius="{StaticResource RadiusSwatch}" />
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    Margin="{StaticResource MarginStartMedium}"
+                                                    VerticalAlignment="Center"
+                                                    Text="{x:Bind Name, Mode=OneWay}"
+                                                    TextTrimming="CharacterEllipsis" />
                                             </Grid>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </muxc:Expander>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </muxc:Expander>
 
-                        <TextBlock
-                            Style="{StaticResource SectionHeaderStyle}"
-                            Text="REMINDERS" />
+                            <TextBlock
+                                Style="{StaticResource SectionHeaderStyle}"
+                                Text="REMINDERS" />
+                            <ItemsControl
+                                ItemsSource="{x:Bind ViewModel.ReminderLists, Mode=OneWay}"
+                                ItemTemplate="{StaticResource NavItemTemplate}"
+                                AutomationProperties.Name="Reminder lists" />
 
-                        <ItemsControl
-                            ItemsSource="{x:Bind ViewModel.ReminderLists, Mode=OneWay}"
-                            AutomationProperties.Name="Reminder lists">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:NavigationListItem">
-                                    <Grid>
-                                    <Border
-                                        Background="{ThemeResource App.SelectedBrush}"
-                                        CornerRadius="{StaticResource RadiusControl}"
-                                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
-                                    <Border
-                                        Width="{StaticResource AccentBarWidth}"
-                                        HorizontalAlignment="Left"
-                                        Background="{ThemeResource App.AccentBrush}"
-                                        CornerRadius="{StaticResource RadiusControl}"
-                                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
-                                    <Button
-                                        Click="OnSidebarRowClicked"
-                                        Style="{StaticResource SidebarRowStyle}"
-                                        Tag="{x:Bind TargetKey, Mode=OneWay}"
-                                        AutomationProperties.Name="{x:Bind Label, Mode=OneWay}">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
-                                            <FontIcon
-                                                VerticalAlignment="Center"
-                                                FontSize="{StaticResource IconSizeMedium}"
-                                                Glyph="{x:Bind Glyph, Mode=OneWay}" />
-                                            <TextBlock
-                                                Grid.Column="1"
-                                                Margin="{StaticResource MarginStartMedium}"
-                                                VerticalAlignment="Center"
-                                                Text="{x:Bind Label, Mode=OneWay}" />
-                                            <Border
-                                                Grid.Column="2"
-                                                MinWidth="20"
-                                                Padding="6,0"
-                                                VerticalAlignment="Center"
-                                                Background="{ThemeResource App.HoverBrush}"
-                                                CornerRadius="8">
-                                                <TextBlock
-                                                    HorizontalAlignment="Center"
-                                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                                    Text="{x:Bind Count, Mode=OneWay}" />
-                                            </Border>
-                                        </Grid>
-                                    </Button>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            <TextBlock
+                                Style="{StaticResource SectionHeaderStyle}"
+                                Text="TASKS" />
+                            <ItemsControl
+                                ItemsSource="{x:Bind ViewModel.TaskLists, Mode=OneWay}"
+                                ItemTemplate="{StaticResource NavItemTemplate}"
+                                AutomationProperties.Name="Task lists" />
 
-                        <TextBlock
-                            Style="{StaticResource SectionHeaderStyle}"
-                            Text="TASKS" />
+                        </StackPanel>
+                    </ScrollViewer>
 
-                        <ItemsControl
-                            ItemsSource="{x:Bind ViewModel.TaskLists, Mode=OneWay}"
-                            AutomationProperties.Name="Task lists">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:NavigationListItem">
-                                    <Grid>
-                                    <Border
-                                        Background="{ThemeResource App.SelectedBrush}"
-                                        CornerRadius="{StaticResource RadiusControl}"
-                                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
-                                    <Border
-                                        Width="{StaticResource AccentBarWidth}"
-                                        HorizontalAlignment="Left"
-                                        Background="{ThemeResource App.AccentBrush}"
-                                        CornerRadius="{StaticResource RadiusControl}"
-                                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
-                                    <Button
-                                        Click="OnSidebarRowClicked"
-                                        Style="{StaticResource SidebarRowStyle}"
-                                        Tag="{x:Bind TargetKey, Mode=OneWay}"
-                                        AutomationProperties.Name="{x:Bind Label, Mode=OneWay}">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
-                                            <FontIcon
-                                                VerticalAlignment="Center"
-                                                FontSize="{StaticResource IconSizeMedium}"
-                                                Glyph="{x:Bind Glyph, Mode=OneWay}" />
-                                            <TextBlock
-                                                Grid.Column="1"
-                                                Margin="{StaticResource MarginStartMedium}"
-                                                VerticalAlignment="Center"
-                                                Text="{x:Bind Label, Mode=OneWay}" />
-                                            <Border
-                                                Grid.Column="2"
-                                                MinWidth="20"
-                                                Padding="6,0"
-                                                VerticalAlignment="Center"
-                                                Background="{ThemeResource App.HoverBrush}"
-                                                CornerRadius="8">
-                                                <TextBlock
-                                                    HorizontalAlignment="Center"
-                                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                                    Text="{x:Bind Count, Mode=OneWay}" />
-                                            </Border>
-                                        </Grid>
-                                    </Button>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                    </StackPanel>
-                </ScrollViewer>
-
-                <Grid
-                    Grid.Row="3"
-                    Padding="12"
-                    BorderBrush="{ThemeResource App.DividerBrush}"
-                    BorderThickness="0,1,0,0"
-                    Background="{ThemeResource App.TransparentBrush}"
-                    ColumnDefinitions="*,Auto">
-                    <StackPanel
-                        Grid.Column="0"
-                        Orientation="Horizontal"
-                        Spacing="{StaticResource SpaceSM}"
-                        VerticalAlignment="Center">
-                        <FontIcon
-                            FontSize="{StaticResource IconSizeSmall}"
-                            Glyph="&#xE73E;" />
-                        <TextBlock
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Text="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
-                            AutomationProperties.Name="Sync status" />
-                    </StackPanel>
-                    <Border
-                        Grid.Column="1"
-                        Padding="8,2"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource App.HoverBrush}"
-                        CornerRadius="{StaticResource RadiusControl}">
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXXS}">
+                    <!-- FIX 8: footer no longer clips ("Synced just now - Connecte"): text trims with ellipsis + tooltip. -->
+                    <Grid
+                        Grid.Row="3"
+                        Padding="12,10"
+                        BorderBrush="{ThemeResource App.DividerBrush}"
+                        BorderThickness="0,1,0,0"
+                        Background="{ThemeResource App.TransparentBrush}"
+                        ColumnDefinitions="*,Auto"
+                        ColumnSpacing="8">
+                        <Grid
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            ColumnDefinitions="Auto,*"
+                            ColumnSpacing="8">
                             <FontIcon
                                 FontSize="{StaticResource IconSizeSmall}"
-                                Glyph="&#xE734;" />
+                                Glyph="&#xE73E;" />
                             <TextBlock
+                                Grid.Column="1"
                                 Style="{ThemeResource CaptionTextBlockStyle}"
-                                Text="Premium" />
-                        </StackPanel>
-                    </Border>
+                                Text="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTipService.ToolTip="{x:Bind ViewModel.SyncStatus, Mode=OneWay}"
+                                AutomationProperties.Name="Sync status" />
+                        </Grid>
+                        <Border
+                            Grid.Column="1"
+                            Padding="8,2"
+                            VerticalAlignment="Center"
+                            Background="{ThemeResource App.HoverBrush}"
+                            CornerRadius="{StaticResource RadiusControl}">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXXS}">
+                                <FontIcon
+                                    FontSize="{StaticResource IconSizeSmall}"
+                                    Glyph="&#xE734;" />
+                                <TextBlock
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Text="Premium" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
                 </Grid>
-
-            </Grid>
             </Grid>
 
+            <!-- MAIN CONTENT -->
             <Border Grid.Column="1" Style="{StaticResource CardStyle}">
                 <Grid>
-                    <muxc:InfoBar
-                        x:Name="StatusInfoBar"
-                        Margin="12,12,12,0"
-                        VerticalAlignment="Top"
-                        IsClosable="True"
-                        IsOpen="False"
-                        Severity="Informational"
-                        Closed="OnStatusInfoBarClosed"
-                        AutomationProperties.Name="Status message" />
-
-                    <muxc:InfoBar
-                        x:Name="InvitationInfoBar"
-                        Margin="12,64,12,0"
-                        VerticalAlignment="Top"
-                        IsClosable="False"
-                        IsOpen="False"
-                        Severity="Informational"
-                        Title="Invitation"
-                        Message="You have been invited to this event."
-                        AutomationProperties.Name="Event invitation">
-                        <muxc:InfoBar.ActionButton>
-                            <Button Click="OnInvitationRespondClick" Content="Respond" AutomationProperties.Name="Respond to invitation" />
-                        </muxc:InfoBar.ActionButton>
-                    </muxc:InfoBar>
-
                     <Frame x:Name="ContentFrame" />
 
+                    <!-- FIX 9: both InfoBars stacked in one panel (they used hardcoded margins 12 / 64 and could overlap). -->
+                    <StackPanel
+                        Margin="12,12,12,0"
+                        VerticalAlignment="Top"
+                        Spacing="8">
+                        <muxc:InfoBar
+                            x:Name="StatusInfoBar"
+                            IsClosable="True"
+                            IsOpen="False"
+                            Severity="Informational"
+                            Closed="OnStatusInfoBarClosed"
+                            AutomationProperties.Name="Status message" />
+                        <muxc:InfoBar
+                            x:Name="InvitationInfoBar"
+                            IsClosable="False"
+                            IsOpen="False"
+                            Severity="Informational"
+                            Title="Invitation"
+                            Message="You have been invited to this event."
+                            AutomationProperties.Name="Event invitation">
+                            <muxc:InfoBar.ActionButton>
+                                <Button Click="OnInvitationRespondClick" Content="Respond" AutomationProperties.Name="Respond to invitation" />
+                            </muxc:InfoBar.ActionButton>
+                        </muxc:InfoBar>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-                <Grid
-                    x:Name="EditorHost"
-                    Grid.Column="2"
-                    Width="{StaticResource EditorPaneWidth}"
-                    Visibility="Collapsed" />
+            <!-- EDITOR DRAWER (right). The New event editor MUST be added as a child of THIS host. -->
+            <Grid
+                x:Name="EditorHost"
+                Grid.Column="2"
+                Width="{StaticResource EditorPaneWidth}"
+                Visibility="Collapsed" />
 
         </Grid>
 
-        <StackPanel
-            x:Name="SidebarIconRail"
+        <!-- FIX 10: hamburger + icon rail are NOT deleted (code-behind still references their names, deleting would break the build).
+             They live inside a permanently collapsed host, so they can never render or overlap anything again. -->
+        <Grid
+            x:Name="LegacyControlsHost"
             Grid.Row="1"
-            Grid.Column="0"
-            Width="{StaticResource SidebarCollapsedWidth}"
-            Padding="6,8,6,8"
-            Spacing="{StaticResource SpaceXS}"
-            VerticalAlignment="Top"
-            Visibility="Collapsed">
+            Visibility="Collapsed"
+            IsHitTestVisible="False">
             <Button
-                Click="OnNewSplitButtonClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Create a new event or reminder"
-                ToolTipService.ToolTip="New event (N)">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE710;" />
+                x:Name="PaneToggleButton"
+                Click="OnPaneToggleClick"
+                AutomationProperties.Name="Toggle the navigation pane">
+                <FontIcon Glyph="&#xE700;" />
             </Button>
-            <Button
-                Click="OnTodayClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Go to today"
-                ToolTipService.ToolTip="Go to today (T)">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE787;" />
-            </Button>
-            <Button
-                Click="OnDayViewClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Day view"
-                ToolTipService.ToolTip="Day view (D)">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B3;" />
-            </Button>
-            <Button
-                Click="OnWeekViewClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Week view"
-                ToolTipService.ToolTip="Week view (W)">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B4;" />
-            </Button>
-            <Button
-                Click="OnMonthViewClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Month view"
-                ToolTipService.ToolTip="Month view (M)">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE7B5;" />
-            </Button>
-            <Button
-                Click="OnAgendaViewClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Agenda view"
-                ToolTipService.ToolTip="Agenda view (A)">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE8A5;" />
-            </Button>
-            <Button
-                Click="OnTasksClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Tasks"
-                ToolTipService.ToolTip="Tasks">
-                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE9D5;" />
-            </Button>
-        </StackPanel>
+            <StackPanel
+                x:Name="SidebarIconRail"
+                Width="{StaticResource SidebarCollapsedWidth}"
+                VerticalAlignment="Top">
+                <Button Click="OnNewSplitButtonClick" AutomationProperties.Name="Create a new event or reminder"><FontIcon Glyph="&#xE710;" /></Button>
+                <Button Click="OnTodayClick" AutomationProperties.Name="Go to today"><FontIcon Glyph="&#xE787;" /></Button>
+                <Button Click="OnDayViewClick" AutomationProperties.Name="Day view"><FontIcon Glyph="&#xE7B3;" /></Button>
+                <Button Click="OnWeekViewClick" AutomationProperties.Name="Week view"><FontIcon Glyph="&#xE7B4;" /></Button>
+                <Button Click="OnMonthViewClick" AutomationProperties.Name="Month view"><FontIcon Glyph="&#xE7B5;" /></Button>
+                <Button Click="OnAgendaViewClick" AutomationProperties.Name="Agenda view"><FontIcon Glyph="&#xE8A5;" /></Button>
+                <Button Click="OnTasksClick" AutomationProperties.Name="Tasks"><FontIcon Glyph="&#xE9D5;" /></Button>
+            </StackPanel>
+        </Grid>
 
         <ctrl:SnackbarView
             x:Name="Snackbar"
