@@ -109,6 +109,16 @@ public sealed class AlertRepository : IAlertRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<Alert>> GetAllAlertsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<Alert>(
+            new CommandDefinition(
+                $"SELECT {AlertColumns} FROM alert ORDER BY id;",
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task UpsertAlertAsync(Alert alert, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(alert);
@@ -169,6 +179,54 @@ public sealed class AlertRepository : IAlertRepository
                 cancellationToken: cancellationToken));
 
         return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<AlertInstance>> GetPendingInstancesForSchedulingAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        if (limit <= 0)
+        {
+            return [];
+        }
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<AlertInstance>(
+            new CommandDefinition(
+                $"""
+                SELECT {InstanceColumns}
+                FROM alert_instance
+                WHERE state = @State
+                ORDER BY fire_at_utc
+                LIMIT @Limit;
+                """,
+                new { State = EnumText.ToText(AlertState.Pending), Limit = limit },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
+    public async Task<bool> TryMarkFiredAsync(
+        string instanceId,
+        DateTimeOffset firedUtc,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        var affected = await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                UPDATE alert_instance
+                SET state = @Fired, fired_utc = @FiredUtc
+                WHERE id = @Id AND state = @Pending;
+                """,
+                new
+                {
+                    Id = instanceId,
+                    Pending = EnumText.ToText(AlertState.Pending),
+                    Fired = EnumText.ToText(AlertState.Fired),
+                    FiredUtc = SqliteTime.ToUtcText(firedUtc),
+                },
+                cancellationToken: cancellationToken));
+        return affected == 1;
     }
 
     public async Task<AlertInstance?> PeekNextPendingInstanceAsync(CancellationToken cancellationToken = default)

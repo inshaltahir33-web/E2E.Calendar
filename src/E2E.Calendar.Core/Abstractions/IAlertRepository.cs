@@ -11,6 +11,8 @@ public interface IAlertRepository
         string ownerId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Alert>> GetAllAlertsAsync(CancellationToken cancellationToken = default);
+
     Task UpsertAlertAsync(Alert alert, CancellationToken cancellationToken = default);
 
     Task DeleteAlertAsync(string id, CancellationToken cancellationToken = default);
@@ -21,6 +23,15 @@ public interface IAlertRepository
 
     Task<IReadOnlyList<AlertInstance>> GetPendingInstancesAsync(
         DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AlertInstance>> GetPendingInstancesForSchedulingAsync(
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> TryMarkFiredAsync(
+        string instanceId,
+        DateTimeOffset firedUtc,
         CancellationToken cancellationToken = default);
 
     Task<AlertInstance?> PeekNextPendingInstanceAsync(CancellationToken cancellationToken = default);

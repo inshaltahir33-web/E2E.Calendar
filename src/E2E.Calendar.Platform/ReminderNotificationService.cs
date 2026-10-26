@@ -1,4 +1,6 @@
 using E2E.Calendar.Core.Abstractions;
+using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Windows.Data.Xml.Dom;
@@ -8,80 +10,168 @@ namespace E2E.Calendar.Platform;
 
 public sealed class ReminderNotificationService : BackgroundService
 {
-    private readonly IReminderRepository _reminders;
+    private const int ScheduledToastLimit = 200;
+    private readonly IAlertRepository _alerts;
     private readonly IEventRepository _events;
+    private readonly IReminderRepository _reminders;
+    private readonly ITaskRepository _tasks;
     private readonly IClock _clock;
+    private readonly ReminderPlanner _planner;
     private readonly ILogger<ReminderNotificationService> _logger;
-    private readonly HashSet<string> _notified = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _wake = new(0, 1);
 
     public ReminderNotificationService(
-        IReminderRepository reminders,
+        IAlertRepository alerts,
         IEventRepository events,
+        IReminderRepository reminders,
+        ITaskRepository tasks,
         IClock clock,
+        ReminderPlanner planner,
         ILogger<ReminderNotificationService> logger)
     {
-        _reminders = reminders;
+        _alerts = alerts;
         _events = events;
+        _reminders = reminders;
+        _tasks = tasks;
         _clock = clock;
+        _planner = planner;
         _logger = logger;
     }
 
+    public void Wake() => _wake.ReleaseIfAvailable();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
-        do
+        await PlanAndScheduleAsync(stoppingToken);
+        await ProcessDueAsync(stoppingToken, catchUp: true);
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            await CheckUpcomingAsync(stoppingToken);
+            var next = await _alerts.PeekNextPendingInstanceAsync(stoppingToken);
+            var delay = next is null
+                ? TimeSpan.FromMinutes(1)
+                : next.FireAtUtc - _clock.UtcNow;
+            if (delay < TimeSpan.Zero)
+            {
+                delay = TimeSpan.Zero;
+            }
+
+            var delayTask = Task.Delay(TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds, 60)), stoppingToken);
+            var wakeTask = _wake.WaitAsync(stoppingToken);
+            await Task.WhenAny(delayTask, wakeTask);
+            await ProcessDueAsync(stoppingToken, catchUp: false);
+
+            if (next is null || delay.TotalSeconds <= 60)
+            {
+                await PlanAndScheduleAsync(stoppingToken);
+            }
         }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private async Task CheckUpcomingAsync(CancellationToken cancellationToken)
+    private async Task PlanAndScheduleAsync(CancellationToken cancellationToken)
     {
-        var now = _clock.UtcNow;
-        var until = now.AddMinutes(10);
-
-        foreach (var reminder in await _reminders.GetInRangeAsync(now, until, cancellationToken))
-        {
-            if (reminder.DueUtc is not { } due || !_notified.Add($"reminder:{reminder.Id}:{due:O}"))
-            {
-                continue;
-            }
-
-            ShowToast("Reminder", reminder.Title, due);
-        }
-
-        foreach (var calendarEvent in await _events.GetInRangeAsync(null, now, until, cancellationToken))
-        {
-            if (calendarEvent.StartUtc < now || !_notified.Add($"event:{calendarEvent.Id}:{calendarEvent.StartUtc:O}"))
-            {
-                continue;
-            }
-
-            ShowToast("Upcoming event", calendarEvent.Title, calendarEvent.StartUtc);
-        }
+        await _planner.PlanAsync(_clock.UtcNow, TimeSpan.FromDays(14), cancellationToken);
+        ScheduleUpcomingToasts(cancellationToken);
     }
 
-    private void ShowToast(string heading, string body, DateTimeOffset when)
+    private void ScheduleUpcomingToasts(CancellationToken cancellationToken)
     {
         try
         {
-            var xml = new XmlDocument();
-            xml.LoadXml($"""
-                <toast>
-                  <visual>
-                    <binding template="ToastGeneric">
-                      <text>{System.Security.SecurityElement.Escape(heading)}</text>
-                      <text>{System.Security.SecurityElement.Escape($"{body} · {when.ToLocalTime():t}")}</text>
-                    </binding>
-                  </visual>
-                </toast>
-                """);
-            ToastNotificationManager.CreateToastNotifier().Show(new ToastNotification(xml));
+            var notifier = ToastNotificationManager.CreateToastNotifier();
+            var pending = _alerts.GetPendingInstancesForSchedulingAsync(ScheduledToastLimit, cancellationToken)
+                .GetAwaiter()
+                .GetResult();
+
+            foreach (var instance in pending)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (instance.FireAtUtc <= _clock.UtcNow ||
+                    instance.FireAtUtc > _clock.UtcNow.AddDays(14))
+                {
+                    continue;
+                }
+
+                notifier.AddToSchedule(new ScheduledToastNotification(
+                    CreateToastXml(instance, "Scheduled reminder"),
+                    instance.FireAtUtc.LocalDateTime)
+                {
+                    Tag = instance.Id,
+                    Group = "reminders",
+                });
+            }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, "Could not display reminder notification.");
+            _logger.LogWarning(ex, "OS reminder scheduling is unavailable; in-app fallback remains active.");
+        }
+    }
+
+    private async Task ProcessDueAsync(CancellationToken cancellationToken, bool catchUp)
+    {
+        var due = await _alerts.GetPendingInstancesAsync(_clock.UtcNow, cancellationToken);
+        if (due.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var instance in due)
+        {
+            if (!await _alerts.TryMarkFiredAsync(instance.Id, _clock.UtcNow, cancellationToken))
+            {
+                continue;
+            }
+
+            ShowToast(instance, catchUp ? "Missed reminder" : "Reminder");
+        }
+    }
+
+    private void ShowToast(AlertInstance instance, string heading)
+    {
+        try
+        {
+            var notifier = ToastNotificationManager.CreateToastNotifier();
+            notifier.Show(new ToastNotification(CreateToastXml(instance, heading))
+            {
+                Tag = instance.Id,
+                Group = "reminders",
+            });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Could not display reminder notification for {InstanceId}.", instance.Id);
+        }
+    }
+
+    private static XmlDocument CreateToastXml(AlertInstance instance, string heading)
+    {
+        var xml = new XmlDocument();
+        xml.LoadXml($"""
+            <toast launch="e2e-calendar://reminder/{instance.Id}">
+              <visual>
+                <binding template="ToastGeneric">
+                  <text>{System.Security.SecurityElement.Escape(heading)}</text>
+                  <text>{System.Security.SecurityElement.Escape($"{instance.OwnerType} reminder")}</text>
+                </binding>
+              </visual>
+              <actions>
+                <action content="Snooze 10 min" activationType="protocol" arguments="e2e-calendar://snooze/{instance.Id}/10" />
+                <action content="Done" activationType="protocol" arguments="e2e-calendar://done/{instance.Id}" />
+                <action content="Open" activationType="protocol" arguments="e2e-calendar://open/{instance.Id}" />
+              </actions>
+            </toast>
+            """);
+        return xml;
+    }
+}
+
+internal static class SemaphoreSlimExtensions
+{
+    public static void ReleaseIfAvailable(this SemaphoreSlim semaphore)
+    {
+        if (semaphore.CurrentCount == 0)
+        {
+            semaphore.Release();
         }
     }
 }

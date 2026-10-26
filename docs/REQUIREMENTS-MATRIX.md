@@ -28,12 +28,12 @@
 | 2.5 | Week start / 12-24h / date format | MVP | **Partial** | `SettingsService.cs`; Windows defaults read; NOT RUN | Verify regional defaults |
 | 2.5 | Holiday calendars (PK, US, UK, UAE, IN) | MVP | **Missing** | No bundled .ics files; no Settings toggle | Add .ics resources + Settings toggle |
 | 2.5 | Hijri / Chinese / Hebrew dates | v1.1 | **Missing** | Not implemented | v1.1 |
-| 3.1 | Event alert, standalone, recurring, all-day, persistent, countdown | MVP | **Broken** | `ReminderNotificationService` is a 30s polling stub; no `alert_instance` integration, no L1/L2/L3 | Full reminder engine rewrite |
+| 3.1 | Event alert, standalone, recurring, all-day, persistent, countdown | MVP | **Partial** | `ReminderPlanner` materializes 14-day alert instances; `ReminderNotificationService` provides scheduled-toast L1, precise in-app fallback L2, and resume catch-up L3; persistent popup/countdown UI remains NOT RUN | Add dedicated always-on-top alarm window and verify OS delivery |
 | 3.1 | Location / travel-aware reminders | v2 | **Missing** | Not implemented | v2 |
-| 3.2 | Toast action: Snooze/Done/Open/Join | MVP | **Broken** | Current toast shown via basic `ToastNotificationManager.Show()` with no action buttons; action handler via `AppNotificationManager` not implemented | Implement action buttons + handler |
+| 3.2 | Toast action: Snooze/Done/Open/Join | MVP | **Partial** | Toast XML now includes Snooze/Done/Open protocol actions; protocol activation handler is not yet wired | Wire protocol activation to alert action service and verify on Windows |
 | 3.2 | Alarm popup (persistent, always-on-top) | MVP | **Missing** | No AlarmPopup window | Create dedicated alarm window |
 | 3.2 | Custom sounds per reminder/calendar | MVP | **Missing** | `alert.sound` column exists; no sound playback | Add `MediaPlayer` call on alert fire |
-| 3.2 | Missed-reminder catch-up | MVP | **Missing** | No `PowerModeChanged` / `SessionSwitch` hook | Add `SystemEvents` handler |
+| 3.2 | Missed-reminder catch-up | MVP | **Partial** | Startup and in-process timer catch up due instances; `Wake()` is available for the platform resume hook, but a Windows power-event dependency is not included in the current package set | Wire the Windows resume event and verify sleep/resume on Windows |
 | 3.2 | Daily digest notification | Premium | **Missing** | Logic mentioned in arch; not implemented | Phase 5 |
 | 3.3 | 99.9 % within 5 s proof (test harness) | MVP | **Missing** | No soak test; no fake-clock reminder harness | Phase 6 |
 | 3.4 | Reminders panel + grid tick-boxes | MVP | **Partial** | Sidebar reminder smart lists present (wiring-audit WORKING); tick-boxes in AgendaView; grid tick-boxes NOT RUN | Visual verification |

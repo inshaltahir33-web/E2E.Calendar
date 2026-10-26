@@ -207,6 +207,7 @@ public partial class App : Application
                 services.AddSingleton<EventTemplateService>();
                 services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<TodoService>();
+                services.AddSingleton<ReminderPlanner>();
                 services.AddSingleton<IEntitlementService, FreeEntitlementService>();
                 // Google two-way sync stays opt-in until our Google OAuth app is approved.
                 // Enable with: dotnet build -p:GoogleSyncEnabled=true
