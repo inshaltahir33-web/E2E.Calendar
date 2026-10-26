@@ -24,7 +24,8 @@ public sealed record TodoRow(
     bool IsOverdue,
     bool IsDone,
     bool IsFlagged,
-    string ListName);
+    string ListName,
+    string? ParentId = null);
 
 /// <summary>
 /// Single place that answers "what is in Today / Scheduled / Overdue / Completed / Flagged / Inbox / Work".
@@ -142,6 +143,31 @@ public sealed class TodoService
                 UpdatedUtc = now,
             });
         }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    public async Task<bool> AddSubtaskAsync(TodoRow parent, string title)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+
+        if (parent.Kind != TodoKind.Task || string.IsNullOrWhiteSpace(title))
+        {
+            return false;
+        }
+
+        var task = await _tasks.GetByIdAsync(parent.Id)
+            ?? throw new KeyNotFoundException($"Task '{parent.Id}' does not exist.");
+
+        await _tasks.UpsertAsync(new TaskItem
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            ListId = task.ListId,
+            ParentId = task.Id,
+            Title = title.Trim(),
+            Dirty = true,
+        });
 
         Changed?.Invoke(this, EventArgs.Empty);
         return true;
@@ -312,7 +338,8 @@ public sealed class TodoService
                 !done && reminder.DueUtc is { } due && due < now,
                 done,
                 reminder.Flagged,
-                listName));
+                listName,
+                null));
         }
 
         foreach (var task in tasks.Where(entry => !entry.Deleted))
@@ -331,7 +358,8 @@ public sealed class TodoService
                 !done && task.DueUtc is { } due && due < now,
                 done,
                 task.Priority >= Priority.High,
-                listName));
+                listName,
+                task.ParentId));
         }
 
         return rows;

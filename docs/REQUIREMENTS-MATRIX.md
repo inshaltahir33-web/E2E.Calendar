@@ -37,7 +37,7 @@
 | 3.2 | Daily digest notification | Premium | **Missing** | Logic mentioned in arch; not implemented | Phase 5 |
 | 3.3 | 99.9 % within 5 s proof (test harness) | MVP | **Missing** | No soak test; no fake-clock reminder harness | Phase 6 |
 | 3.4 | Reminders panel + grid tick-boxes | MVP | **Partial** | Sidebar reminder smart lists present (wiring-audit WORKING); tick-boxes in AgendaView; grid tick-boxes NOT RUN | Visual verification |
-| 4 | Tasks, subtasks, roll-over, time-block | MVP | **Partial** | `TodoView.xaml`, `TodoViewModel.cs`, `TaskService.cs`; wiring-audit WORKING; NOT RUN | Runtime check, verify time-block drag |
+| 4 | Tasks, subtasks, roll-over, time-block | MVP | **Partial** | `TodoService.AddSubtaskAsync` and task repository parent persistence now support subtasks; task add/complete/flag/delete remain wired; rollover/time-block UI is still NOT RUN | Verify nested rendering and add time-block interaction |
 | 4 | Sync MS To Do / Google Tasks | v1.1 | **Missing** | Not implemented | v1.1 |
 | 4 | Habit tracker | v1.1 Premium | **Missing** | Not implemented | v1.1 |
 | 5 | Local SQLite + ICS import/export/subscription | MVP | **Working** | `IcsService.cs`; `EventRepository`; 60 Data tests pass; 7 Sync tests pass | None |

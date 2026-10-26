@@ -95,4 +95,19 @@ public sealed class TaskRepositoryTests : IAsyncLifetime
 
         results.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Subtasks_round_trip_with_parent_id()
+    {
+        var parent = CreateTask(id: "parent");
+        var child = CreateTask(id: "child") with { ParentId = parent.Id };
+
+        await _tasks.UpsertAsync(parent);
+        await _tasks.UpsertAsync(child);
+
+        var loaded = await _tasks.GetByIdAsync(child.Id);
+
+        loaded.Should().NotBeNull();
+        loaded!.ParentId.Should().Be(parent.Id);
+    }
 }

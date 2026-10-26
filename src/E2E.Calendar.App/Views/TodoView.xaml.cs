@@ -171,7 +171,47 @@ public sealed partial class TodoView : Page
         Grid.SetColumn(delete, 5);
         grid.Children.Add(delete);
 
+        if (row.Kind == TodoKind.Task)
+        {
+            var subtask = new Button
+            {
+                Content = new FontIcon { Glyph = "\uE710", FontSize = Tokens.Double("IconSizeMedium", 14d) },
+                Padding = new Thickness(6),
+                Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
+                BorderThickness = new Thickness(0),
+                Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+            };
+            AutomationProperties.SetName(subtask, "Add sub-task to " + row.Title);
+            ToolTipService.SetToolTip(subtask, "Add sub-task");
+            subtask.Click += async (_, _) => await AddSubtaskAsync(row);
+            Grid.SetColumn(subtask, 5);
+            Grid.SetColumn(delete, 6);
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.Children.Add(subtask);
+        }
+
         return grid;
+    }
+
+    private async Task AddSubtaskAsync(TodoRow parent)
+    {
+        var box = new TextBox { PlaceholderText = "Sub-task title" };
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Add sub-task",
+            Content = box,
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary ||
+            string.IsNullOrWhiteSpace(box.Text))
+        {
+            return;
+        }
+
+        await _todo.AddSubtaskAsync(parent, box.Text);
     }
 
     private void OnAddKeyDown(object sender, KeyRoutedEventArgs e)
