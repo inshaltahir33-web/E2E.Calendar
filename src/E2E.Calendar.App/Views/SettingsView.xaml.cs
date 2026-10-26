@@ -5,6 +5,7 @@ using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
 
 namespace E2E.Calendar.App.Views;
 
@@ -179,6 +180,19 @@ public sealed partial class SettingsView : UserControl
                     CloseButtonText = "Close",
                 });
             }
+        }
+    }
+
+    private async void OnWindowsNotificationSettingsClick(object sender, RoutedEventArgs e)
+    {
+        if (!await Launcher.LaunchUriAsync(new Uri("ms-settings:notifications")))
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Windows notification settings could not be opened",
+                Content = "Open Settings > System > Notifications manually.",
+                CloseButtonText = "Close",
+            });
         }
     }
 }

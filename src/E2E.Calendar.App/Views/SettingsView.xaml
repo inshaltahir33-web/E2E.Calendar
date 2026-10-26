@@ -308,6 +308,7 @@
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 IsOn="True"
+                                IsEnabled="False"
                                 AutomationProperties.Name="Reminder notifications" />
                         </Grid>
                     </Border>
@@ -324,6 +325,7 @@
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 IsOn="True"
+                                IsEnabled="False"
                                 AutomationProperties.Name="Play a sound" />
                         </Grid>
                     </Border>
@@ -340,14 +342,21 @@
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 IsOn="False"
+                                IsEnabled="False"
                                 AutomationProperties.Name="Daily agenda" />
                         </Grid>
                     </Border>
 
-                    <Button
-                        HorizontalAlignment="Left"
-                        Content="Open Windows notification settings"
-                        AutomationProperties.Name="Open Windows notification settings" />
+                    <StackPanel Spacing="{StaticResource SpaceXS}">
+                        <Button
+                            HorizontalAlignment="Left"
+                            Click="OnWindowsNotificationSettingsClick"
+                            Content="Open Windows notification settings"
+                            AutomationProperties.Name="Open Windows notification settings" />
+                        <TextBlock
+                            Style="{StaticResource SettingsCardDescriptionStyle}"
+                            Text="Reminder delivery and sound are currently managed by Windows notification settings." />
+                    </StackPanel>
                 </StackPanel>
 
                 <!--  Appearance  -->
@@ -490,7 +499,11 @@
                                 HorizontalAlignment="Left"
                                 AutomationProperties.Name="View premium plans"
                                 Content="View plans"
+                                IsEnabled="False"
                                 Style="{StaticResource AccentButtonStyle}" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Billing is not configured in this build." />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -521,7 +534,14 @@
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 AutomationProperties.Name="Delete all data"
-                                Content="Delete…" />
+                                Content="Delete…"
+                                IsEnabled="False" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Margin="0,44,0,0"
+                                HorizontalAlignment="Right"
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Data deletion is unavailable in this build." />
                         </Grid>
                     </Border>
                 </StackPanel>
