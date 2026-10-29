@@ -89,8 +89,6 @@ public sealed partial class QuickAddViewModel : ObservableObject
 
     public event EventHandler? Saved;
 
-    public event EventHandler? DiscardRequested;
-
     public async Task LoadAsync()
     {
         var calendars = await _calendarRepository.GetAllAsync();
@@ -172,9 +170,6 @@ public sealed partial class QuickAddViewModel : ObservableObject
             CalendarPreview = SelectedCalendar.Name;
         }
     }
-
-    [RelayCommand]
-    public void Cancel() => DiscardRequested?.Invoke(this, EventArgs.Empty);
 
     public async Task<bool> SaveAsync()
     {

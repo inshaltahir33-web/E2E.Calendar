@@ -13,6 +13,4 @@ public interface IEventService
     Task<CalendarEvent> SoftDeleteAsync(string id, CancellationToken cancellationToken = default);
 
     Task<CalendarEvent> UndoDeleteAsync(string id, CancellationToken cancellationToken = default);
-
-    Task<CalendarEvent> DuplicateAsync(string id, CancellationToken cancellationToken = default);
 }

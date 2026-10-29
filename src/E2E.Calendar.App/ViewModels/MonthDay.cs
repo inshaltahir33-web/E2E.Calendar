@@ -29,24 +29,7 @@ public sealed partial class MonthDay : ObservableObject
 
     public string MoreLabel => $"+{MoreCount} more";
 
-    public Visibility MoreVisibility => MoreCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-
     public Visibility SelectionVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
-
-    public double Heat => EventCount switch
-    {
-        0 => 0,
-        1 => 0.25,
-        2 => 0.5,
-        3 => 0.75,
-        _ => 1,
-    };
-
-    public double Heat1 => EventCount == 0 ? 0 : 0.35;
-
-    public double Heat2 => EventCount <= 1 ? 0 : 0.65;
-
-    public double Heat3 => EventCount <= 3 ? 0 : 0.95;
 
     partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(SelectionVisibility));
 }

@@ -22,8 +22,6 @@ public sealed partial class SnackbarView : UserControl
 
     public event EventHandler? ActionInvoked;
 
-    public event EventHandler? Dismissed;
-
     public void Show(string message, string actionLabel)
     {
         MessageText.Text = message;
@@ -41,7 +39,6 @@ public sealed partial class SnackbarView : UserControl
     private void OnTimerTick(object? sender, object e)
     {
         Hide();
-        Dismissed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnActionClick(object sender, RoutedEventArgs e)

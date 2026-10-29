@@ -245,48 +245,4 @@ public sealed class EventServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
-
-    [Fact]
-    public async Task DuplicateAsync_creates_a_new_event_with_the_same_content()
-    {
-        var source = StoredEvent() with { RRule = "FREQ=WEEKLY;BYDAY=MO", Notes = "Room 3" };
-        _events.GetByIdAsync("evt-1", Arg.Any<CancellationToken>()).Returns(source);
-
-        var duplicate = await CreateService().DuplicateAsync("evt-1");
-
-        duplicate.Id.Should().NotBe("evt-1");
-        duplicate.Title.Should().Be(source.Title);
-        duplicate.Notes.Should().Be("Room 3");
-        duplicate.RRule.Should().Be(source.RRule);
-        duplicate.StartUtc.Should().Be(source.StartUtc);
-        duplicate.EndUtc.Should().Be(source.EndUtc);
-        duplicate.CreatedUtc.Should().Be(Now);
-        duplicate.UpdatedUtc.Should().Be(Now);
-        duplicate.Dirty.Should().BeTrue();
-        duplicate.Deleted.Should().BeFalse();
-        duplicate.RemoteId.Should().BeNull();
-        duplicate.ETag.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task DuplicateAsync_enqueues_an_outbox_upsert_for_the_copy()
-    {
-        _events.GetByIdAsync("evt-1", Arg.Any<CancellationToken>()).Returns(StoredEvent());
-
-        var duplicate = await CreateService().DuplicateAsync("evt-1");
-
-        await _outbox.Received(1).EnqueueAsync(
-            Arg.Is<OutboxItem>(i => i.EntityId == duplicate.Id && i.Op == OutboxOp.Upsert),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task DuplicateAsync_throws_when_the_source_does_not_exist()
-    {
-        _events.GetByIdAsync("missing", Arg.Any<CancellationToken>()).Returns((CalendarEvent?)null);
-
-        var act = () => CreateService().DuplicateAsync("missing");
-
-        await act.Should().ThrowAsync<KeyNotFoundException>();
-    }
 }

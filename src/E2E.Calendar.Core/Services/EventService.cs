@@ -190,31 +190,6 @@ public sealed class EventService : IEventService
         return restored;
     }
 
-    public async Task<CalendarEvent> DuplicateAsync(string id, CancellationToken cancellationToken = default)
-    {
-        var source = await GetRequiredAsync(id, cancellationToken);
-
-        var now = _clock.UtcNow;
-
-        var duplicate = source with
-        {
-            Id = NewId(),
-            RemoteId = null,
-            ETag = null,
-            RecurrenceMasterId = null,
-            RecurrenceIdUtc = null,
-            CreatedUtc = now,
-            UpdatedUtc = now,
-            Deleted = false,
-            Dirty = true,
-        };
-
-        await _events.UpsertAsync(duplicate, cancellationToken);
-        await EnqueueAsync(duplicate, OutboxOp.Upsert, cancellationToken);
-
-        return duplicate;
-    }
-
     private async Task<CalendarEvent> GetRequiredAsync(string id, CancellationToken cancellationToken)
     {
         return await _events.GetByIdAsync(id, cancellationToken)

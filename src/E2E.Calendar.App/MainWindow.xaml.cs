@@ -358,11 +358,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnPaneToggleClick(object sender, RoutedEventArgs e)
-    {
-        ApplySidebarCollapsed(!ViewModel.IsSidebarCollapsed);
-    }
-
     private void ApplySidebarCollapsed(bool collapsed)
     {
         ViewModel.IsSidebarCollapsed = collapsed;
@@ -481,8 +476,6 @@ public sealed partial class MainWindow : Window
     private void OnTasksClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
 
     private void OnSettingsClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Settings);
-
-    private void OnPremiumClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Premium);
 
     private void ShowView(CalendarViewMode mode, string key)
     {

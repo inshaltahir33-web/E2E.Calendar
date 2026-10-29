@@ -19,9 +19,6 @@ public interface IDialogService
     /// root is available yet or when another dialog is already open.
     /// </summary>
     Task<ContentDialogResult> ShowAsync(ContentDialog dialog);
-
-    /// <summary>Shows a two-button confirmation and reports whether the primary button was chosen.</summary>
-    Task<bool> ConfirmAsync(string title, string body, string primaryText, string closeText);
 }
 
 public sealed class DialogService : IDialogService
@@ -69,18 +66,5 @@ public sealed class DialogService : IDialogService
             Interlocked.Exchange(ref _isOpen, 0);
             OverlayFocus.Restore(opener);
         }
-    }
-
-    public async Task<bool> ConfirmAsync(string title, string body, string primaryText, string closeText)
-    {
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = body,
-            PrimaryButtonText = primaryText,
-            CloseButtonText = closeText,
-        };
-
-        return await ShowAsync(dialog) == ContentDialogResult.Primary;
     }
 }

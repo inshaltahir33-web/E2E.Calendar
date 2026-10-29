@@ -4,7 +4,6 @@ using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
-using Microsoft.UI.Xaml;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -55,12 +54,9 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
 
     public bool IsEmpty => Days.Count == 0;
 
-    public Visibility EmptyStateVisibility => IsEmpty ? Visibility.Visible : Visibility.Collapsed;
-
     partial void OnDaysChanged(IReadOnlyList<AgendaDayViewModel> value)
     {
         OnPropertyChanged(nameof(IsEmpty));
-        OnPropertyChanged(nameof(EmptyStateVisibility));
     }
 
     public override async Task RefreshAsync()

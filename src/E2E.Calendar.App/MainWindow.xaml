@@ -479,22 +479,6 @@
 
         </Grid>
 
-        <!-- FIX 10: the leftover hamburger is not deleted (code-behind still references its name,
-             deleting would break the build). It lives in a permanently collapsed host so it can
-             never render. The icon rail now lives inside SidebarColumn (see above). -->
-        <Grid
-            x:Name="LegacyControlsHost"
-            Grid.Row="1"
-            Visibility="Collapsed"
-            IsHitTestVisible="False">
-            <Button
-                x:Name="PaneToggleButton"
-                Click="OnPaneToggleClick"
-                AutomationProperties.Name="Toggle the navigation pane">
-                <FontIcon Glyph="&#xE700;" />
-            </Button>
-        </Grid>
-
         <ctrl:SnackbarView
             x:Name="Snackbar"
             Grid.Row="1"

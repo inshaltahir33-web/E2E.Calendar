@@ -38,11 +38,6 @@ public sealed class MiniCalendarDayViewModel : ObservableObject
     public Visibility HasEventsVisibility => EventCount > 0 ? Visibility.Visible : Visibility.Collapsed;
 }
 
-public sealed class MiniCalendarWeekViewModel
-{
-    public required IReadOnlyList<MiniCalendarDayViewModel> Days { get; init; }
-}
-
 public sealed partial class MiniCalendarViewModel : ObservableObject
 {
     private readonly CalendarStateViewModel _state;
@@ -61,9 +56,6 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
 
     [ObservableProperty]
     private IReadOnlyList<string> _weekdayHeaders = Array.Empty<string>();
-
-    [ObservableProperty]
-    private IReadOnlyList<MiniCalendarWeekViewModel> _weeks = Array.Empty<MiniCalendarWeekViewModel>();
 
     [ObservableProperty]
     private IReadOnlyList<MiniCalendarDayViewModel> _days = Array.Empty<MiniCalendarDayViewModel>();
@@ -121,7 +113,6 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
         WeekdayHeaders = BuildWeekdayHeaders(culture, _state.WeekStart);
 
         var days = new List<MiniCalendarDayViewModel>();
-        var weeks = new List<MiniCalendarWeekViewModel>();
 
         foreach (var week in grid.Weeks)
         {
@@ -149,11 +140,9 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
                 });
             }
 
-            weeks.Add(new MiniCalendarWeekViewModel { Days = weekDays });
             days.AddRange(weekDays);
         }
 
-        Weeks = weeks;
         Days = days;
     }
 
