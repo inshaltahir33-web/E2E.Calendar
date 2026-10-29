@@ -52,6 +52,18 @@ public sealed partial class CalendarStateViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void PreviousMonth()
+    {
+        CurrentDate = CurrentDate.AddMonths(-1);
+    }
+
+    [RelayCommand]
+    public void NextMonth()
+    {
+        CurrentDate = CurrentDate.AddMonths(1);
+    }
+
+    [RelayCommand]
     public void GoPrevious()
     {
         CurrentDate = ViewMode switch

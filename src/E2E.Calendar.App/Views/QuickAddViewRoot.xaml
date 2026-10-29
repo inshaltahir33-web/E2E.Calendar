@@ -35,6 +35,7 @@
             <TextBox
                 x:Name="InputBox"
                 MinHeight="40"
+                MaxWidth="{StaticResource SearchBoxWidth}"
                 VerticalContentAlignment="Center"
                 AutomationProperties.Name="Quick add input"
                 PlaceholderText="＋ Lunch with Ali tomorrow 1pm at Kohinoor…"

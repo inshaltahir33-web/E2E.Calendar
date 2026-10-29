@@ -46,7 +46,7 @@ public sealed class OutboxTests : IAsyncLifetime
     [Fact]
     public async Task The_database_key_is_generated_once_and_stored_in_the_secret_store()
     {
-        var key = await _database.SecretStore.GetAsync(E2E.Calendar.Data.Db.DatabaseKeySecretName);
+        var key = await _database.SecretStore.GetAsync(Db.DatabaseKeySecretName);
 
         key.Should().NotBeNullOrWhiteSpace();
         key!.Length.Should().Be(64);
@@ -60,13 +60,13 @@ public sealed class OutboxTests : IAsyncLifetime
         {
         }
 
-        var first = await _database.SecretStore.GetAsync(E2E.Calendar.Data.Db.DatabaseKeySecretName);
+        var first = await _database.SecretStore.GetAsync(Db.DatabaseKeySecretName);
 
         await using (await _database.Database.OpenAsync())
         {
         }
 
-        var second = await _database.SecretStore.GetAsync(E2E.Calendar.Data.Db.DatabaseKeySecretName);
+        var second = await _database.SecretStore.GetAsync(Db.DatabaseKeySecretName);
 
         second.Should().Be(first);
         _database.SecretStore.SetCount.Should().Be(1);

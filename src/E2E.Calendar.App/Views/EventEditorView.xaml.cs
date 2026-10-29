@@ -27,6 +27,7 @@ public partial class EventEditorView : UserControl
         UpdateAllDayVisibility();
         UpdateColorSwatch();
         UpdateHeader();
+        UpdateDeleteVisibility();
         LoadNotesIntoEditor();
     }
 
@@ -37,6 +38,8 @@ public partial class EventEditorView : UserControl
         UpdateAllDayVisibility();
         UpdateColorSwatch();
         UpdateHeader();
+        UpdateDeleteVisibility();
+        ResetScrollOffset();
         LoadNotesIntoEditor();
     }
 
@@ -53,6 +56,7 @@ public partial class EventEditorView : UserControl
                 break;
             case nameof(EventEditorViewModel.IsNew):
                 UpdateHeader();
+                UpdateDeleteVisibility();
                 break;
             case nameof(EventEditorViewModel.Notes):
                 LoadNotesIntoEditor();
@@ -110,6 +114,22 @@ public partial class EventEditorView : UserControl
     private void UpdateHeader()
     {
         HeaderText.Text = ViewModel.IsNew ? "New event" : "Edit event";
+    }
+
+    private void UpdateDeleteVisibility()
+    {
+        DeleteButton.Visibility = ViewModel.IsNew ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void ResetScrollOffset()
+    {
+        try
+        {
+            EditorScrollViewer.ChangeView(0, 0, 1, true);
+        }
+        catch
+        {
+        }
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => ViewModel.RequestCloseCommand.Execute(null);

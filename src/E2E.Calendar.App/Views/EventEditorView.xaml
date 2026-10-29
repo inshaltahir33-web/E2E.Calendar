@@ -33,6 +33,7 @@
         </Grid>
 
         <ScrollViewer
+            x:Name="EditorScrollViewer"
             Grid.Row="1"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
@@ -269,22 +270,18 @@
 
                 <Border Style="{StaticResource EditorCardStyle}">
                     <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="WHERE" />
+                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="MEETING" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                             <TextBox
-                                AutomationProperties.Name="Event location"
-                                PlaceholderText="Add a location"
-                                Text="{x:Bind ViewModel.Location, Mode=TwoWay}" />
+                                AutomationProperties.Name="Meeting link"
+                                PlaceholderText="Paste a Teams, Zoom or Meet link"
+                                Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
                             <HyperlinkButton
                                 Grid.Column="1"
                                 AutomationProperties.Name="Open the location in a map"
                                 Content="Map"
                                 NavigateUri="{x:Bind ViewModel.MapSearchUri, Mode=OneWay}" />
                         </Grid>
-                        <TextBox
-                            AutomationProperties.Name="Meeting link"
-                            PlaceholderText="Paste a Teams, Zoom or Meet link"
-                            Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
                         <StackPanel
                             Orientation="Horizontal"
                             Spacing="{StaticResource SpaceSM}"
@@ -349,15 +346,6 @@
                                 Style="{ThemeResource CaptionTextBlockStyle}"
                                 Text="{x:Bind ViewModel.ColorLabel, Mode=OneWay}" />
                         </StackPanel>
-                        <TextBox
-                            AutomationProperties.Name="Event link"
-                            PlaceholderText="Link (https://)"
-                            Text="{x:Bind ViewModel.Url, Mode=TwoWay}" />
-                        <TextBlock
-                            Foreground="{ThemeResource App.DangerBrush}"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Text="{x:Bind ViewModel.LinkError, Mode=OneWay}"
-                            Visibility="{x:Bind ViewModel.HasLinkError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </Border>
 
@@ -370,6 +358,7 @@
             Background="{ThemeResource App.CardBackgroundBrush}"
             ColumnDefinitions="Auto,*,Auto,Auto">
             <Button
+                x:Name="DeleteButton"
                 Grid.Column="0"
                 Click="OnDeleteClick"
                 Content="Delete"

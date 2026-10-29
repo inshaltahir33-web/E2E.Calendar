@@ -197,7 +197,7 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
         MoveMonth(delta);
     }
 
-    private void MoveMonth(int delta)
+    public void MoveMonth(int delta)
     {
         var date = new DateOnly(VisibleYear, VisibleMonth, 1).AddMonths(delta);
 

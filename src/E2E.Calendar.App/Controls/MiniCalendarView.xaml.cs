@@ -172,14 +172,14 @@ public sealed partial class MiniCalendarView : UserControl
         }
     }
 
-    private async void OnPreviousMonthClick(object sender, RoutedEventArgs e)
+    private void OnPreviousMonthClick(object sender, RoutedEventArgs e)
     {
-        await ChangeMonthAsync(-1);
+        _viewModel.MoveMonth(-1);
     }
 
-    private async void OnNextMonthClick(object sender, RoutedEventArgs e)
+    private void OnNextMonthClick(object sender, RoutedEventArgs e)
     {
-        await ChangeMonthAsync(1);
+        _viewModel.MoveMonth(1);
     }
 
     private async void OnHeaderClick(object sender, RoutedEventArgs e)
@@ -292,7 +292,15 @@ public sealed partial class MiniCalendarView : UserControl
             return;
         }
 
-        var direction = Math.Sign(delta);
+        var from = new DateOnly(ViewModel.VisibleYear, ViewModel.VisibleMonth, 1);
+        var target = from.AddMonths(delta);
+        var navDirection = NavigationDirection.Get(from, target);
+        var direction = (int)navDirection;
+
+        if (direction == 0)
+        {
+            return;
+        }
         for (var index = 0; index < Math.Abs(delta); index++)
         {
             if (direction < 0)

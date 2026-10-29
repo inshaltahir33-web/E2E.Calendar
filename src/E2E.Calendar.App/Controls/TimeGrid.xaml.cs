@@ -1573,10 +1573,11 @@ public sealed partial class TimeGrid : UserControl
     private static string FormatTimeZoneOffset(TimeZoneInfo zone)
     {
         var offset = zone.GetUtcOffset(DateTimeOffset.UtcNow);
-        var sign = offset < TimeSpan.Zero ? "-" : "+";
         var absolute = offset.Duration();
 
-        return $"{sign}{absolute.Hours:00}:{absolute.Minutes:00}";
+        // Format as "UTC+05:00" for consistency with UI design tokens
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        return $"UTC{sign}{absolute.Hours:00}:{absolute.Minutes:00}";
     }
 
     private TimeZoneInfo ResolveSecondaryTimeZone()

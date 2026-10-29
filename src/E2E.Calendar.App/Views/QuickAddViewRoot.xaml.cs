@@ -29,8 +29,11 @@ public sealed partial class QuickAddViewRoot : Microsoft.UI.Xaml.Controls.UserCo
 
     public void FocusInput() => InputBox.Focus(FocusState.Programmatic);
 
-    private void OnInputTextChanged(object sender, Microsoft.UI.Xaml.Controls.TextChangedEventArgs e) =>
+    private void OnInputTextChanged(object sender, Microsoft.UI.Xaml.Controls.TextChangedEventArgs e)
+    {
+        ViewModel.Input = InputBox.Text;
         ViewModel.Reparse();
+    }
 
     private void OnInputKeyDown(object sender, KeyRoutedEventArgs e)
     {

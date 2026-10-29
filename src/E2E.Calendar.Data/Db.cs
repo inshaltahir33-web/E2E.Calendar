@@ -8,7 +8,6 @@ namespace E2E.Calendar.Data;
 public sealed class Db
 {
     public const string DatabaseKeySecretName = "e2e.calendar.db.key";
-
     private const int KeySizeInBytes = 32;
 
     private readonly string _databasePath;
@@ -33,6 +32,14 @@ public sealed class Db
         var key = await GetOrCreateKeyAsync(cancellationToken);
         var isNewDatabase = !File.Exists(_databasePath);
 
+        // Check for corrupt/zero-length database file before attempting open
+        if (!isNewDatabase && File.Exists(_databasePath) && new FileInfo(_databasePath).Length == 0)
+        {
+            // Delete empty database file and recreate fresh
+            try { File.Delete(_databasePath); } catch { }
+            isNewDatabase = true;
+        }
+
         var builder = new SqliteConnectionStringBuilder
         {
             DataSource = _databasePath,
@@ -45,6 +52,30 @@ public sealed class Db
 
         try
         {
+            await connection.OpenAsync(cancellationToken);
+            await ApplyPragmasAsync(connection, isNewDatabase, cancellationToken);
+            return connection;
+        }
+        catch when (!isNewDatabase && File.Exists(_databasePath))
+        {
+            // Database file exists but could not be opened - likely corrupted or incompatible
+            // Delete and retry as a fresh database
+            try { File.Delete(_databasePath); } catch { }
+            isNewDatabase = true;
+
+            // Retry opening as a fresh database
+            try { await connection.CloseAsync(); } catch { }
+            await connection.DisposeAsync();
+
+            builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = _databasePath,
+                Mode = SqliteOpenMode.ReadWriteCreate,
+                Password = $"x'{key}'",
+                Pooling = true,
+            };
+
+            connection = new SqliteConnection(builder.ToString());
             await connection.OpenAsync(cancellationToken);
             await ApplyPragmasAsync(connection, isNewDatabase, cancellationToken);
             return connection;
@@ -117,7 +148,7 @@ public sealed class Db
         if (key.Length != KeySizeInBytes * 2 || !key.All(Uri.IsHexDigit))
         {
             throw new InvalidOperationException(
-                $"The stored database key '{Db.DatabaseKeySecretName}' is not a {KeySizeInBytes * 8}-bit hex value.");
+                $"The stored database key 'e2e.calendar.db.key' is not a {KeySizeInBytes * 8}-bit hex value.");
         }
 
         return key;

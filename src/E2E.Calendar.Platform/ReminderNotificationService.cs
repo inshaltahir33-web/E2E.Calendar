@@ -42,28 +42,49 @@ public sealed class ReminderNotificationService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await PlanAndScheduleAsync(stoppingToken);
-        await ProcessDueAsync(stoppingToken, catchUp: true);
+        try
+        {
+            await PlanAndScheduleAsync(stoppingToken);
+            await ProcessDueAsync(stoppingToken, catchUp: true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Reminder planning failed during startup.");
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var next = await _alerts.PeekNextPendingInstanceAsync(stoppingToken);
-            var delay = next is null
-                ? TimeSpan.FromMinutes(1)
-                : next.FireAtUtc - _clock.UtcNow;
-            if (delay < TimeSpan.Zero)
+            try
             {
-                delay = TimeSpan.Zero;
+                var next = await _alerts.PeekNextPendingInstanceAsync(stoppingToken);
+                var delay = next is null
+                    ? TimeSpan.FromMinutes(1)
+                    : next.FireAtUtc - _clock.UtcNow;
+                if (delay < TimeSpan.Zero)
+                {
+                    delay = TimeSpan.Zero;
+                }
+
+                var delayTask = Task.Delay(TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds, 60)), stoppingToken);
+                var wakeTask = _wake.WaitAsync(stoppingToken);
+                await Task.WhenAny(delayTask, wakeTask);
+                await ProcessDueAsync(stoppingToken, catchUp: false);
+
+                if (next is null || delay.TotalSeconds <= 60)
+                {
+                    await PlanAndScheduleAsync(stoppingToken);
+                }
             }
-
-            var delayTask = Task.Delay(TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds, 60)), stoppingToken);
-            var wakeTask = _wake.WaitAsync(stoppingToken);
-            await Task.WhenAny(delayTask, wakeTask);
-            await ProcessDueAsync(stoppingToken, catchUp: false);
-
-            if (next is null || delay.TotalSeconds <= 60)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                await PlanAndScheduleAsync(stoppingToken);
+                _logger.LogWarning(ex, "Reminder processing loop failed.");
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
         }
     }
@@ -101,7 +122,7 @@ public sealed class ReminderNotificationService : BackgroundService
                 });
             }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "OS reminder scheduling is unavailable; in-app fallback remains active.");
         }
@@ -137,7 +158,7 @@ public sealed class ReminderNotificationService : BackgroundService
                 Group = "reminders",
             });
         }
-        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Could not display reminder notification for {InstanceId}.", instance.Id);
         }
@@ -155,7 +176,11 @@ public sealed class ReminderNotificationService : BackgroundService
                 </binding>
               </visual>
               <actions>
+                <action content="Snooze 5 min" activationType="protocol" arguments="e2e-calendar://snooze/{instance.Id}/5" />
                 <action content="Snooze 10 min" activationType="protocol" arguments="e2e-calendar://snooze/{instance.Id}/10" />
+                <action content="Snooze 30 min" activationType="protocol" arguments="e2e-calendar://snooze/{instance.Id}/30" />
+                <action content="Snooze 1 h" activationType="protocol" arguments="e2e-calendar://snooze/{instance.Id}/60" />
+                <action content="Snooze Tomorrow" activationType="protocol" arguments="e2e-calendar://snooze/{instance.Id}/tomorrow" />
                 <action content="Done" activationType="protocol" arguments="e2e-calendar://done/{instance.Id}" />
                 <action content="Open" activationType="protocol" arguments="e2e-calendar://open/{instance.Id}" />
               </actions>

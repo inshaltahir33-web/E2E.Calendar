@@ -52,8 +52,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     [ObservableProperty]
     private string? _color;
 
-    [ObservableProperty]
-    private string? _url;
+    
 
     [ObservableProperty]
     private string? _errorMessage;
@@ -208,7 +207,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         Notes,
         CalendarId,
         Color,
-        Url,
+        MeetingUrl,
         Frequency,
         Interval,
         string.Join(',', WeeklyDays.OrderBy(day => day)),
@@ -244,7 +243,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         var linkError = (string?)null;
 
-        if (!string.IsNullOrWhiteSpace(Url) && !UrlPolicy.IsAllowed(Url))
+        if (!string.IsNullOrWhiteSpace(MeetingUrl) && !UrlPolicy.IsAllowed(MeetingUrl))
         {
             linkError = "Use an http or https link.";
         }
@@ -255,7 +254,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         LinkError = linkError;
 
-        var errors = EventValidator.Validate(Title, StartUtc, EndUtc, Url, MeetingUrl);
+        var errors = EventValidator.Validate(Title, StartUtc, EndUtc, MeetingUrl, MeetingUrl);
 
         ErrorMessage = errors.Count == 0 ? null : string.Join(" ", errors);
 
@@ -536,7 +535,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
         Location = null;
         MeetingUrl = null;
         Notes = null;
-        Url = null;
         ErrorMessage = null;
         DetectedMeeting = null;
         IsAllDay = false;
@@ -571,7 +569,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         Location = calendarEvent.Location;
         MeetingUrl = calendarEvent.MeetingUrl;
         Notes = calendarEvent.Notes;
-        Url = calendarEvent.Url;
+        MeetingUrl = calendarEvent.MeetingUrl;
         Color = calendarEvent.Color;
         CalendarId = calendarEvent.CalendarId;
         TimeZoneId = calendarEvent.TimeZoneId;
@@ -813,7 +811,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
             Title = Title,
             Notes = notes,
             Location = Location,
-            Url = Url,
+            Url = MeetingUrl,
             MeetingUrl = MeetingUrl,
             StartUtc = StartUtc,
             EndUtc = EndUtc,
@@ -835,7 +833,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
                 Title = edited.Title,
                 Notes = edited.Notes,
                 Location = edited.Location,
-                Url = edited.Url,
+                Url = edited.MeetingUrl,
                 StartUtc = edited.StartUtc,
                 EndUtc = edited.EndUtc,
                 AllDay = edited.AllDay,
@@ -979,22 +977,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         }
     }
 
-    partial void OnUrlChanged(string? value)
-    {
-        if (LinkError is not null)
-        {
-            LinkError = null;
-        }
-    }
-
-    partial void OnMeetingUrlChanged(string? value)
-    {
-        if (LinkError is not null)
-        {
-            LinkError = null;
-        }
-    }
-
+    
     partial void OnTitleErrorChanged(string? value) => OnPropertyChanged(nameof(HasTitleError));
 
     partial void OnTimeErrorChanged(string? value) => OnPropertyChanged(nameof(HasTimeError));

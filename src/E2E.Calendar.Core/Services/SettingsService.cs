@@ -23,6 +23,11 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     private const string DensityKey = "appearance.density";
     private const string LastViewModeKey = "general.last_view_mode";
     private const string OnboardingCompleteKey = "app.onboarding_complete";
+    private const string StartMinimizedToTrayKey = "app.start_minimized_to_tray";
+    private const string WindowLeftKey = "window.left";
+    private const string WindowTopKey = "window.top";
+    private const string WindowWidthKey = "window.width";
+    private const string WindowHeightKey = "window.height";
 
     private readonly ISettingsRepository _repository;
 
@@ -47,6 +52,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     public bool ShowSecondaryTimeZone => _current.ShowSecondaryTimeZone;
     public string? SecondaryTimeZoneId => _current.SecondaryTimeZoneId;
     public AppDensity Density => _current.Density;
+    public bool StartMinimizedToTray => _current.StartMinimizedToTray;
 
     public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -85,6 +91,14 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             OnboardingCompleteKey,
             settings.OnboardingComplete ? "1" : "0",
             cancellationToken);
+        await _repository.SetAsync(
+            StartMinimizedToTrayKey,
+            settings.StartMinimizedToTray ? "1" : "0",
+            cancellationToken);
+        await _repository.SetAsync(WindowLeftKey, settings.WindowLeft?.ToString(), cancellationToken);
+        await _repository.SetAsync(WindowTopKey, settings.WindowTop?.ToString(), cancellationToken);
+        await _repository.SetAsync(WindowWidthKey, settings.WindowWidth?.ToString(), cancellationToken);
+        await _repository.SetAsync(WindowHeightKey, settings.WindowHeight?.ToString(), cancellationToken);
 
         Changed?.Invoke(this, _current);
     }
@@ -101,6 +115,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
         PropertyChanged?.Invoke(this, new(nameof(ShowSecondaryTimeZone)));
         PropertyChanged?.Invoke(this, new(nameof(SecondaryTimeZoneId)));
         PropertyChanged?.Invoke(this, new(nameof(Density)));
+        PropertyChanged?.Invoke(this, new(nameof(StartMinimizedToTray)));
     }
 
     private static AppSettings FromValues(IReadOnlyDictionary<string, string?> values)
@@ -123,6 +138,11 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             Density = ParseEnum(values, DensityKey, defaults.Density),
             LastViewMode = Get(values, LastViewModeKey),
             OnboardingComplete = ParseBool(values, OnboardingCompleteKey, defaults.OnboardingComplete),
+            StartMinimizedToTray = ParseBool(values, StartMinimizedToTrayKey, defaults.StartMinimizedToTray),
+            WindowLeft = ParseNullableInt(values, WindowLeftKey),
+            WindowTop = ParseNullableInt(values, WindowTopKey),
+            WindowWidth = ParseNullableInt(values, WindowWidthKey),
+            WindowHeight = ParseNullableInt(values, WindowHeightKey),
         };
     }
 
@@ -140,6 +160,16 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             "0" or "false" or "False" => false,
             _ => fallback,
         };
+
+    private static int? ParseNullableInt(IReadOnlyDictionary<string, string?> values, string key)
+    {
+        if (Get(values, key) is { } raw && int.TryParse(raw, out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
 
     private static int ParseInt(
         IReadOnlyDictionary<string, string?> values,

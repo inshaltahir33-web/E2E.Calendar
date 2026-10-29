@@ -67,4 +67,14 @@ public sealed record AppSettings
     public string? LastViewMode { get; init; }
 
     public bool OnboardingComplete { get; init; }
+
+    public bool StartMinimizedToTray { get; init; }
+
+    public int? WindowLeft { get; init; }
+
+    public int? WindowTop { get; init; }
+
+    public int? WindowWidth { get; init; }
+
+    public int? WindowHeight { get; init; }
 }

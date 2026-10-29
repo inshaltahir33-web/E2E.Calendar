@@ -13,5 +13,5 @@ public static class NavigationKeys
     public const string Premium = "Premium";
     public const string NewEvent = "NewEvent";
     public const string NewReminder = "NewReminder";
-    public const string NewTask = "NewTask";
+    public const string EventEditor = "EventEditor";
 }

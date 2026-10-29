@@ -102,31 +102,28 @@
                     AutomationProperties.Name="Go to today"
                     ToolTipService.ToolTip="Go to today (T)" />
                 <Button
-                    Click="OnPreviousClick"
-                    VerticalAlignment="Center"
+                    Click="OnPreviousMonthClick"
                     Style="{StaticResource ToolbarButtonStyle}"
-                    AutomationProperties.Name="Previous period"
-                    ToolTipService.ToolTip="Previous period (Left arrow)">
+                    AutomationProperties.Name="Previous month"
+                    ToolTipService.ToolTip="Previous month (Left arrow)">
                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
                 </Button>
-                <Button
-                    Click="OnNextClick"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    AutomationProperties.Name="Next period"
-                    ToolTipService.ToolTip="Next period (Right arrow)">
-                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
-                </Button>
-                <!-- FIX 5: MinWidth stops the view switcher from jumping when the title text changes length. -->
                 <TextBlock
                     x:Name="PeriodLabelText"
                     MinWidth="200"
-                    Margin="12,0,16,0"
+                    Margin="12,0,12,0"
                     VerticalAlignment="Center"
                     Style="{ThemeResource SubtitleTextBlockStyle}"
                     Text="{x:Bind ShellState.Title, Mode=OneWay}"
                     TextTrimming="CharacterEllipsis"
                     AutomationProperties.Name="Current period" />
+                <Button
+                    Click="OnNextMonthClick"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    AutomationProperties.Name="Next month"
+                    ToolTipService.ToolTip="Next month (Right arrow)">
+                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
+                </Button>
             </StackPanel>
 
             <muxc:SelectorBar
@@ -338,7 +335,7 @@
                                             <Grid MinHeight="{StaticResource SidebarRowHeight}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="380" />
+                                                    <ColumnDefinition Width="10" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox

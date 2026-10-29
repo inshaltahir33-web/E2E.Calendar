@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using E2E.Calendar.Sync.Ics;
 using Windows.Storage.Pickers;
 using Windows.Storage;
+using Windows.Graphics;
 using WinRT.Interop;
 using Windows.UI;
 
@@ -166,6 +167,7 @@ public sealed partial class MainWindow : Window
         }
 
         this.SizeChanged += OnWindowSizeChanged;
+        this.AppWindow.Closing += OnWindowClosingSaveBounds;
         RootGrid.Loaded += OnLoaded;
     }
 
@@ -296,6 +298,66 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    public void RestoreWindowBounds()
+    {
+        try
+        {
+            var settings = _settings.Current;
+            var width = settings.WindowWidth ?? 1280;
+            var height = settings.WindowHeight ?? 800;
+            int x = 0;
+            int y = 0;
+            var hasSaved = settings.WindowLeft.HasValue && settings.WindowTop.HasValue &&
+                           settings.WindowWidth.HasValue && settings.WindowHeight.HasValue;
+
+            if (hasSaved)
+            {
+                x = settings.WindowLeft!.Value;
+                y = settings.WindowTop!.Value;
+                var display = DisplayArea.GetFromRect(new RectInt32(x, y, width, height), DisplayAreaFallback.None);
+                if (display is null)
+                {
+                    hasSaved = false;
+                }
+            }
+
+            if (!hasSaved)
+            {
+                var area = DisplayArea.Primary.WorkArea;
+                width = Math.Clamp(width, 800, Math.Max(800, area.Width));
+                height = Math.Clamp(height, 600, Math.Max(600, area.Height));
+                x = area.X + Math.Max(0, (area.Width - width) / 2);
+                y = area.Y + Math.Max(0, (area.Height - height) / 2);
+            }
+
+            this.AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+        }
+        catch
+        {
+            // Fall back to the OS default placement if anything fails.
+        }
+    }
+
+    private void OnWindowClosingSaveBounds(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        try
+        {
+            var position = this.AppWindow.Position;
+            var size = this.AppWindow.Size;
+            var current = _settings.Current;
+            _ = _settings.UpdateAsync(current with
+            {
+                WindowLeft = position.X,
+                WindowTop = position.Y,
+                WindowWidth = size.Width,
+                WindowHeight = size.Height,
+            });
+        }
+        catch
+        {
+        }
+    }
+
     private void OnPaneToggleClick(object sender, RoutedEventArgs e)
     {
         ApplySidebarCollapsed(!ViewModel.IsSidebarCollapsed);
@@ -360,6 +422,10 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnTodayClick(object sender, RoutedEventArgs e) => StateViewModel.GoToTodayCommand.Execute(null);
+
+    private void OnPreviousMonthClick(object sender, RoutedEventArgs e) => StateViewModel.PreviousMonthCommand.Execute(null);
+
+    private void OnNextMonthClick(object sender, RoutedEventArgs e) => StateViewModel.NextMonthCommand.Execute(null);
 
     private void OnPreviousClick(object sender, RoutedEventArgs e) => StateViewModel.GoPreviousCommand.Execute(null);
 
