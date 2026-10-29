@@ -195,7 +195,8 @@ public partial class App : Application
 
                 services.AddSingleton(serviceProvider => new Db(
                     ResolveDatabasePath(),
-                    serviceProvider.GetRequiredService<ISecretStore>()));
+                    serviceProvider.GetRequiredService<ISecretStore>(),
+                    serviceProvider.GetRequiredService<ILogger<Db>>()));
 
                 services.AddSingleton<IEventRepository, EventRepository>();
                 services.AddSingleton<IAccountRepository, AccountRepository>();
