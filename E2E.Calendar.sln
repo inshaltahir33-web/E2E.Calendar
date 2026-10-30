@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -15,6 +15,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "E2E.Calendar.Core.Tests", "tests\E2E.Calendar.Core.Tests\E2E.Calendar.Core.Tests.csproj", "{A1000000-0000-0000-0000-000000000006}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "E2E.Calendar.Data.Tests", "tests\E2E.Calendar.Data.Tests\E2E.Calendar.Data.Tests.csproj", "{A1000000-0000-0000-0000-000000000007}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C7746118-DCA8-40D3-97C9-6CE5F986A95D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "E2E.Calendar.Sync.Tests", "tests\E2E.Calendar.Sync.Tests\E2E.Calendar.Sync.Tests.csproj", "{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -80,11 +84,22 @@ Global
 		{A1000000-0000-0000-0000-000000000007}.Release|x64.Build.0 = Release|Any CPU
 		{A1000000-0000-0000-0000-000000000007}.Release|ARM64.ActiveCfg = Release|Any CPU
 		{A1000000-0000-0000-0000-000000000007}.Release|ARM64.Build.0 = Release|Any CPU
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Debug|x64.ActiveCfg = Debug|x64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Debug|x64.Build.0 = Debug|x64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Debug|ARM64.Build.0 = Debug|ARM64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Release|x64.ActiveCfg = Release|x64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Release|x64.Build.0 = Release|x64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Release|ARM64.ActiveCfg = Release|ARM64
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F}.Release|ARM64.Build.0 = Release|ARM64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A1000000-0000-0000-0000-000000000000}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{40F22C1F-FC6C-4CDA-94FA-5A929366BB1F} = {C7746118-DCA8-40D3-97C9-6CE5F986A95D}
 	EndGlobalSection
 EndGlobal
