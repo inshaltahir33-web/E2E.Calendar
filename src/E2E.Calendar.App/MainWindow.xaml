@@ -19,37 +19,44 @@
             <!-- One shared template for Reminders, Tasks and Tags rows. Selected rows use the
                  AccentSoft pill from SidebarRowStyle. -->
             <DataTemplate x:Key="NavItemTemplate" x:DataType="vm:NavigationListItem">
-                <Button
-                    Click="OnSidebarRowClicked"
-                    Style="{StaticResource SidebarRowStyle}"
-                    CornerRadius="{StaticResource RadiusPill}"
-                    Tag="{x:Bind}"
-                    AutomationProperties.Name="{x:Bind Label, Mode=OneWay}">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <FontIcon
-                            VerticalAlignment="Center"
-                            FontSize="{StaticResource IconSizeMedium}"
-                            Glyph="{x:Bind Glyph, Mode=OneWay}" />
-                        <TextBlock
-                            Grid.Column="1"
-                            Margin="{StaticResource MarginStartMedium}"
-                            VerticalAlignment="Center"
-                            Text="{x:Bind Label, Mode=OneWay}"
-                            TextTrimming="CharacterEllipsis" />
-                        <Border
-                            Grid.Column="2"
-                            MinWidth="20"
-                            Padding="6,0"
-                            VerticalAlignment="Center"
-                            Background="{ThemeResource App.AccentSubtleBrush}"
-                            CornerRadius="{StaticResource RadiusPill}">
+                <Grid>
+                    <!-- AccentSoft selected pill. -->
+                    <Border
+                        Background="{ThemeResource App.SelectedBrush}"
+                        CornerRadius="{StaticResource RadiusPill}"
+                        Visibility="{x:Bind AccentVisibility, Mode=OneWay}" />
+                    <Button
+                        Click="OnSidebarRowClicked"
+                        Style="{StaticResource SidebarRowStyle}"
+                        CornerRadius="{StaticResource RadiusPill}"
+                        Tag="{x:Bind}"
+                        AutomationProperties.Name="{x:Bind Label, Mode=OneWay}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource IconSizeMedium}"
+                                Glyph="{x:Bind Glyph, Mode=OneWay}" />
                             <TextBlock
-                                HorizontalAlignment="Center"
-                                Style="{ThemeResource CaptionTextBlockStyle}"
-                                Text="{x:Bind Count, Mode=OneWay}" />
-                        </Border>
-                    </Grid>
-                </Button>
+                                Grid.Column="1"
+                                Margin="{StaticResource MarginStartMedium}"
+                                VerticalAlignment="Center"
+                                Text="{x:Bind Label, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+                            <Border
+                                Grid.Column="2"
+                                MinWidth="20"
+                                Padding="6,0"
+                                VerticalAlignment="Center"
+                                Background="{ThemeResource App.AccentSubtleBrush}"
+                                CornerRadius="{StaticResource RadiusPill}">
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Count, Mode=OneWay}" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </Grid>
             </DataTemplate>
         </Grid.Resources>
 
@@ -122,7 +129,7 @@
                         </Button>
                         <TextBlock
                             x:Name="PeriodLabelText"
-                            MinWidth="200"
+                            MinWidth="160"
                             Margin="{StaticResource MarginPeriodLabel}"
                             VerticalAlignment="Center"
                             FontSize="{StaticResource FontSizeSubtitle}"
@@ -155,6 +162,7 @@
 
                 <muxc:SelectorBar
                     x:Name="ViewSwitcher"
+                    Style="{StaticResource ViewSwitcherStyle}"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     SelectionChanged="OnViewSwitcherSelectionChanged"
@@ -326,9 +334,16 @@
                                 </StackPanel>
                             </Button>
 
-                            <Grid
-                                x:Name="MiniCalendarHost"
-                                Margin="0,4,0,8" />
+                            <!-- Viewbox keeps the fixed-cell mini calendar inside the 264px sidebar
+                                 instead of letting it clip against the calendar list. -->
+                            <Viewbox
+                                HorizontalAlignment="Center"
+                                Stretch="Uniform"
+                                StretchDirection="DownOnly">
+                                <Grid
+                                    x:Name="MiniCalendarHost"
+                                    Margin="0,4,0,8" />
+                            </Viewbox>
 
                             <muxc:Expander
                                 HorizontalAlignment="Stretch"

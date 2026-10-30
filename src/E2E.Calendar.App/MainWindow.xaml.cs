@@ -644,6 +644,7 @@ public sealed partial class MainWindow : Window
                 .OrderBy(tag => tag, StringComparer.CurrentCultureIgnoreCase);
 
             ViewModel.SetTags(tags);
+            TagsSection.Visibility = ViewModel.Tags.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception ex)
         {
@@ -1083,7 +1084,45 @@ public sealed partial class MainWindow : Window
         _logger.LogInformation("Navigated to {ViewKey}", key);
         ViewModel.Status = key;
         ContentFrame.Visibility = Visibility.Visible;
+        UpdateChromeForView(key);
         _ = Motion.FadeInAsync(ContentFrame);
+    }
+
+    /// <summary>
+    /// Calendar views keep the period navigation and view switcher. Settings and the
+    /// Tasks/Reminders page replace them with a single page title.
+    /// </summary>
+    private void UpdateChromeForView(string key)
+    {
+        var isCalendarView = key is NavigationKeys.Day
+            or NavigationKeys.Week
+            or NavigationKeys.Month
+            or NavigationKeys.Agenda;
+
+        PeriodNavigationPanel.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
+        ViewSwitcher.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
+        PageTitleText.Visibility = isCalendarView ? Visibility.Collapsed : Visibility.Visible;
+
+        if (isCalendarView)
+        {
+            if (ViewSwitcher.SelectedItem is null)
+            {
+                SelectViewInSwitcher(StateViewModel.ViewMode);
+            }
+
+            return;
+        }
+
+        // Never leave a calendar tab selected while a non-calendar page is open.
+        ViewSwitcher.SelectedItem = null;
+        PageTitleText.Text = key switch
+        {
+            NavigationKeys.Settings => "Settings",
+            NavigationKeys.Tasks => "Tasks",
+            NavigationKeys.Reminders => "Reminders",
+            NavigationKeys.Tags => "Tags",
+            _ => "Calendar",
+        };
     }
 
     private async void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
