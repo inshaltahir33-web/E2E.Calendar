@@ -24,6 +24,7 @@ public sealed class NavigationRegistrationService : IHostedService
             NavigationKeys.Month,
             _ => new MonthView(
                 _services.GetRequiredService<MonthViewModel>(),
+                _services.GetRequiredService<WeekViewModel>(),
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<ReminderQuickAdd>()));
 

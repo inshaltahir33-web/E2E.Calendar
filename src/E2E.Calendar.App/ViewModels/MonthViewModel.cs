@@ -14,9 +14,6 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
     private readonly IClock _clock;
 
     [ObservableProperty]
-    private bool _showWeekNumbers;
-
-    [ObservableProperty]
     private IReadOnlyList<MonthDay> _days = Array.Empty<MonthDay>();
 
     [ObservableProperty]

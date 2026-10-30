@@ -74,7 +74,7 @@ public sealed partial class TimeGrid : UserControl
     private const int SnapMinutes = 15;
     private const int FineSnapMinutes = 5;
 
-    private static double _sessionScrollOffset = -1;
+    private double _sessionScrollOffset = -1;
 
     private readonly List<Canvas> _dayCanvases = new();
     private readonly List<FrameworkElement> _headerCells = new();

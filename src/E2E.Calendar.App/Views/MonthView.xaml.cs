@@ -13,6 +13,7 @@ public partial class MonthView : Page
 {
     private readonly EventEditorViewModel _editor;
     private readonly ReminderQuickAdd _reminders;
+    private readonly WeekViewModel _weekViewModel;
     private readonly List<MonthDayCell> _cells = new();
     private readonly List<TextBlock> _weekNumberLabels = new();
     private IReadOnlyList<MonthDay>? _builtDays;
@@ -20,16 +21,19 @@ public partial class MonthView : Page
 
     public MonthView(
         MonthViewModel viewModel,
+        WeekViewModel weekViewModel,
         EventEditorViewModel editor,
         ReminderQuickAdd reminders)
     {
         ViewModel = viewModel;
+        _weekViewModel = weekViewModel;
         _editor = editor;
         _reminders = reminders;
 
         InitializeComponent();
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _weekViewModel.PropertyChanged += OnWeekViewModelPropertyChanged;
         ViewModel.PeriodChanged += OnPeriodChanged;
 
         EmptyStateView.ActionInvoked += OnEmptyStateAction;
@@ -62,7 +66,7 @@ public partial class MonthView : Page
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MonthViewModel.Days) or nameof(MonthViewModel.ShowWeekNumbers))
+        if (e.PropertyName is nameof(MonthViewModel.Days))
         {
             BuildGrid();
         }
@@ -72,15 +76,23 @@ public partial class MonthView : Page
         }
     }
 
+    private void OnWeekViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(WeekViewModel.ShowWeekNumbers))
+        {
+            BuildGrid();
+        }
+    }
+
     private void BuildGrid()
     {
-        if (ReferenceEquals(_builtDays, ViewModel.Days) && _builtShowWeekNumbers == ViewModel.ShowWeekNumbers)
+        if (ReferenceEquals(_builtDays, ViewModel.Days) && _builtShowWeekNumbers == _weekViewModel.ShowWeekNumbers)
         {
             return;
         }
 
         _builtDays = ViewModel.Days;
-        _builtShowWeekNumbers = ViewModel.ShowWeekNumbers;
+        _builtShowWeekNumbers = _weekViewModel.ShowWeekNumbers;
 
         MonthHost.ColumnDefinitions.Clear();
         MonthHost.RowDefinitions.Clear();
@@ -114,7 +126,7 @@ public partial class MonthView : Page
 
         var column = 0;
 
-        if (ViewModel.ShowWeekNumbers)
+        if (_weekViewModel.ShowWeekNumbers)
         {
             MonthHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
             WeekdayHeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });

@@ -238,13 +238,9 @@
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekends, Mode=TwoWay}"
                                 Text="Show weekends" />
                             <muxc:ToggleMenuFlyoutItem
-                                AutomationProperties.Name="Show week numbers for the week view"
+                                AutomationProperties.Name="Show week numbers"
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekNumbers, Mode=TwoWay}"
-                                Text="Show week numbers (week)" />
-                            <muxc:ToggleMenuFlyoutItem
-                                AutomationProperties.Name="Show week numbers for the month view"
-                                IsChecked="{x:Bind MonthViewModel.ShowWeekNumbers, Mode=TwoWay}"
-                                Text="Show week numbers (month)" />
+                                Text="Show week numbers" />
                             <muxc:ToggleMenuFlyoutItem
                                 AutomationProperties.Name="Show the secondary time zone column"
                                 IsChecked="{x:Bind WeekViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"

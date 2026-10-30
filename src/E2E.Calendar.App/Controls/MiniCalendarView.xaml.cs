@@ -218,10 +218,19 @@ public sealed partial class MiniCalendarView : UserControl
             button.Click += (_, _) =>
             {
                 month = (int)button.Tag;
+
                 foreach (var child in months.Children)
                 {
                     if (child is Button other)
                     {
+                        var selected = ReferenceEquals(other, button);
+                        other.Background = selected
+                            ? (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
+                            : null;
+                        other.Foreground = selected
+                            ? (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"]
+                            : null;
+                        other.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
                     }
                 }
             };

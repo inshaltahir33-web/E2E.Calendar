@@ -245,16 +245,12 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         if (!string.IsNullOrWhiteSpace(MeetingUrl) && !UrlPolicy.IsAllowed(MeetingUrl))
         {
-            linkError = "Use an http or https link.";
-        }
-        else if (!string.IsNullOrWhiteSpace(MeetingUrl) && !UrlPolicy.IsAllowed(MeetingUrl))
-        {
             linkError = "Use an http or https meeting link.";
         }
 
         LinkError = linkError;
 
-        var errors = EventValidator.Validate(Title, StartUtc, EndUtc, MeetingUrl, MeetingUrl);
+        var errors = EventValidator.Validate(Title, StartUtc, EndUtc, meetingUrl: MeetingUrl);
 
         ErrorMessage = errors.Count == 0 ? null : string.Join(" ", errors);
 
@@ -569,7 +565,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
         Location = calendarEvent.Location;
         MeetingUrl = calendarEvent.MeetingUrl;
         Notes = calendarEvent.Notes;
-        MeetingUrl = calendarEvent.MeetingUrl;
         Color = calendarEvent.Color;
         CalendarId = calendarEvent.CalendarId;
         TimeZoneId = calendarEvent.TimeZoneId;
@@ -811,7 +806,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
             Title = Title,
             Notes = notes,
             Location = Location,
-            Url = MeetingUrl,
             MeetingUrl = MeetingUrl,
             StartUtc = StartUtc,
             EndUtc = EndUtc,
@@ -819,8 +813,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
             TimeZoneId = TimeZoneId,
             RRule = rule,
             Color = Color,
-            CreatedUtc = StartUtc,
-            UpdatedUtc = StartUtc,
+            CreatedUtc = _master?.CreatedUtc ?? _clock.UtcNow,
+            UpdatedUtc = _clock.UtcNow,
         };
 
         CalendarEvent saved;
@@ -833,7 +827,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
                 Title = edited.Title,
                 Notes = edited.Notes,
                 Location = edited.Location,
-                Url = edited.MeetingUrl,
                 StartUtc = edited.StartUtc,
                 EndUtc = edited.EndUtc,
                 AllDay = edited.AllDay,
