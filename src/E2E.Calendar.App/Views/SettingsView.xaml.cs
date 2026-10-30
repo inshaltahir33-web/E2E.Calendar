@@ -1,3 +1,4 @@
+using E2E.Calendar.App;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
@@ -23,6 +24,8 @@ public sealed partial class SettingsView : UserControl
 
         InitializeComponent();
 
+        BirthdayImportCard.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+
         _sections =
         [
             ("General", SectionGeneral),
@@ -31,7 +34,6 @@ public sealed partial class SettingsView : UserControl
             ("Notifications & sounds", SectionNotifications),
             ("Appearance", SectionAppearance),
             ("Shortcuts", SectionShortcuts),
-            ("Premium", SectionPremium),
             ("Privacy & data", SectionPrivacy),
             ("Developer", SectionDeveloper),
             ("About", SectionAbout),
@@ -46,6 +48,37 @@ public sealed partial class SettingsView : UserControl
     public SettingsViewModel ViewModel { get; }
 
     private async void OnLoaded(object sender, RoutedEventArgs e) => await ViewModel.LoadAsync();
+
+    private async void OnDeleteAllDataClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "Delete all data?",
+            Content = "This removes every calendar, event, reminder, task, account and setting from this device. This cannot be undone.",
+            PrimaryButtonText = "Delete all",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            await ViewModel.DeleteAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Data could not be deleted",
+                Content = ex.Message,
+                CloseButtonText = "Close",
+            });
+        }
+    }
 
     private async void OnBirthdaysToggled(object sender, RoutedEventArgs e)
     {

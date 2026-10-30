@@ -237,7 +237,7 @@
                         Click="OnCreateCalendarClick"
                         AutomationProperties.Name="Create calendar" />
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
+                    <Border x:Name="BirthdayImportCard" Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Show birthdays" />
@@ -479,35 +479,6 @@
                     </Border>
                 </StackPanel>
 
-                <!--  Premium  -->
-                <StackPanel x:Name="SectionPremium" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Premium" />
-
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <StackPanel Spacing="{StaticResource SpaceSM}">
-                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
-                                <FontIcon FontSize="{StaticResource IconSizeLarge}" Glyph="&#xE735;" />
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="E2E Calendar Premium" />
-                            </StackPanel>
-                            <TextBlock
-                                Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Unlock multiple accounts, unlimited alarms, task lists, templates, calendar sets and the free-slot finder." />
-                            <TextBlock
-                                Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Free plan: 1 account · 3 alarms · 1 task list · 2 templates." />
-                            <Button
-                                HorizontalAlignment="Left"
-                                AutomationProperties.Name="View premium plans"
-                                Content="View plans"
-                                IsEnabled="False"
-                                Style="{StaticResource AccentButtonStyle}" />
-                            <TextBlock
-                                Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Billing is not configured in this build." />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
                 <!--  Privacy & data  -->
                 <StackPanel x:Name="SectionPrivacy" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Privacy &amp; data" />
@@ -535,13 +506,7 @@
                                 VerticalAlignment="Center"
                                 AutomationProperties.Name="Delete all data"
                                 Content="Delete…"
-                                IsEnabled="False" />
-                            <TextBlock
-                                Grid.Column="1"
-                                Margin="0,44,0,0"
-                                HorizontalAlignment="Right"
-                                Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Data deletion is unavailable in this build." />
+                                Click="OnDeleteAllDataClick" />
                         </Grid>
                     </Border>
                 </StackPanel>

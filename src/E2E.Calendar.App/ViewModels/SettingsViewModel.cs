@@ -5,7 +5,10 @@ using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Entitlements;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
+using E2E.Calendar.App;
 using E2E.Calendar.App.Services;
+using E2E.Calendar.Data;
+using Microsoft.Data.Sqlite;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -19,6 +22,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly CalendarService _calendars;
     private readonly IEntitlementService _entitlements;
     private readonly SyncCoordinator _sync;
+    private readonly Db _db;
+    private readonly ISecretStore _secrets;
 
     private bool _loading;
 
@@ -26,26 +31,36 @@ public sealed partial class SettingsViewModel : ObservableObject
         SettingsService settings,
         CalendarService calendars,
         IEntitlementService entitlements,
-        SyncCoordinator sync)
+        SyncCoordinator sync,
+        Db db,
+        ISecretStore secrets)
     {
         _settings = settings;
         _calendars = calendars;
         _entitlements = entitlements;
         _sync = sync;
+        _db = db;
+        _secrets = secrets;
 
-        Sections =
-        [
+        var sections = new List<SettingsSection>
+        {
             new SettingsSection("General", "\uE713"),
-            new SettingsSection("Accounts", "\uE77B"),
-            new SettingsSection("Calendars", "\uE787"),
-            new SettingsSection("Notifications & sounds", "\uEA8F"),
-            new SettingsSection("Appearance", "\uE790"),
-            new SettingsSection("Shortcuts", "\uE765"),
-            new SettingsSection("Premium", "\uE735"),
-            new SettingsSection("Privacy & data", "\uE72E"),
-            new SettingsSection("Developer", "\uEC7A"),
-            new SettingsSection("About", "\uE946"),
-        ];
+        };
+
+        if (AppFeatures.SyncUiEnabled)
+        {
+            sections.Add(new SettingsSection("Accounts", "\uE77B"));
+        }
+
+        sections.Add(new SettingsSection("Calendars", "\uE787"));
+        sections.Add(new SettingsSection("Notifications & sounds", "\uEA8F"));
+        sections.Add(new SettingsSection("Appearance", "\uE790"));
+        sections.Add(new SettingsSection("Shortcuts", "\uE765"));
+        sections.Add(new SettingsSection("Privacy & data", "\uE72E"));
+        sections.Add(new SettingsSection("Developer", "\uEC7A"));
+        sections.Add(new SettingsSection("About", "\uE946"));
+
+        Sections = sections;
 
         ThemeLabels = ["Use system setting", "Light", "Dark"];
         AccentLabels = ["Windows accent", "Match calendar", "Custom"];
@@ -79,8 +94,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string AppVersion => "1.0.0 (local)";
 
     public string DatabaseSummary => "Stored on this device, encrypted with SQLCipher";
-
-    public bool IsPremium => _entitlements.Can(Feature.CalendarSets);
 
     [ObservableProperty]
     private int _themeIndex;
@@ -369,6 +382,57 @@ public sealed partial class SettingsViewModel : ObservableObject
     public async Task RemoveAccountAsync(string accountId, CancellationToken cancellationToken = default)
     {
         await _sync.RemoveAccountAsync(accountId, cancellationToken);
+        await LoadAsync();
+    }
+
+    public async Task DeleteAllDataAsync(CancellationToken cancellationToken = default)
+    {
+        await _sync.LoadAccountsAsync(cancellationToken);
+
+        foreach (var account in _sync.Accounts.ToList())
+        {
+            var prefix = account.Provider switch
+            {
+                Provider.Microsoft => "ms",
+                Provider.Google => "google",
+                Provider.CalDav => "caldav",
+                _ => null,
+            };
+
+            if (prefix is null)
+            {
+                continue;
+            }
+
+            await _secrets.RemoveAsync($"{prefix}:access:{account.Id}", cancellationToken);
+            await _secrets.RemoveAsync($"{prefix}:refresh:{account.Id}", cancellationToken);
+
+            if (prefix == "caldav")
+            {
+                await _secrets.RemoveAsync($"caldav:password:{account.Id}", cancellationToken);
+                await _secrets.RemoveAsync($"caldav:url:{account.Id}", cancellationToken);
+            }
+        }
+
+        _sync.Accounts.Clear();
+
+        await _secrets.RemoveAsync(Db.DatabaseKeySecretName, cancellationToken);
+
+        SqliteConnection.ClearAllPools();
+
+        foreach (var suffix in new[] { string.Empty, "-wal", "-shm" })
+        {
+            var path = suffix.Length == 0 ? _db.DatabasePath : _db.DatabasePath + suffix;
+
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        await _db.MigrateAsync(cancellationToken);
+        await _settings.LoadAsync(cancellationToken);
+        await _sync.LoadAccountsAsync(cancellationToken);
         await LoadAsync();
     }
 

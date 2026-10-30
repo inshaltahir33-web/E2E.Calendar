@@ -20,9 +20,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _searchText = string.Empty;
 
     [ObservableProperty]
-    private bool _isPremium;
-
-    [ObservableProperty]
     private bool _isSidebarCollapsed;
 
     [ObservableProperty]

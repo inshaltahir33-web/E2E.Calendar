@@ -166,6 +166,9 @@ public sealed partial class MainWindow : Window
 
         this.InitializeComponent();
 
+        SyncButton.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+        InvitationInfoBar.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+
         _searchDebounce = DispatcherQueue.GetForCurrentThread().CreateTimer();
         _searchDebounce.Interval = TimeSpan.FromMilliseconds(250);
         _searchDebounce.IsRepeating = false;

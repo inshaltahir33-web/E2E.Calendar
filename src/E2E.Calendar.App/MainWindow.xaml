@@ -206,6 +206,7 @@
 
                 <!-- MASTER §4: sync status lives in the toolbar. Clicking it syncs now. -->
                 <Button
+                    x:Name="SyncButton"
                     Click="OnSyncClick"
                     Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="Sync status, click to sync now"
@@ -279,7 +280,7 @@
                 <Grid
                     x:Name="SidebarHost"
                     Background="{ThemeResource App.SidebarBackgroundBrush}"
-                    RowDefinitions="Auto,Auto,*,Auto">
+                    RowDefinitions="Auto,Auto,*">
 
                     <!-- FIX 7: New button moved to the top (primary action), mini calendar below it. -->
                     <muxc:SplitButton
@@ -391,32 +392,9 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- FIX 8: footer is a pinned strip outside the scrolling list. Sync status now
-                         lives in the top toolbar (MASTER §4), so the footer only carries the badge. -->
-                    <Grid
-                        Grid.Row="3"
-                        Padding="12,10"
-                        BorderBrush="{ThemeResource App.DividerBrush}"
-                        BorderThickness="0,1,0,0"
-                        Background="{ThemeResource App.TransparentBrush}">
-                        <Border
-                            HorizontalAlignment="Right"
-                            Padding="8,2"
-                            Background="{ThemeResource App.HoverBrush}"
-                            CornerRadius="{StaticResource RadiusControl}">
-                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXXS}">
-                                <FontIcon
-                                    FontSize="{StaticResource IconSizeSmall}"
-                                    Glyph="&#xE734;" />
-                                <TextBlock
-                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                    Text="Premium" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+
 
                 </Grid>
-
                 <!-- ICON RAIL: shown instead of the full sidebar when the window is narrow.
                      It lives inside SidebarColumn so ApplySidebarCollapsed can actually reveal it. -->
                 <StackPanel
