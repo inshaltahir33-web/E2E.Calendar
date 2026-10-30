@@ -65,6 +65,12 @@ public sealed partial class TimeGrid : UserControl
         typeof(TimeGrid),
         new PropertyMetadata(null, OnLayoutSourceChanged));
 
+    public static readonly DependencyProperty WeatherTextProperty = DependencyProperty.Register(
+        nameof(WeatherText),
+        typeof(string),
+        typeof(TimeGrid),
+        new PropertyMetadata(null, OnWeatherTextChanged));
+
     private const int HoursPerDay = 24;
     private const int MaxAllDayRows = 3;
     private const int MaxOverlapColumns = 4;
@@ -164,6 +170,12 @@ public sealed partial class TimeGrid : UserControl
         set => SetValue(SelectedItemIdProperty, value);
     }
 
+    public string? WeatherText
+    {
+        get => (string?)GetValue(WeatherTextProperty);
+        set => SetValue(WeatherTextProperty, value);
+    }
+
     public event EventHandler<TimeGridItemEventArgs>? ItemActivated;
 
     public event EventHandler<TimeGridSlotEventArgs>? SlotCreated;
@@ -214,6 +226,57 @@ public sealed partial class TimeGrid : UserControl
         grid._now = args.NewValue is DateTimeOffset value ? value : DateTimeOffset.Now;
         grid.RenderNowLine();
     }
+
+    private static void OnWeatherTextChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (sender is TimeGrid grid)
+        {
+            grid.RenderWeatherChip();
+        }
+    }
+
+    /// <summary>
+    /// Renders the compact weather chip (icon, temperature, condition) at the top-right of
+    /// the header. The service still returns one display string, so it is split here; when
+    /// weather is unavailable the chip simply disappears.
+    /// </summary>
+    private void RenderWeatherChip()
+    {
+        if (WeatherChip is null)
+        {
+            return;
+        }
+
+        var text = WeatherText;
+
+        if (string.IsNullOrWhiteSpace(text) ||
+            string.Equals(text, "Weather unavailable", StringComparison.OrdinalIgnoreCase))
+        {
+            WeatherChip.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var parts = text.Split('·', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var temperature = parts.FirstOrDefault(part => part.Contains('°'));
+        var condition = temperature is null
+            ? null
+            : parts.SkipWhile(part => !string.Equals(part, temperature, StringComparison.Ordinal)).Skip(1).FirstOrDefault();
+
+        WeatherTemperatureText.Text = temperature ?? text;
+        WeatherConditionText.Text = condition ?? string.Empty;
+        WeatherConditionText.Visibility = string.IsNullOrEmpty(condition) ? Visibility.Collapsed : Visibility.Visible;
+        WeatherIcon.Glyph = WeatherGlyph(condition);
+        WeatherChip.Visibility = Visibility.Visible;
+
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WeatherChip, text);
+        ToolTipService.SetToolTip(WeatherChip, text);
+    }
+
+    private static string WeatherGlyph(string? condition) => condition switch
+    {
+        "Clear" => "\uE706",
+        _ => "\uE753",
+    };
 
     /// <summary>
     /// Layout work is coalesced to one rebuild per dispatcher turn so a burst of
@@ -314,6 +377,8 @@ public sealed partial class TimeGrid : UserControl
 
         _columnWidth = ComputeColumnWidth(days.Count);
 
+        RenderWeatherChip();
+        ApplyDayTints(days);
         RenderHeader(days);
         RenderAllDayStrip();
         RenderBody();
@@ -321,6 +386,23 @@ public sealed partial class TimeGrid : UserControl
         UpdateEmptyHint();
         UpdateScrollIndicator();
         EnsureInitialScroll(days);
+    }
+
+    /// <summary>
+    /// Today's column is tinted AccentSoft and weekend columns slightly darker. The tint is
+    /// reapplied on every rebuild so it follows week/month navigation instead of freezing on
+    /// the days that were visible when the canvases were created.
+    /// </summary>
+    private void ApplyDayTints(IReadOnlyList<TimeGridDay> days)
+    {
+        for (var index = 0; index < _dayCanvases.Count && index < days.Count; index++)
+        {
+            _dayCanvases[index].Background = days[index].IsToday
+                ? ThemeBrushes.Get(this, "AccentSoft")
+                : days[index].IsWeekend
+                    ? ThemeBrushes.Get(this, "App.WeekendTintBrush")
+                    : ThemeBrushes.Get(this, "App.TransparentBrush");
+        }
     }
 
     private static string DaySignature(IReadOnlyList<TimeGridDay> days)
@@ -354,6 +436,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Grid.SetColumnSpan(BodyScroll, total);
             Grid.SetColumnSpan(EmptyHint, total);
+            Grid.SetColumnSpan(WeatherChip, total);
             Grid.SetColumn(ScrollIndicator, total - 1);
             return;
         }
@@ -378,6 +461,7 @@ public sealed partial class TimeGrid : UserControl
 
         Grid.SetColumnSpan(BodyScroll, total);
         Grid.SetColumnSpan(EmptyHint, total);
+        Grid.SetColumnSpan(WeatherChip, total);
         Grid.SetColumn(ScrollIndicator, total - 1);
     }
 
@@ -403,8 +487,10 @@ public sealed partial class TimeGrid : UserControl
                 Height = HourHeight * HoursPerDay,
                 Width = ComputeColumnWidth(dayCount),
                 Background = day?.IsToday == true
-                    ? ThemeBrushes.Get(this, "App.TodayTintBrush")
-                    : ThemeBrushes.Get(this, "App.TransparentBrush"),
+                    ? ThemeBrushes.Get(this, "AccentSoft")
+                    : day?.IsWeekend == true
+                        ? ThemeBrushes.Get(this, "App.WeekendTintBrush")
+                        : ThemeBrushes.Get(this, "App.TransparentBrush"),
             };
 
             Grid.SetColumn(canvas, index + 1);
@@ -432,7 +518,7 @@ public sealed partial class TimeGrid : UserControl
         _nowLine = new Rectangle
         {
             Height = 2,
-            Fill = ThemeBrushes.Get(this, "App.NowLineBrush"),
+            Fill = ThemeBrushes.Get(this, "NowLine"),
             Visibility = Visibility.Collapsed,
         };
 
@@ -442,7 +528,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Width = 8,
             Height = 8,
-            Fill = ThemeBrushes.Get(this, "App.NowLineBrush"),
+            Fill = ThemeBrushes.Get(this, "NowLine"),
             Visibility = Visibility.Collapsed,
         };
 
@@ -513,14 +599,19 @@ public sealed partial class TimeGrid : UserControl
         var tzLabel = new TextBlock
         {
             Text = FormatTimeZoneOffset(LocalTimeZone),
-            FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
+            // 10px keeps the whole "UTC+05:00" inside the 56px gutter instead of clipping to "TC+05:00".
+            FontSize = Tokens.Double("FontSizeChipMeta", 10d),
             Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 8, 6),
+            TextAlignment = TextAlignment.Right,
+            TextTrimming = TextTrimming.None,
+            TextWrapping = TextWrapping.NoWrap,
+            Width = Math.Max(0, GutterWidth - 4),
+            Margin = new Thickness(0, 0, 4, 6),
         };
 
-        Grid.SetRow(tzLabel, 0);
+        Grid.SetRow(tzLabel, 1);
         Grid.SetColumn(tzLabel, 0);
         RootLayout.Children.Add(tzLabel);
         _headerCells.Add(tzLabel);
@@ -529,7 +620,7 @@ public sealed partial class TimeGrid : UserControl
         {
             var day = days[index];
             var cell = CreateHeaderCell(day);
-            Grid.SetRow(cell, 0);
+            Grid.SetRow(cell, 1);
             Grid.SetColumn(cell, index + 1);
             RootLayout.Children.Add(cell);
             _headerCells.Add(cell);
@@ -551,7 +642,7 @@ public sealed partial class TimeGrid : UserControl
             FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             CharacterSpacing = 40,
-            Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+            Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
         });
 
@@ -573,7 +664,7 @@ public sealed partial class TimeGrid : UserControl
 
         if (day.IsToday)
         {
-            dateHost.Background = ThemeBrushes.Get(this, "App.AccentBrush");
+            dateHost.Background = ThemeBrushes.Get(this, "Accent");
             dateHost.CornerRadius = new CornerRadius(16);
             dateText.Foreground = ThemeBrushes.Get(this, "App.OnAccentBrush");
         }
@@ -630,7 +721,7 @@ public sealed partial class TimeGrid : UserControl
             Margin = new Thickness(0, 6, 8, 0),
         };
 
-        Grid.SetRow(label, 1);
+        Grid.SetRow(label, 2);
         Grid.SetColumn(label, 0);
         RootLayout.Children.Add(label);
         _allDayCells.Add(label);
@@ -677,7 +768,7 @@ public sealed partial class TimeGrid : UserControl
             }
 
             var bar = CreateAllDayBar(item);
-            Grid.SetRow(bar, 1 + row);
+            Grid.SetRow(bar, 2 + row);
             Grid.SetColumn(bar, startIndex + 1);
             Grid.SetColumnSpan(bar, endIndex - startIndex + 1);
             RootLayout.Children.Add(bar);
@@ -696,7 +787,7 @@ public sealed partial class TimeGrid : UserControl
                 Margin = new Thickness(4, 2, 4, 2),
             };
 
-            Grid.SetRow(chip, MaxAllDayRows);
+            Grid.SetRow(chip, MaxAllDayRows + 1);
             Grid.SetColumn(chip, pair.Key + 1);
             RootLayout.Children.Add(chip);
             _allDayCells.Add(chip);
@@ -890,7 +981,8 @@ public sealed partial class TimeGrid : UserControl
         _linesCanvas.Children.Clear();
         _gutterCanvas.Children.Clear();
 
-        var divider = ThemeBrushes.Get(this, "App.GridHourBrush");
+        var divider = ThemeBrushes.Get(this, "GridLine");
+        var halfHour = ThemeBrushes.Get(this, "App.StrokeGridHalfBrush");
         var days = Days ?? Array.Empty<TimeGridDay>();
 
         for (var hour = 0; hour <= HoursPerDay; hour++)
@@ -907,6 +999,19 @@ public sealed partial class TimeGrid : UserControl
             Canvas.SetTop(line, y);
             _linesCanvas.Children.Add(line);
 
+            if (hour < HoursPerDay)
+            {
+                var halfLine = new Rectangle
+                {
+                    Height = 1,
+                    Width = Math.Max(0, width - GutterWidth),
+                    Fill = halfHour,
+                };
+
+                Canvas.SetTop(halfLine, y + (HourHeight / 2));
+                _linesCanvas.Children.Add(halfLine);
+            }
+
             if (hour == 0 || hour == HoursPerDay)
             {
                 continue;
@@ -915,9 +1020,10 @@ public sealed partial class TimeGrid : UserControl
             var label = new TextBlock
             {
                 Text = FormatHour(hour),
-                FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
-                Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+                FontSize = Tokens.Double("FontSizeHourLabel", 11d),
+                Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Right,
+                TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
                 Height = 18,
             };
@@ -1029,6 +1135,24 @@ public sealed partial class TimeGrid : UserControl
             .Any(item => item.StartUtc < visible.End && item.EndUtc > visible.Start);
 
         EmptyHint.Visibility = hasContent ? Visibility.Collapsed : Visibility.Visible;
+        PositionEmptyHint();
+    }
+
+    /// <summary>
+    /// Parks the empty state in the top third of the visible grid so it can never sit on top
+    /// of the now line, which starts around 90 minutes below the initial scroll position.
+    /// </summary>
+    private void PositionEmptyHint()
+    {
+        var viewport = BodyScroll.ViewportHeight > 0 ? BodyScroll.ViewportHeight : ActualHeight;
+
+        if (viewport <= 0)
+        {
+            viewport = 600;
+        }
+
+        var top = Math.Max(24, (viewport / 3d) - 40d);
+        EmptyHint.Margin = new Thickness(0, top, 0, 0);
     }
 
     private void UpdateScrollIndicator()
@@ -1097,6 +1221,11 @@ public sealed partial class TimeGrid : UserControl
         if (_pendingScrollOffset >= 0)
         {
             ApplyScroll(_pendingScrollOffset);
+        }
+
+        if (EmptyHint.Visibility == Visibility.Visible)
+        {
+            PositionEmptyHint();
         }
     }
 

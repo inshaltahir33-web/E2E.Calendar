@@ -19,6 +19,12 @@ public sealed partial class DayCell : UserControl
         typeof(DayCell),
         new PropertyMetadata(false, OnVisualChanged));
 
+    public static readonly DependencyProperty IsSelectedProperty = DependencyProperty.Register(
+        nameof(IsSelected),
+        typeof(bool),
+        typeof(DayCell),
+        new PropertyMetadata(false, OnVisualChanged));
+
     public static readonly DependencyProperty IsInSelectedWeekProperty = DependencyProperty.Register(
         nameof(IsInSelectedWeek),
         typeof(bool),
@@ -68,6 +74,7 @@ public sealed partial class DayCell : UserControl
         {
             DayNumber = day.Label;
             IsToday = day.IsToday;
+            IsSelected = day.IsSelected;
             IsInSelectedWeek = day.IsInSelectedWeek;
             IsCurrentMonth = day.IsCurrentMonth;
             HasEvents = day.EventCount > 0;
@@ -92,6 +99,12 @@ public sealed partial class DayCell : UserControl
     {
         get => (bool)GetValue(IsTodayProperty);
         set => SetValue(IsTodayProperty, value);
+    }
+
+    public bool IsSelected
+    {
+        get => (bool)GetValue(IsSelectedProperty);
+        set => SetValue(IsSelectedProperty, value);
     }
 
     public bool IsInSelectedWeek
@@ -131,7 +144,8 @@ public sealed partial class DayCell : UserControl
         DayText.Text = DayNumber;
         TodayText.Text = DayNumber;
 
-        WeekBackground.Visibility = IsInSelectedWeek ? Visibility.Visible : Visibility.Collapsed;
+        // No selected-week background any more: the AccentSoft row is a hover affordance only.
+        SelectedRing.Visibility = IsSelected && !IsToday ? Visibility.Visible : Visibility.Collapsed;
         TodayCircle.Visibility = IsToday ? Visibility.Visible : Visibility.Collapsed;
         TodayText.Visibility = IsToday ? Visibility.Visible : Visibility.Collapsed;
         DayText.Visibility = IsToday ? Visibility.Collapsed : Visibility.Visible;
@@ -139,6 +153,7 @@ public sealed partial class DayCell : UserControl
 
         DayText.Opacity = IsCurrentMonth ? 1d : 0.4d;
         TodayText.Opacity = IsCurrentMonth ? 1d : 0.4d;
+        EventDot.Opacity = IsCurrentMonth ? 1d : 0.4d;
 
         AutomationProperties.SetName(this, AutomationName);
     }

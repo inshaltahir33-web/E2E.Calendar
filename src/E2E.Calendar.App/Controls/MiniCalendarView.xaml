@@ -9,11 +9,14 @@
         KeyDown="OnCalendarKeyDown"
         PointerWheelChanged="OnCalendarPointerWheelChanged">
 
-        <Grid Height="28" ColumnDefinitions="Auto,*,Auto">
+        <Grid Height="26" ColumnDefinitions="Auto,*,Auto">
             <Button
                 x:Name="PreviousMonthButton"
                 Click="OnPreviousMonthClick"
                 Style="{StaticResource ToolbarButtonStyle}"
+                Width="26"
+                Height="26"
+                Padding="0"
                 AutomationProperties.Name="Previous month"
                 ToolTipService.ToolTip="Previous month">
                 <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72B;" />
@@ -22,10 +25,13 @@
             <Button
                 x:Name="HeaderText"
                 Grid.Column="1"
+                Padding="8,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Click="OnHeaderClick"
                 Content="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
+                FontSize="{StaticResource FontSizeBodyStrong}"
+                FontWeight="SemiBold"
                 Style="{StaticResource ToolbarButtonStyle}"
                 AutomationProperties.Name="Choose month and year"
                 ToolTipService.ToolTip="Choose month and year" />
@@ -35,6 +41,9 @@
                 Grid.Column="2"
                 Click="OnNextMonthClick"
                 Style="{StaticResource ToolbarButtonStyle}"
+                Width="26"
+                Height="26"
+                Padding="0"
                 AutomationProperties.Name="Next month"
                 ToolTipService.ToolTip="Next month">
                 <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72A;" />

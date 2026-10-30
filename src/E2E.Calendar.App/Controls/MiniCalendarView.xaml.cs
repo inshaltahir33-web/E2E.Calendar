@@ -19,7 +19,7 @@ namespace E2E.Calendar.App.Controls;
 
 public sealed partial class MiniCalendarView : UserControl
 {
-    private const double CellSize = 36;
+    private const double CellSize = 28;
     private const double HeaderHeight = 16;
 
     private readonly MiniCalendarViewModel _viewModel;
@@ -63,7 +63,34 @@ public sealed partial class MiniCalendarView : UserControl
     {
         _isLoaded = true;
         await _viewModel.RefreshAsync();
+        await EnsureSelectedMonthAsync();
         BuildGrid();
+    }
+
+    /// <summary>
+    /// The header must always name the month that holds the selected date, including
+    /// when the calendar page is not on screen (e.g. while Settings is open). The
+    /// visible month is only paged by the ‹ › buttons / wheel, so this runs once on
+    /// load and never fights the user's month browsing.
+    /// </summary>
+    private async Task EnsureSelectedMonthAsync()
+    {
+        var selected = ViewModel.Days.FirstOrDefault(day => day.IsSelected);
+
+        if (selected is null)
+        {
+            return;
+        }
+
+        if (ViewModel.VisibleYear == selected.Date.Year && ViewModel.VisibleMonth == selected.Date.Month)
+        {
+            return;
+        }
+
+        ViewModel.VisibleYear = selected.Date.Year;
+        ViewModel.VisibleMonth = selected.Date.Month;
+
+        await _viewModel.RefreshAsync();
     }
 
     private void BuildGrid()
@@ -94,7 +121,8 @@ public sealed partial class MiniCalendarView : UserControl
         {
             var header = new TextBlock
             {
-                FontSize = Tokens.Double("FontSizeCaption", 12d),
+                FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
+                Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextAlignment = TextAlignment.Center,

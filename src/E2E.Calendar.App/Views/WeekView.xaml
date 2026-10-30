@@ -5,13 +5,11 @@
     xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="{ThemeResource App.TransparentBrush}" Loaded="OnLoaded" RowDefinitions="Auto,*">
-        <Border Padding="12,6" Background="{ThemeResource App.CardBackgroundBrush}">
-            <TextBlock Text="{x:Bind ViewModel.WeatherText, Mode=OneWay}" AutomationProperties.Name="Local weather" />
-        </Border>
+    <Grid Background="{ThemeResource App.TransparentBrush}" Loaded="OnLoaded">
 
+        <!-- The weather line is gone: the TimeGrid header renders it as a compact chip
+             (icon + temperature + condition) at its top-right corner. -->
         <ctrl:TimeGrid
-            Grid.Row="1"
             x:Name="TimeGrid"
             Days="{x:Bind ViewModel.Days, Mode=OneWay}"
             Items="{x:Bind ViewModel.Items, Mode=OneWay}"
@@ -19,7 +17,8 @@
             ClockFormat="{x:Bind ViewModel.ClockFormat, Mode=OneWay}"
             HourHeight="{x:Bind ViewModel.HourHeight, Mode=OneWay}"
             ShowSecondaryTimeZone="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=OneWay}"
-            SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}" />
+            SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}"
+            WeatherText="{x:Bind ViewModel.WeatherText, Mode=OneWay}" />
 
         <ctrl:SkeletonView
             x:Name="Skeleton"
