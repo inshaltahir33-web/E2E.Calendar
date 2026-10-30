@@ -88,7 +88,7 @@
     <x:Double x:Key="IconSizeLarge">16</x:Double>
     <x:Double x:Key="SearchBoxWidth">280</x:Double>
     <x:Double x:Key="SyncStatusMaxWidth">150</x:Double>
-    <x:Double x:Key="EditorPaneWidth">360</x:Double>
+    <x:Double x:Key="EditorPaneWidth">400</x:Double>
     <x:Double x:Key="SnackbarWidth">420</x:Double>
     <x:Double x:Key="MiniCalendarMinWidth">240</x:Double>
     <x:Double x:Key="MiniCalendarHeight">260</x:Double>
@@ -154,7 +154,6 @@
     <x:Double x:Key="MainContentMargin">8</x:Double>
     <x:Double x:Key="Sidebar.Width">264</x:Double>
     <x:Double x:Key="Sidebar.CollapsedWidth">56</x:Double>
-    <x:Double x:Key="EditorDrawerWidth">360</x:Double>
     <x:Double x:Key="Grid.HourHeight">56</x:Double>
     <x:Double x:Key="Grid.GutterWidth">56</x:Double>
 
@@ -163,6 +162,7 @@
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
             <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
+            <SolidColorBrush x:Key="App.ScrimBrush" Color="#3D000000"/>
             <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#F5F6FA"/>
             <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#F0F1F6"/>
             <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#ECEDF3"/>
@@ -253,6 +253,7 @@
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
             <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
+            <SolidColorBrush x:Key="App.ScrimBrush" Color="#52000000"/>
             <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#0E1015"/>
             <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#1B1F2A"/>
             <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#0B0D10"/>
@@ -343,6 +344,8 @@
         </ResourceDictionary>
         <ResourceDictionary x:Key="HighContrast">
             <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
+            <!-- No scrim in high contrast: an overlay would hide content; the drawer keeps its border. -->
+            <SolidColorBrush x:Key="App.ScrimBrush" Color="#00000000"/>
             <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="{ThemeResource SystemColorWindowColor}"/>
             <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="{ThemeResource SystemColorWindowColor}"/>
             <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="{ThemeResource SystemColorWindowColor}"/>

@@ -297,6 +297,18 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public DateTimeOffset? OccurrenceStartUtc { get; set; }
 
+    /// <summary>True while the editor drawer is visible. Single source of truth for the shell.</summary>
+    [ObservableProperty]
+    private bool _isOpen;
+
+    /// <summary>The sidebar "New" flyout is disabled while the editor is open, so the menu can never appear on top of it.</summary>
+    public bool IsMenuEnabled => !IsOpen;
+
+    partial void OnIsOpenChanged(bool value) => OnPropertyChanged(nameof(IsMenuEnabled));
+
+    /// <summary>Called by the shell once the drawer has finished closing (or on save/delete).</summary>
+    public void NotifyClosed() => IsOpen = false;
+
     public event EventHandler? Opened;
 
     public event EventHandler? CloseRequested;
@@ -309,6 +321,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     {
         await LoadByIdAsync(item.Id);
 
+        IsOpen = true;
         Opened?.Invoke(this, EventArgs.Empty);
     }
 
@@ -316,6 +329,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     {
         await LoadNewAsync(startUtc, endUtc);
 
+        IsOpen = true;
         Opened?.Invoke(this, EventArgs.Empty);
     }
 

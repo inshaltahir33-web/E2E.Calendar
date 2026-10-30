@@ -115,6 +115,98 @@ public static class Motion
     }
 
     /// <summary>
+    /// Slides a drawer in horizontally from the right edge and fades it in.
+    /// Only the composition translation (Offset X) and opacity are animated —
+    /// layout (width, margins, columns) never changes, so nothing behind the
+    /// drawer reflows. Used to open the event editor.
+    /// </summary>
+    public static async Task SlideInFromRightAsync(
+        UIElement element,
+        double offsetPixels,
+        int durationMs = FastDurationMs)
+    {
+        if (element is null)
+        {
+            return;
+        }
+
+        if (!IsEnabled)
+        {
+            element.Opacity = 1;
+            return;
+        }
+
+        element.Opacity = 1;
+
+        var visual = ElementCompositionPreview.GetElementVisual(element);
+        var compositor = visual.Compositor;
+        var easing = CompositionEasingFunction.CreateCubicBezierEasingFunction(
+            compositor,
+            new Vector2(0.1f, 0.9f),
+            new Vector2(0.2f, 1f));
+
+        var opacity = compositor.CreateScalarKeyFrameAnimation();
+        opacity.InsertKeyFrame(0f, 0f);
+        opacity.InsertKeyFrame(1f, 1f, easing);
+        opacity.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        var offset = compositor.CreateVector3KeyFrameAnimation();
+        offset.InsertKeyFrame(0f, new Vector3((float)offsetPixels, 0, 0));
+        offset.InsertKeyFrame(1f, Vector3.Zero, easing);
+        offset.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        visual.StartAnimation("Opacity", opacity);
+        visual.StartAnimation("Offset", offset);
+
+        await Task.Delay(durationMs);
+    }
+
+    /// <summary>
+    /// Slides a drawer out to the right edge while fading it. Same duration and
+    /// easing as <see cref="SlideInFromRightAsync"/> so open/close feel symmetric.
+    /// The caller hides the element only after the returned task completes, which
+    /// removes the one-frame layout snap on close.
+    /// </summary>
+    public static async Task SlideOutToRightAsync(
+        UIElement element,
+        double offsetPixels,
+        int durationMs = FastDurationMs)
+    {
+        if (element is null)
+        {
+            return;
+        }
+
+        if (!IsEnabled)
+        {
+            element.Opacity = 0;
+            return;
+        }
+
+        var visual = ElementCompositionPreview.GetElementVisual(element);
+        var compositor = visual.Compositor;
+        var easing = CompositionEasingFunction.CreateCubicBezierEasingFunction(
+            compositor,
+            new Vector2(0.1f, 0.9f),
+            new Vector2(0.2f, 1f));
+
+        var opacity = compositor.CreateScalarKeyFrameAnimation();
+        opacity.InsertKeyFrame(0f, 1f);
+        opacity.InsertKeyFrame(1f, 0f, easing);
+        opacity.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        var offset = compositor.CreateVector3KeyFrameAnimation();
+        offset.InsertKeyFrame(0f, Vector3.Zero);
+        offset.InsertKeyFrame(1f, new Vector3((float)offsetPixels, 0, 0), easing);
+        offset.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        visual.StartAnimation("Opacity", opacity);
+        visual.StartAnimation("Offset", offset);
+
+        await Task.Delay(durationMs);
+    }
+
+    /// <summary>
     /// Slides an element in horizontally from the left and fades it in. Used for
     /// the sidebar when it collapses or expands; the element's layout has
     /// already been committed so this is a purely visual animation.

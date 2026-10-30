@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
@@ -45,8 +46,10 @@ public sealed partial class MainWindow : Window
     private readonly ScheduleExportService _scheduleExport;
     private readonly TodoService _todo;
     private readonly IDialogService _dialogs;
+    private Views.EventEditorView? _editorView;
     private bool _syncInProgress;
     private bool _rsvpInProgress;
+    private bool _isClosingEditor;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -182,7 +185,8 @@ public sealed partial class MainWindow : Window
 
             StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
-            EditorHost.Children.Add(new Views.EventEditorView(editor));
+            _editorView = new Views.EventEditorView(editor);
+            EditorHost.Children.Add(_editorView);
             MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar, dialogs));
 
             editor.Opened += OnEditorOpened;
@@ -231,6 +235,12 @@ public sealed partial class MainWindow : Window
     }
 
     public IShellState ShellState => _shellState;
+
+    /// <summary>Exposed for x:Bind (New menu enabled state while the editor is open).</summary>
+    public EventEditorViewModel EditorViewModel => _editor;
+
+    /// <summary>Fixed drawer width. Never animated via layout — only its composition translation changes.</summary>
+    private double EditorPaneWidth => Tokens.Double("EditorPaneWidth", 400d);
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) =>
         UpdateTitleBarColors();
@@ -494,11 +504,35 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnNewSplitButtonClick(SplitButton sender, SplitButtonClickEventArgs args) => OpenNewEvent();
-
     private void OnNewSplitButtonClick(object sender, RoutedEventArgs e) => OpenNewEvent();
 
     private void OnNewEventClick(object sender, RoutedEventArgs e) => OpenNewEvent();
+
+    /// <summary>
+    /// Every "new event" entry point funnels here (sidebar New ▸ Event, N accelerator,
+    /// command palette). The New flyout is hidden first so it can never float above the
+    /// editor, and if the editor is already open the draft is updated in place — never a
+    /// second instance.
+    /// </summary>
+    private async void OpenNewEvent()
+    {
+        NewMenuButton.Flyout?.Hide();
+
+        if (_editor.IsOpen)
+        {
+            if (_editor.IsDirty && !await ConfirmDiscardAsync())
+            {
+                _editorView?.FocusTitle();
+                return;
+            }
+
+            _editor.DiscardChanges();
+        }
+
+        var now = _clock.UtcNow;
+        var start = now.AddMinutes(30 - (now.Minute % 30));
+        await _editor.OpenNewAsync(start, start.AddHours(1));
+    }
 
     private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
 
@@ -511,13 +545,6 @@ public sealed partial class MainWindow : Window
         ViewModel.SelectItem(ViewModel.TaskLists.FirstOrDefault(item => item.Label == filter)
             ?? ViewModel.ReminderLists.FirstOrDefault(item => item.Label == filter));
         _navigation.NavigateTo(NavigationKeys.Tasks, filter);
-    }
-
-    private async void OpenNewEvent()
-    {
-        var now = _clock.UtcNow;
-        var start = now.AddMinutes(30 - (now.Minute % 30));
-        await _editor.OpenNewAsync(start, start.AddHours(1));
     }
 
     private void OnDayViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Day, NavigationKeys.Day);
@@ -707,12 +734,64 @@ public sealed partial class MainWindow : Window
         SearchBox.IsSuggestionListOpen = true;
     }
 
+    /// <summary>
+    /// The single open path (raised by EventEditorViewModel.OpenAsync / OpenNewAsync).
+    /// The drawer is a right-aligned overlay, so showing it cannot change the width,
+    /// position or scroll offset of the sidebar or the calendar grid. If it is already
+    /// visible (re-open while open) the draft is updated in place without re-animating.
+    /// </summary>
     private void OnEditorOpened(object? sender, EventArgs e)
     {
+        var alreadyOpen = EditorHost.Visibility == Visibility.Visible;
+
+        CaptureEditorLayoutSnapshot();
+
+        EditorScrim.Visibility = Visibility.Visible;
+        EditorHost.IsHitTestVisible = true;
         EditorHost.Visibility = Visibility.Visible;
         InvitationInfoBar.IsOpen = _editor.LoadedEvent is { } loadedEvent &&
             _sync.HasPendingInvitation(loadedEvent);
-        _ = Motion.SlideAndFadeInAsync(EditorHost, 8);
+
+        if (!alreadyOpen)
+        {
+            _ = Motion.SlideInFromRightAsync(EditorHost, EditorPaneWidth, Motion.FastDurationMs);
+        }
+
+        _editorView?.FocusTitle();
+    }
+
+    /// <summary>
+    /// The single close path for every dismissal (X, Cancel, Esc, scrim tap, Save,
+    /// Delete). Hides the scrim, slides the drawer out with a translation + opacity
+    /// animation and only then collapses it — the layout never reflows while the
+    /// drawer is visible, so closing cannot flicker or shift the grid by a frame.
+    /// </summary>
+    private async Task CloseEditorAsync()
+    {
+        if (_isClosingEditor || EditorHost.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        _isClosingEditor = true;
+
+        try
+        {
+            EditorHost.IsHitTestVisible = false;
+            EditorScrim.Visibility = Visibility.Collapsed;
+            InvitationInfoBar.IsOpen = false;
+
+            await Motion.SlideOutToRightAsync(EditorHost, EditorPaneWidth, Motion.FastDurationMs);
+
+            EditorHost.Visibility = Visibility.Collapsed;
+            _editor.NotifyClosed();
+
+            LogEditorLayoutInvariant();
+        }
+        finally
+        {
+            _isClosingEditor = false;
+        }
     }
 
     private async void OnInvitationRespondClick(object sender, RoutedEventArgs e)
@@ -771,8 +850,13 @@ public sealed partial class MainWindow : Window
         }
 
         _editor.DiscardChanges();
-        EditorHost.Visibility = Visibility.Collapsed;
-        InvitationInfoBar.IsOpen = false;
+        await CloseEditorAsync();
+    }
+
+    private void OnEditorScrimTapped(object sender, TappedRoutedEventArgs e)
+    {
+        e.Handled = true;
+        _editor.RequestCloseCommand.Execute(null);
     }
 
     private void OnEditorKeyDown(object sender, KeyRoutedEventArgs e)
@@ -793,6 +877,56 @@ public sealed partial class MainWindow : Window
             _editor.RequestSaveCommand.Execute(null);
         }
     }
+
+    /// <summary>
+    /// Captures the sidebar and calendar-grid geometry when the editor opens. DEBUG-only:
+    /// the drawer is a pure overlay so these values must be identical after close.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private void CaptureEditorLayoutSnapshot() =>
+        _editorLayoutSnapshot = (
+            SidebarColumn.ActualWidth,
+            ContentFrame.ActualWidth,
+            ContentFrame.ActualOffset,
+            _shellState.IsPaneOpen);
+
+    /// <summary>Asserts (via log) that opening + closing the editor restored the exact prior layout.</summary>
+    [Conditional("DEBUG")]
+    private void LogEditorLayoutInvariant()
+    {
+        if (_editorLayoutSnapshot is not { } before)
+        {
+            return;
+        }
+
+        var (sidebarWidth, contentWidth, contentOffset, paneOpen) =
+            (SidebarColumn.ActualWidth, ContentFrame.ActualWidth, ContentFrame.ActualOffset, _shellState.IsPaneOpen);
+
+        if (sidebarWidth.Equals(before.SidebarWidth) &&
+            contentWidth.Equals(before.ContentWidth) &&
+            contentOffset.Equals(before.ContentOffset) &&
+            paneOpen == before.PaneOpen)
+        {
+            _logger.LogInformation(
+                "Editor closed: layout invariant OK (sidebar {Sidebar:F0}px, content {Content:F0}px, pane open {PaneOpen})",
+                sidebarWidth, contentWidth, paneOpen);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Editor close changed the layout! sidebar {SidebarBefore:F0}->{SidebarAfter:F0}, " +
+                "content {ContentBefore:F0}->{ContentAfter:F0}, offset {OffsetBefore}->{OffsetAfter}, " +
+                "pane open {PaneBefore}->{PaneAfter}",
+                before.SidebarWidth, sidebarWidth,
+                before.ContentWidth, contentWidth,
+                before.ContentOffset, contentOffset,
+                before.PaneOpen, paneOpen);
+        }
+
+        _editorLayoutSnapshot = null;
+    }
+
+    private (double SidebarWidth, double ContentWidth, System.Numerics.Vector3 ContentOffset, bool PaneOpen)? _editorLayoutSnapshot;
 
     private async Task<bool> ConfirmDiscardAsync()
     {
@@ -832,7 +966,7 @@ public sealed partial class MainWindow : Window
 
         if (await _editor.SaveAsync(scope))
         {
-            EditorHost.Visibility = Visibility.Collapsed;
+            await CloseEditorAsync();
             ViewModel.Status = "Event saved";
         }
         else if (!string.IsNullOrWhiteSpace(_editor.ErrorMessage))
@@ -848,7 +982,7 @@ public sealed partial class MainWindow : Window
             await _editor.DeleteAsync();
 
             ViewModel.RecordDeletion(_editor.EventId);
-            EditorHost.Visibility = Visibility.Collapsed;
+            await CloseEditorAsync();
             ViewModel.Status = "Event deleted";
 
             Snackbar.Show("Event deleted", "Undo");

@@ -55,6 +55,7 @@
                     <!-- Large borderless title input. -->
                     <StackPanel Spacing="{StaticResource SpaceXS}">
                         <TextBox
+                            x:Name="TitleBox"
                             MinHeight="44"
                             Padding="0,6"
                             Background="{ThemeResource App.TransparentBrush}"
@@ -119,9 +120,16 @@
                                         FontSize="{StaticResource FontSizeCaption}"
                                         Foreground="{ThemeResource App.TextSecondaryBrush}"
                                         Text="All day" />
+                                    <!-- Empty On/Off captions keep the switch compact so the
+                                         "All day" row never crowds the WHEN header. State is
+                                         still announced via AutomationProperties.Name. -->
                                     <ToggleSwitch
                                         x:Name="AllDaySwitch"
                                         MinWidth="0"
+                                        Margin="0"
+                                        Padding="0"
+                                        OnContent=""
+                                        OffContent=""
                                         AutomationProperties.Name="All day"
                                         IsOn="{x:Bind ViewModel.IsAllDay, Mode=TwoWay}" />
                                 </StackPanel>
@@ -130,22 +138,28 @@
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                                     <CalendarDatePicker
                                         x:Name="StartDatePicker"
+                                        MinWidth="150"
                                         HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
                                         AutomationProperties.Name="Start date"
                                         Date="{x:Bind ViewModel.StartDate, Mode=TwoWay}" />
                                     <TimePicker
                                         Grid.Column="1"
+                                        MinWidth="110"
                                         AutomationProperties.Name="Start time"
                                         Time="{x:Bind ViewModel.StartTime, Mode=TwoWay}" />
                                 </Grid>
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                                     <CalendarDatePicker
                                         x:Name="EndDatePicker"
+                                        MinWidth="150"
                                         HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
                                         AutomationProperties.Name="End date"
                                         Date="{x:Bind ViewModel.EndDate, Mode=TwoWay}" />
                                     <TimePicker
                                         Grid.Column="1"
+                                        MinWidth="110"
                                         AutomationProperties.Name="End time"
                                         Time="{x:Bind ViewModel.EndTime, Mode=TwoWay}" />
                                 </Grid>

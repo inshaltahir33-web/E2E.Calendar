@@ -333,7 +333,7 @@
         </Grid>
 
         <!-- ================= BODY ================= -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
 
             <!-- SIDEBAR: one scrollable column with New, mini calendar, calendars, reminders,
                  tasks and tags. Settings + collapse stay pinned at the bottom. -->
@@ -353,13 +353,18 @@
                         VerticalScrollBarVisibility="Auto">
                         <StackPanel Padding="12,8,12,44" Spacing="{StaticResource SpaceXS}">
 
+                            <!-- Menu-only "New" button: the flyout opens on click; opening the
+                                 editor is done by its "Event" item (same OpenNewEvent path as
+                                 every other entry point). Disabled while the editor is open so
+                                 the menu can never appear on top of it. -->
                             <Button
-                                Click="OnNewSplitButtonClick"
+                                x:Name="NewMenuButton"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Left"
-                                AutomationProperties.Name="Create a new event"
-                                ToolTipService.ToolTip="New event (N)">
+                                IsEnabled="{x:Bind EditorViewModel.IsMenuEnabled, Mode=OneWay}"
+                                AutomationProperties.Name="New event, reminder or task"
+                                ToolTipService.ToolTip="New (N)">
                                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
                                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
                                     <TextBlock Text="New" />
@@ -565,11 +570,26 @@
                 </Grid>
             </Border>
 
-            <!-- EDITOR DRAWER (right). The New event editor MUST be added as a child of THIS host. -->
+            <!-- EDITOR SCRIM: light dismiss layer behind the drawer. Overlay only —
+                 zero layout footprint, does not touch the sidebar/content columns. -->
+            <Border
+                x:Name="EditorScrim"
+                Grid.ColumnSpan="2"
+                Background="{ThemeResource App.ScrimBrush}"
+                Visibility="Collapsed"
+                Tapped="OnEditorScrimTapped"
+                AutomationProperties.Name="Close the event editor" />
+
+            <!-- EDITOR DRAWER (right): fixed-width overlay pinned to the right edge, full
+                 height. It spans the same cell as sidebar + content as a LATER sibling, so
+                 opening/closing it never changes the calendar grid's or sidebar's width,
+                 position or scroll offset. Never a layout column / Inline pane. -->
             <Grid
                 x:Name="EditorHost"
-                Grid.Column="2"
+                Grid.ColumnSpan="2"
                 Width="{StaticResource EditorPaneWidth}"
+                HorizontalAlignment="Right"
+                IsHitTestVisible="False"
                 Visibility="Collapsed" />
 
         </Grid>

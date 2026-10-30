@@ -132,6 +132,9 @@ public partial class EventEditorView : UserControl
         AllDayPickers.Visibility = ViewModel.IsAllDay ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>Refocuses the title box when the editor is re-opened while already visible.</summary>
+    public void FocusTitle() => TitleBox.Focus(FocusState.Programmatic);
+
     private void UpdateColorSwatch()
     {
         var color = ViewModel.Color ?? ViewModel.SelectedCalendar?.Color;
