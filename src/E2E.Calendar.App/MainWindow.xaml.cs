@@ -166,7 +166,8 @@ public sealed partial class MainWindow : Window
 
         this.InitializeComponent();
 
-        SyncButton.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+        SyncMenuItem.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+        SyncStatusText.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
         InvitationInfoBar.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
 
         _searchDebounce = DispatcherQueue.GetForCurrentThread().CreateTimer();
@@ -405,16 +406,12 @@ public sealed partial class MainWindow : Window
         _shellState.SetPaneOpen(!collapsed);
 
         var targetWidth = collapsed
-            ? Tokens.Double("SidebarCollapsedWidth", 48d)
-            : Tokens.Double("SidebarWidth", 272d);
+            ? Tokens.Double("SidebarCollapsedWidth", 56d)
+            : Tokens.Double("SidebarWidth", 264d);
 
         SidebarColumn.Width = targetWidth;
         SidebarHost.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         SidebarIconRail.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
-
-        // At narrow widths the toolbar would overflow, so the sync-status text drops out and
-        // only the sync icon stays (the status is still available via its tooltip).
-        SyncStatusText.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
 
         // Apply the final layout width in a single step. Animating the layout
         // Width would reflow the time grid on every frame and trigger a full
@@ -517,6 +514,9 @@ public sealed partial class MainWindow : Window
     private void OnTasksClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
 
     private void OnSettingsClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Settings);
+
+    private void OnSidebarToggleClick(object sender, RoutedEventArgs e) =>
+        ApplySidebarCollapsed(!ViewModel.IsSidebarCollapsed);
 
     private void ShowView(CalendarViewMode mode, string key)
     {
