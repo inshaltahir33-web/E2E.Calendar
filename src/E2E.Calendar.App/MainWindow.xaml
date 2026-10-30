@@ -51,7 +51,7 @@
                                 Padding="6,0"
                                 VerticalAlignment="Center"
                                 Background="{ThemeResource App.HoverBrush}"
-                                CornerRadius="8">
+                                CornerRadius="{StaticResource RadiusControl}">
                                 <TextBlock
                                     HorizontalAlignment="Center"
                                     Style="{ThemeResource CaptionTextBlockStyle}"

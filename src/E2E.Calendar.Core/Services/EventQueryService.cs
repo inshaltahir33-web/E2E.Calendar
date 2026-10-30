@@ -10,11 +10,13 @@ public sealed class EventQueryService : IEventQueryCache
 
     private readonly IEventRepository _events;
     private readonly IRecurrenceExpander _expander;
+    private readonly ICalendarRepository? _calendars;
     private readonly LruCache<QueryKey, QueryResult> _cache;
 
     public EventQueryService(
         IEventRepository events,
         IRecurrenceExpander expander,
+        ICalendarRepository? calendars = null,
         int cacheCapacity = DefaultCacheCapacity)
     {
         ArgumentNullException.ThrowIfNull(events);
@@ -22,6 +24,7 @@ public sealed class EventQueryService : IEventQueryCache
 
         _events = events;
         _expander = expander;
+        _calendars = calendars;
         _cache = new LruCache<QueryKey, QueryResult>(cacheCapacity);
     }
 
@@ -44,8 +47,15 @@ public sealed class EventQueryService : IEventQueryCache
     {
         var result = await QueryAsync(fromUtc, toUtc, calendarId, cancellationToken);
 
+        var calendarColors = _calendars is null
+            ? new Dictionary<string, string?>(StringComparer.Ordinal)
+            : (await _calendars.GetAllAsync(cancellationToken)).ToDictionary(
+                calendar => calendar.Id,
+                calendar => calendar.Color,
+                StringComparer.Ordinal);
+
         return result.Occurrences
-            .Select(occurrence => ToItem(occurrence, result.Sources))
+            .Select(occurrence => ToItem(occurrence, result.Sources, calendarColors))
             .ToList();
     }
 
@@ -56,6 +66,12 @@ public sealed class EventQueryService : IEventQueryCache
         ArgumentNullException.ThrowIfNull(criteria);
 
         var events = await _events.SearchAsync(criteria, cancellationToken);
+        var calendarColors = _calendars is null
+            ? new Dictionary<string, string?>(StringComparer.Ordinal)
+            : (await _calendars.GetAllAsync(cancellationToken)).ToDictionary(
+                calendar => calendar.Id,
+                calendar => calendar.Color,
+                StringComparer.Ordinal);
 
         return events.Select(calendarEvent => new CalendarItem
         {
@@ -65,7 +81,10 @@ public sealed class EventQueryService : IEventQueryCache
             EndUtc = calendarEvent.EndUtc,
             Kind = CalendarItemKind.Event,
             CalendarId = calendarEvent.CalendarId,
-            Color = calendarEvent.Color,
+            Color = calendarEvent.Color
+                ?? (calendarEvent.CalendarId is not null && calendarColors.TryGetValue(calendarEvent.CalendarId, out var calendarColor)
+                    ? calendarColor
+                    : null),
             Location = calendarEvent.Location,
             AllDay = calendarEvent.AllDay,
             HasTime = !calendarEvent.AllDay,
@@ -162,9 +181,19 @@ public sealed class EventQueryService : IEventQueryCache
         return result;
     }
 
-    private static CalendarItem ToItem(Occurrence occurrence, IReadOnlyDictionary<string, CalendarEvent> sources)
+    private static CalendarItem ToItem(
+        Occurrence occurrence,
+        IReadOnlyDictionary<string, CalendarEvent> sources,
+        IReadOnlyDictionary<string, string?> calendarColors)
     {
         sources.TryGetValue(occurrence.EventId, out var source);
+
+        var color = source?.Color;
+        if (color is null && source?.CalendarId is { } calendarId &&
+            calendarColors.TryGetValue(calendarId, out var calendarColor))
+        {
+            color = calendarColor;
+        }
 
         return new CalendarItem
         {
@@ -174,7 +203,7 @@ public sealed class EventQueryService : IEventQueryCache
             EndUtc = occurrence.EndUtc,
             Kind = CalendarItemKind.Event,
             CalendarId = source?.CalendarId,
-            Color = source?.Color,
+            Color = color,
             Location = source?.Location,
             AllDay = source?.AllDay ?? false,
             HasTime = source?.AllDay != true,

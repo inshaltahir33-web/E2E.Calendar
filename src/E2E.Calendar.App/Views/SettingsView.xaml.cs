@@ -35,7 +35,9 @@ public sealed partial class SettingsView : UserControl
             ("Appearance", SectionAppearance),
             ("Shortcuts", SectionShortcuts),
             ("Privacy & data", SectionPrivacy),
+#if DEBUG
             ("Developer", SectionDeveloper),
+#endif
             ("About", SectionAbout),
         ];
 

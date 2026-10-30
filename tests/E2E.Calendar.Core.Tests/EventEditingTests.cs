@@ -61,28 +61,6 @@ public sealed class EventEditingTests
     }
 
     [Fact]
-    public async Task The_free_tier_gets_two_event_templates()
-    {
-        var entitlements = Substitute.For<IEntitlementService>();
-        entitlements.LimitFor(Feature.CalendarTemplates).Returns(FreeTier.MaxTemplates);
-
-        var templates = await Task.FromResult(new EventTemplateService(entitlements).GetAvailable());
-
-        templates.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public void A_premium_user_is_not_limited_in_templates()
-    {
-        var entitlements = Substitute.For<IEntitlementService>();
-        entitlements.LimitFor(Feature.CalendarTemplates).Returns(FreeTier.Unlimited);
-
-        var templates = new EventTemplateService(entitlements).GetAvailable();
-
-        templates.Should().HaveCount(2);
-    }
-
-    [Fact]
     public async Task Editing_a_single_occurrence_creates_an_exception()
     {
         var events = Substitute.For<IEventRepository>();

@@ -127,7 +127,7 @@ public abstract partial class CalendarPageViewModel : ObservableObject
 
     private async void OnStatePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(CalendarStateViewModel.CurrentDate) or nameof(CalendarStateViewModel.ViewMode)))
+        if (e.PropertyName is not (nameof(CalendarStateViewModel.CurrentDate) or nameof(CalendarStateViewModel.ViewMode) or nameof(CalendarStateViewModel.WeekStart)))
         {
             return;
         }

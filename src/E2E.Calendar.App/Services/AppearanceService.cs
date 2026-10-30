@@ -89,14 +89,7 @@ public sealed class AppearanceService
             return;
         }
 
-        var palette = settings.Accent == AccentSource.Custom
-            ? CalendarPalette.Normalize(settings.AccentColor)
-            : CalendarPalette.Indigo;
-
-        if (CalendarColors.Bar(null, palette) is not SolidColorBrush { Color: var color })
-        {
-            return;
-        }
+        var color = Windows.UI.Color.FromArgb(255, 0x63, 0x66, 0xF1);
 
         resources["SystemAccentColor"] = color;
         resources["SystemAccentColorLight2"] = color;

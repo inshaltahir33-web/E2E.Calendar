@@ -21,7 +21,6 @@ public sealed class SettingsServiceTests
         settings.ClockFormat.Should().Be(ClockFormat.TwelveHour);
         settings.WeekStart.Should().Be(WeekStartDay.Monday);
         settings.ShowWeekends.Should().BeTrue();
-        settings.Density.Should().Be(AppDensity.Comfortable);
         settings.OnboardingComplete.Should().BeFalse();
     }
 
@@ -43,7 +42,6 @@ public sealed class SettingsServiceTests
             ShowWeekNumbers = true,
             ShowSecondaryTimeZone = true,
             SecondaryTimeZoneId = "UTC",
-            Density = AppDensity.Compact,
             OnboardingComplete = true,
         });
 
@@ -59,7 +57,6 @@ public sealed class SettingsServiceTests
         reloaded.ShowWeekNumbers.Should().BeTrue();
         reloaded.ShowSecondaryTimeZone.Should().BeTrue();
         reloaded.SecondaryTimeZoneId.Should().Be("UTC");
-        reloaded.Density.Should().Be(AppDensity.Compact);
         reloaded.OnboardingComplete.Should().BeTrue();
     }
 
@@ -112,14 +109,12 @@ public sealed class SettingsServiceTests
             WeekStart = WeekStartDay.Sunday,
             ClockFormat = ClockFormat.TwentyFourHour,
             ShowWeekends = false,
-            Density = AppDensity.Compact,
         });
 
         service.Theme.Should().Be(AppTheme.Dark);
         service.WeekStart.Should().Be(WeekStartDay.Sunday);
         service.Clock.Should().Be(ClockFormat.TwentyFourHour);
         service.ShowWeekends.Should().BeFalse();
-        service.Density.Should().Be(AppDensity.Compact);
         changed.Should().Contain(nameof(ISettingsService.Theme));
     }
 

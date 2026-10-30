@@ -2,15 +2,16 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:uwp="using Windows.UI.Xaml">
     <!-- E2E Calendar theme tokens. Brand: Ink Indigo. Do NOT hard-code colours anywhere else. -->
+    <!-- UI-SPEC.md is the single source of truth for these values. -->
 
     <!-- Brand accent overrides system accent so stock controls (toggles, checkboxes, accent buttons) match -->
-    <Color x:Key="SystemAccentColor">#4F5BD5</Color>
-    <Color x:Key="SystemAccentColorLight1">#6C77E0</Color>
-    <Color x:Key="SystemAccentColorLight2">#8B95FF</Color>
-    <Color x:Key="SystemAccentColorLight3">#B3B9FF</Color>
-    <Color x:Key="SystemAccentColorDark1">#444FC0</Color>
-    <Color x:Key="SystemAccentColorDark2">#3A44A8</Color>
-    <Color x:Key="SystemAccentColorDark3">#2E3786</Color>
+    <Color x:Key="SystemAccentColor">#6366F1</Color>
+    <Color x:Key="SystemAccentColorLight1">#7477F5</Color>
+    <Color x:Key="SystemAccentColorLight2">#8B8DF6</Color>
+    <Color x:Key="SystemAccentColorLight3">#B3B5FA</Color>
+    <Color x:Key="SystemAccentColorDark1">#5558E3</Color>
+    <Color x:Key="SystemAccentColorDark2">#4346D1</Color>
+    <Color x:Key="SystemAccentColorDark3">#3134B8</Color>
 
     <!-- Spacing, radius, sizing, motion and typography tokens.
          Single token system for the whole app: brand colours above/below, layout here.
@@ -22,6 +23,15 @@
     <x:Double x:Key="SpaceMD">12</x:Double>
     <x:Double x:Key="SpaceLG">16</x:Double>
     <x:Double x:Key="SpaceXL">24</x:Double>
+    <x:Double x:Key="SpaceXXL">32</x:Double>
+
+    <!-- UI-SPEC alias names (theme-pack style) -->
+    <x:Double x:Key="Space.XS">4</x:Double>
+    <x:Double x:Key="Space.S">8</x:Double>
+    <x:Double x:Key="Space.M">12</x:Double>
+    <x:Double x:Key="Space.L">16</x:Double>
+    <x:Double x:Key="Space.XL">24</x:Double>
+    <x:Double x:Key="Space.XXL">32</x:Double>
 
     <Thickness x:Key="InsetXS">4</Thickness>
     <Thickness x:Key="InsetSM">8</Thickness>
@@ -29,19 +39,26 @@
     <Thickness x:Key="InsetLG">16</Thickness>
     <Thickness x:Key="InsetXL">24</Thickness>
 
-    <CornerRadius x:Key="RadiusControl">6</CornerRadius>
+    <CornerRadius x:Key="RadiusControl">8</CornerRadius>
     <CornerRadius x:Key="RadiusCard">12</CornerRadius>
     <CornerRadius x:Key="RadiusChip">6</CornerRadius>
     <CornerRadius x:Key="RadiusSwatch">6</CornerRadius>
-    <CornerRadius x:Key="RadiusPill">12</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+    <CornerRadius x:Key="RadiusInput">8</CornerRadius>
+
+    <!-- UI-SPEC alias names (theme-pack style) -->
+    <CornerRadius x:Key="Radius.Control">8</CornerRadius>
+    <CornerRadius x:Key="Radius.Card">12</CornerRadius>
+    <CornerRadius x:Key="Radius.Chip">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
 
     <x:Double x:Key="TitleBarHeight">48</x:Double>
-    <x:Double x:Key="SidebarWidth">272</x:Double>
-    <x:Double x:Key="SidebarCollapsedWidth">48</x:Double>
+    <x:Double x:Key="SidebarWidth">264</x:Double>
+    <x:Double x:Key="SidebarCollapsedWidth">56</x:Double>
     <x:Double x:Key="ToolbarHeight">48</x:Double>
     <x:Double x:Key="GridHourHeight">56</x:Double>
     <x:Double x:Key="GridGutterWidth">56</x:Double>
-    <x:Double x:Key="GridDayHeaderHeight">64</x:Double>
+    <x:Double x:Key="GridDayHeaderHeight">60</x:Double>
     <x:Double x:Key="AllDayRowHeight">24</x:Double>
     <x:Double x:Key="AllDayStripMinHeight">32</x:Double>
     <x:Double x:Key="ChipMinHeight">22</x:Double>
@@ -70,7 +87,7 @@
     <x:Double x:Key="IconSizeLarge">16</x:Double>
     <x:Double x:Key="SearchBoxWidth">280</x:Double>
     <x:Double x:Key="SyncStatusMaxWidth">150</x:Double>
-    <x:Double x:Key="EditorPaneWidth">400</x:Double>
+    <x:Double x:Key="EditorPaneWidth">360</x:Double>
     <x:Double x:Key="SnackbarWidth">420</x:Double>
     <x:Double x:Key="MiniCalendarMinWidth">240</x:Double>
     <x:Double x:Key="MiniCalendarHeight">260</x:Double>
@@ -110,10 +127,10 @@
 
     <x:Double x:Key="FontSizeSectionHeader">11</x:Double>
     <x:Double x:Key="FontSizeCaption">12</x:Double>
-    <x:Double x:Key="FontSizeBody">14</x:Double>
-    <x:Double x:Key="FontSizeBodyStrong">14</x:Double>
+    <x:Double x:Key="FontSizeBody">13</x:Double>
+    <x:Double x:Key="FontSizeBodyStrong">13</x:Double>
     <x:Double x:Key="FontSizeSubtitle">20</x:Double>
-    <x:Double x:Key="FontSizeTitle">28</x:Double>
+    <x:Double x:Key="FontSizeTitle">20</x:Double>
     <x:Double x:Key="FontSizeEventTitle">12</x:Double>
     <x:Double x:Key="FontSizeEventTime">11</x:Double>
     <x:Double x:Key="FontSizeChip">11</x:Double>
@@ -121,52 +138,71 @@
     <x:Double x:Key="FontSizeGlyphLarge">18</x:Double>
     <x:Double x:Key="FontSizeHero">40</x:Double>
 
+    <!-- UI-SPEC typography aliases -->
+    <x:Double x:Key="FontSizePageTitle">20</x:Double>
+    <x:Double x:Key="FontSizeSectionLabel">11</x:Double>
+    <x:Double x:Key="FontSizeSecondary">12</x:Double>
+    <x:Double x:Key="FontSizeHourLabel">11</x:Double>
+
+    <!-- UI-SPEC event chip tokens -->
+    <x:Double x:Key="EventFillOpacity">0.18</x:Double>
+    <x:Double x:Key="EventBarWidth">3</x:Double>
+
+    <!-- UI-SPEC layout aliases -->
+    <x:Double x:Key="TopBarHeight">48</x:Double>
+    <x:Double x:Key="MainContentMargin">8</x:Double>
+    <x:Double x:Key="Sidebar.Width">264</x:Double>
+    <x:Double x:Key="Sidebar.CollapsedWidth">56</x:Double>
+    <x:Double x:Key="EditorDrawerWidth">360</x:Double>
+    <x:Double x:Key="Grid.HourHeight">56</x:Double>
+    <x:Double x:Key="Grid.GutterWidth">56</x:Double>
+
     <FontFamily x:Key="FontFamilyDefault">Segoe UI Variable Text, Segoe UI Variable Display, Segoe UI</FontFamily>
 
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
             <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
-            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#F3F4F8"/>
-            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#EDEFF4"/>
-            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="#E6E8EF"/>
-            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="#E6E8EF"/>
-            <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#F0F1F5"/>
+            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#F5F6FA"/>
+            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#F0F1F6"/>
+            <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#ECEDF3"/>
+            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="#E3E5EC"/>
+            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="#ECEDF3"/>
+            <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#F0F1F6"/>
             <SolidColorBrush x:Key="App.GridHourBrush" Color="#14000000"/>
             <SolidColorBrush x:Key="App.GridHalfHourBrush" Color="#0A000000"/>
             <SolidColorBrush x:Key="App.GridVerticalBrush" Color="#0F000000"/>
             <SolidColorBrush x:Key="App.TextDisabledBrush" Color="#A8ADBA"/>
-            <SolidColorBrush x:Key="App.AccentFillBrush" Color="#4F5BD5"/>
-            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#E6E9FB"/>
+            <SolidColorBrush x:Key="App.AccentFillBrush" Color="#6366F1"/>
+            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#0F6366F1"/>
             <SolidColorBrush x:Key="App.ContrastLightBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="#14171F"/>
-            <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="#F3F4F8"/>
-            <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="#F3F4F8"/>
+            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="#1A1D26"/>
+            <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="#F5F6FA"/>
+            <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="#F5F6FA"/>
             <SolidColorBrush x:Key="App.CardBackgroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="App.CardElevatedBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="App.TextPrimaryBrush" Color="#14171F"/>
-            <SolidColorBrush x:Key="App.TextSecondaryBrush" Color="#5B6272"/>
-            <SolidColorBrush x:Key="App.TextTertiaryBrush" Color="#8A90A0"/>
-            <SolidColorBrush x:Key="App.DividerBrush" Color="#E6E8EF"/>
+            <SolidColorBrush x:Key="App.CardElevatedBrush" Color="#F0F1F6"/>
+            <SolidColorBrush x:Key="App.TextPrimaryBrush" Color="#1A1D26"/>
+            <SolidColorBrush x:Key="App.TextSecondaryBrush" Color="#6B7080"/>
+            <SolidColorBrush x:Key="App.TextTertiaryBrush" Color="#8B91A3"/>
+            <SolidColorBrush x:Key="App.DividerBrush" Color="#E3E5EC"/>
             <SolidColorBrush x:Key="App.DividerStrongBrush" Color="#D3D7E2"/>
-            <SolidColorBrush x:Key="App.AccentBrush" Color="#4F5BD5"/>
-            <SolidColorBrush x:Key="App.AccentHoverBrush" Color="#444FC0"/>
-            <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#3A44A8"/>
-            <SolidColorBrush x:Key="App.AccentSubtleBrush" Color="#EEF0FD"/>
+            <SolidColorBrush x:Key="App.AccentBrush" Color="#6366F1"/>
+            <SolidColorBrush x:Key="App.AccentHoverBrush" Color="#7477F5"/>
+            <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#5558E3"/>
+            <SolidColorBrush x:Key="App.AccentSubtleBrush" Color="#0F6366F1"/>
             <SolidColorBrush x:Key="App.OnAccentBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#0A4F5BD5"/>
+            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#0F6366F1"/>
             <SolidColorBrush x:Key="App.WeekendTintBrush" Color="#06000000"/>
-            <SolidColorBrush x:Key="App.NowLineBrush" Color="#E5484D"/>
+            <SolidColorBrush x:Key="App.NowLineBrush" Color="#F43F5E"/>
             <SolidColorBrush x:Key="App.HoverBrush" Color="#EAECF3"/>
             <SolidColorBrush x:Key="App.PressedBrush" Color="#DFE2EB"/>
-            <SolidColorBrush x:Key="App.SelectedBrush" Color="#E6E9FB"/>
-            <SolidColorBrush x:Key="App.FocusBrush" Color="#14171F"/>
+            <SolidColorBrush x:Key="App.SelectedBrush" Color="#0F6366F1"/>
+            <SolidColorBrush x:Key="App.FocusBrush" Color="#1A1D26"/>
             <SolidColorBrush x:Key="App.SuccessBrush" Color="#2E9E5B"/>
             <SolidColorBrush x:Key="App.WarningBrush" Color="#D98A00"/>
-            <SolidColorBrush x:Key="App.DangerBrush" Color="#E5484D"/>
-            <SolidColorBrush x:Key="Cal.Indigo.BarBrush" Color="#4F5BD5"/>
-            <SolidColorBrush x:Key="Cal.Indigo.FillBrush" Color="#E6E8F9"/>
-            <SolidColorBrush x:Key="Cal.Indigo.TextBrush" Color="#2B3275"/>
+            <SolidColorBrush x:Key="App.DangerBrush" Color="#EF4444"/>
+            <SolidColorBrush x:Key="Cal.Indigo.BarBrush" Color="#6366F1"/>
+            <SolidColorBrush x:Key="Cal.Indigo.FillBrush" Color="#E0E7FF"/>
+            <SolidColorBrush x:Key="Cal.Indigo.TextBrush" Color="#312E81"/>
             <SolidColorBrush x:Key="Cal.Blue.BarBrush" Color="#2B7DE9"/>
             <SolidColorBrush x:Key="Cal.Blue.FillBrush" Color="#E1EDFC"/>
             <SolidColorBrush x:Key="Cal.Blue.TextBrush" Color="#184580"/>
@@ -185,7 +221,7 @@
             <SolidColorBrush x:Key="Cal.Orange.BarBrush" Color="#E8590C"/>
             <SolidColorBrush x:Key="Cal.Orange.FillBrush" Color="#FCE8DD"/>
             <SolidColorBrush x:Key="Cal.Orange.TextBrush" Color="#803107"/>
-            <SolidColorBrush x:Key="Cal.Red.BarBrush" Color="#E5484D"/>
+            <SolidColorBrush x:Key="Cal.Red.BarBrush" Color="#EF4444"/>
             <SolidColorBrush x:Key="Cal.Red.FillBrush" Color="#FBE5E6"/>
             <SolidColorBrush x:Key="Cal.Red.TextBrush" Color="#7E282A"/>
             <SolidColorBrush x:Key="Cal.Pink.BarBrush" Color="#D6409F"/>
@@ -200,47 +236,60 @@
             <SolidColorBrush x:Key="Cal.Brown.BarBrush" Color="#8B6B4A"/>
             <SolidColorBrush x:Key="Cal.Brown.FillBrush" Color="#EFEAE6"/>
             <SolidColorBrush x:Key="Cal.Brown.TextBrush" Color="#4C3B29"/>
+
+            <!-- UI-SPEC canonical color tokens -->
+            <SolidColorBrush x:Key="AppBackground" Color="#F5F6FA"/>
+            <SolidColorBrush x:Key="Surface" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SurfaceRaised" Color="#F0F1F6"/>
+            <SolidColorBrush x:Key="Border" Color="#E3E5EC"/>
+            <SolidColorBrush x:Key="GridLine" Color="#ECEDF3"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="#1A1D26"/>
+            <SolidColorBrush x:Key="TextSecondary" Color="#6B7080"/>
+            <SolidColorBrush x:Key="Accent" Color="#6366F1"/>
+            <SolidColorBrush x:Key="AccentSoft" Color="#0F6366F1"/>
+            <SolidColorBrush x:Key="NowLine" Color="#F43F5E"/>
+            <SolidColorBrush x:Key="Danger" Color="#EF4444"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
             <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
-            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#0F1115"/>
-            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#181B22"/>
+            <SolidColorBrush x:Key="App.SurfaceBaseBrush" Color="#0E1015"/>
+            <SolidColorBrush x:Key="App.SurfaceRaisedBrush" Color="#1B1F2A"/>
             <SolidColorBrush x:Key="App.SurfaceSunkenBrush" Color="#0B0D10"/>
-            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="#272B35"/>
-            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="#252A33"/>
+            <SolidColorBrush x:Key="App.StrokeSubtleBrush" Color="#262B38"/>
+            <SolidColorBrush x:Key="App.StrokeGridBrush" Color="#1E2230"/>
             <SolidColorBrush x:Key="App.StrokeGridHalfBrush" Color="#1B1F27"/>
             <SolidColorBrush x:Key="App.GridHourBrush" Color="#14FFFFFF"/>
             <SolidColorBrush x:Key="App.GridHalfHourBrush" Color="#0AFFFFFF"/>
             <SolidColorBrush x:Key="App.GridVerticalBrush" Color="#0DFFFFFF"/>
             <SolidColorBrush x:Key="App.TextDisabledBrush" Color="#626978"/>
-            <SolidColorBrush x:Key="App.AccentFillBrush" Color="#8B95FF"/>
-            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#20253A"/>
-            <SolidColorBrush x:Key="App.ContrastLightBrush" Color="#ECEEF4"/>
-            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="#0F1115"/>
-            <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="#0F1115"/>
-            <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="#12151B"/>
-            <SolidColorBrush x:Key="App.CardBackgroundBrush" Color="#181B22"/>
-            <SolidColorBrush x:Key="App.CardElevatedBrush" Color="#1F232C"/>
-            <SolidColorBrush x:Key="App.TextPrimaryBrush" Color="#ECEEF4"/>
-            <SolidColorBrush x:Key="App.TextSecondaryBrush" Color="#A5ABBA"/>
+            <SolidColorBrush x:Key="App.AccentFillBrush" Color="#6366F1"/>
+            <SolidColorBrush x:Key="App.SelectionFillBrush" Color="#0F6366F1"/>
+            <SolidColorBrush x:Key="App.ContrastLightBrush" Color="#E8EAF0"/>
+            <SolidColorBrush x:Key="App.ContrastDarkBrush" Color="#0E1015"/>
+            <SolidColorBrush x:Key="App.WindowBackgroundBrush" Color="#0E1015"/>
+            <SolidColorBrush x:Key="App.SidebarBackgroundBrush" Color="#0E1015"/>
+            <SolidColorBrush x:Key="App.CardBackgroundBrush" Color="#151821"/>
+            <SolidColorBrush x:Key="App.CardElevatedBrush" Color="#1B1F2A"/>
+            <SolidColorBrush x:Key="App.TextPrimaryBrush" Color="#E8EAF0"/>
+            <SolidColorBrush x:Key="App.TextSecondaryBrush" Color="#8B91A3"/>
             <SolidColorBrush x:Key="App.TextTertiaryBrush" Color="#7B8192"/>
-            <SolidColorBrush x:Key="App.DividerBrush" Color="#272B35"/>
+            <SolidColorBrush x:Key="App.DividerBrush" Color="#262B38"/>
             <SolidColorBrush x:Key="App.DividerStrongBrush" Color="#343947"/>
-            <SolidColorBrush x:Key="App.AccentBrush" Color="#8B95FF"/>
-            <SolidColorBrush x:Key="App.AccentHoverBrush" Color="#A1A9FF"/>
-            <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#7580F0"/>
-            <SolidColorBrush x:Key="App.AccentSubtleBrush" Color="#232748"/>
-            <SolidColorBrush x:Key="App.OnAccentBrush" Color="#0F1115"/>
-            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#0F8B95FF"/>
+            <SolidColorBrush x:Key="App.AccentBrush" Color="#6366F1"/>
+            <SolidColorBrush x:Key="App.AccentHoverBrush" Color="#7477F5"/>
+            <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#5558E3"/>
+            <SolidColorBrush x:Key="App.AccentSubtleBrush" Color="#0F6366F1"/>
+            <SolidColorBrush x:Key="App.OnAccentBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="App.TodayTintBrush" Color="#0F6366F1"/>
             <SolidColorBrush x:Key="App.WeekendTintBrush" Color="#08FFFFFF"/>
-            <SolidColorBrush x:Key="App.NowLineBrush" Color="#FF6369"/>
+            <SolidColorBrush x:Key="App.NowLineBrush" Color="#F43F5E"/>
             <SolidColorBrush x:Key="App.HoverBrush" Color="#222632"/>
             <SolidColorBrush x:Key="App.PressedBrush" Color="#2B303D"/>
-            <SolidColorBrush x:Key="App.SelectedBrush" Color="#20253A"/>
-            <SolidColorBrush x:Key="App.FocusBrush" Color="#ECEEF4"/>
+            <SolidColorBrush x:Key="App.SelectedBrush" Color="#0F6366F1"/>
+            <SolidColorBrush x:Key="App.FocusBrush" Color="#E8EAF0"/>
             <SolidColorBrush x:Key="App.SuccessBrush" Color="#4CC38A"/>
             <SolidColorBrush x:Key="App.WarningBrush" Color="#F0B03A"/>
-            <SolidColorBrush x:Key="App.DangerBrush" Color="#FF6369"/>
+            <SolidColorBrush x:Key="App.DangerBrush" Color="#EF4444"/>
             <SolidColorBrush x:Key="Cal.Indigo.BarBrush" Color="#6974DB"/>
             <SolidColorBrush x:Key="Cal.Indigo.FillBrush" Color="#262C51"/>
             <SolidColorBrush x:Key="Cal.Indigo.TextBrush" Color="#BCC1EF"/>
@@ -277,6 +326,19 @@
             <SolidColorBrush x:Key="Cal.Brown.BarBrush" Color="#9C8165"/>
             <SolidColorBrush x:Key="Cal.Brown.FillBrush" Color="#36302C"/>
             <SolidColorBrush x:Key="Cal.Brown.TextBrush" Color="#D3C7BA"/>
+
+            <!-- UI-SPEC canonical color tokens -->
+            <SolidColorBrush x:Key="AppBackground" Color="#0E1015"/>
+            <SolidColorBrush x:Key="Surface" Color="#151821"/>
+            <SolidColorBrush x:Key="SurfaceRaised" Color="#1B1F2A"/>
+            <SolidColorBrush x:Key="Border" Color="#262B38"/>
+            <SolidColorBrush x:Key="GridLine" Color="#1E2230"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="#E8EAF0"/>
+            <SolidColorBrush x:Key="TextSecondary" Color="#8B91A3"/>
+            <SolidColorBrush x:Key="Accent" Color="#6366F1"/>
+            <SolidColorBrush x:Key="AccentSoft" Color="#0F6366F1"/>
+            <SolidColorBrush x:Key="NowLine" Color="#F43F5E"/>
+            <SolidColorBrush x:Key="Danger" Color="#EF4444"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="HighContrast">
             <SolidColorBrush x:Key="App.TransparentBrush" Color="#00000000"/>
@@ -354,6 +416,19 @@
             <SolidColorBrush x:Key="Cal.Brown.BarBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
             <SolidColorBrush x:Key="Cal.Brown.FillBrush" Color="{ThemeResource SystemColorWindowColor}"/>
             <SolidColorBrush x:Key="Cal.Brown.TextBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
+
+            <!-- UI-SPEC canonical color tokens -->
+            <SolidColorBrush x:Key="AppBackground" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="Surface" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="SurfaceRaised" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="Border" Color="{ThemeResource SystemColorWindowTextColor}"/>
+            <SolidColorBrush x:Key="GridLine" Color="{ThemeResource SystemColorWindowTextColor}"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="{ThemeResource SystemColorWindowTextColor}"/>
+            <SolidColorBrush x:Key="TextSecondary" Color="{ThemeResource SystemColorWindowTextColor}"/>
+            <SolidColorBrush x:Key="Accent" Color="{ThemeResource SystemColorHighlightColor}"/>
+            <SolidColorBrush x:Key="AccentSoft" Color="{ThemeResource SystemColorWindowColor}"/>
+            <SolidColorBrush x:Key="NowLine" Color="{ThemeResource SystemColorHotlightColor}"/>
+            <SolidColorBrush x:Key="Danger" Color="{ThemeResource SystemColorWindowTextColor}"/>
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

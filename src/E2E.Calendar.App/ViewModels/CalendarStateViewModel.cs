@@ -3,12 +3,14 @@ using CommunityToolkit.Mvvm.Input;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 
 namespace E2E.Calendar.App.ViewModels;
 
 public sealed partial class CalendarStateViewModel : ObservableObject
 {
     private readonly IClock _clock;
+    private readonly ISettingsService _settings;
 
     [ObservableProperty]
     private DateTimeOffset _currentDate;
@@ -22,13 +24,26 @@ public sealed partial class CalendarStateViewModel : ObservableObject
     [ObservableProperty]
     private CalendarViewMode _viewMode = CalendarViewMode.Week;
 
-    public CalendarStateViewModel(IClock clock)
+    public CalendarStateViewModel(IClock clock, ISettingsService settings)
     {
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(settings);
 
         _clock = clock;
+        _settings = settings;
+        _weekStart = settings.WeekStart;
         _currentDate = clock.UtcNow;
         _selectedDate = DateOnly.FromDateTime(clock.LocalTimeZone.ToLocal(clock.UtcNow));
+
+        settings.PropertyChanged += OnSettingsPropertyChanged;
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ISettingsService.WeekStart))
+        {
+            WeekStart = _settings.WeekStart;
+        }
     }
 
     public string LocalTimeZoneId => _clock.LocalTimeZone.ToIanaId();
@@ -40,9 +55,9 @@ public sealed partial class CalendarStateViewModel : ObservableObject
     public DateOnly LocalDate =>
         DateOnly.FromDateTime(_clock.LocalTimeZone.ToLocal(CurrentDate));
 
-    public string PeriodLabel => CalendarPeriod.FormatLabel(ViewMode, LocalDate);
+    public string PeriodLabel => CalendarPeriod.FormatLabel(ViewMode, LocalDate, weekStart: WeekStart);
 
-    public CalendarPeriod Period => CalendarPeriod.For(ViewMode, LocalDate, LocalTimeZoneId);
+    public CalendarPeriod Period => CalendarPeriod.For(ViewMode, LocalDate, LocalTimeZoneId, WeekStart);
 
     [RelayCommand]
     public void GoToToday()
@@ -115,5 +130,10 @@ public sealed partial class CalendarStateViewModel : ObservableObject
         OnPropertyChanged(nameof(Period));
     }
 
-    partial void OnWeekStartChanged(WeekStartDay value) => OnPropertyChanged(nameof(WeekStart));
+    partial void OnWeekStartChanged(WeekStartDay value)
+    {
+        OnPropertyChanged(nameof(WeekStart));
+        OnPropertyChanged(nameof(PeriodLabel));
+        OnPropertyChanged(nameof(Period));
+    }
 }

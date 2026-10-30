@@ -14,7 +14,7 @@ public interface ISettingsService : INotifyPropertyChanged
     bool ShowWeekNumbersMonth { get; }
     bool ShowSecondaryTimeZone { get; }
     string? SecondaryTimeZoneId { get; }
-    AppDensity Density { get; }
+
 
     Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default);
     Task UpdateAsync(AppSettings settings, CancellationToken cancellationToken = default);

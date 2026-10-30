@@ -92,15 +92,6 @@ public sealed class ModelContractTests
     }
 
     [Fact]
-    public void Free_tier_limits_match_the_specification()
-    {
-        FreeTier.LimitFor(Feature.MultipleAccounts).Should().Be(1);
-        FreeTier.LimitFor(Feature.MultipleTaskLists).Should().Be(1);
-        FreeTier.LimitFor(Feature.UnlimitedAlerts).Should().Be(3);
-        FreeTier.LimitFor(Feature.CalendarTemplates).Should().Be(2);
-    }
-
-    [Fact]
     public void ToIanaId_converts_a_windows_time_zone_id_to_an_iana_id()
     {
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");

@@ -7,10 +7,10 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
 {
     public const int AgendaDays = 30;
 
-    public static CalendarPeriod For(CalendarViewMode mode, DateOnly localDate, string? timeZoneId)
+    public static CalendarPeriod For(CalendarViewMode mode, DateOnly localDate, string? timeZoneId, WeekStartDay weekStart = WeekStartDay.Monday)
     {
         var timeZone = timeZoneId.TryToTimeZoneInfo(out var resolved) ? resolved : TimeZoneInfo.Utc;
-        var (fromLocal, toLocal) = LocalRange(mode, localDate);
+        var (fromLocal, toLocal) = LocalRange(mode, localDate, weekStart);
 
         return new CalendarPeriod(mode, timeZone.ToUtc(fromLocal), timeZone.ToUtc(toLocal));
     }
@@ -33,7 +33,7 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
 
     public static DateOnly EndOfMonth(DateOnly date) => StartOfMonth(date).AddMonths(1).AddDays(-1);
 
-    public static string FormatLabel(CalendarViewMode mode, DateOnly localDate, string? cultureName = null)
+    public static string FormatLabel(CalendarViewMode mode, DateOnly localDate, string? cultureName = null, WeekStartDay weekStart = WeekStartDay.Monday)
     {
         var culture = string.IsNullOrWhiteSpace(cultureName)
             ? CultureInfo.CurrentCulture
@@ -44,7 +44,7 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
         return mode switch
         {
             CalendarViewMode.Day => date.ToString("ddd d MMM yyyy", culture),
-            CalendarViewMode.Week => FormatWeekLabel(culture, localDate),
+            CalendarViewMode.Week => FormatWeekLabel(culture, localDate, weekStart),
             CalendarViewMode.Month => date.ToString("Y", culture),
             CalendarViewMode.Agenda => string.Format(
                 culture,
@@ -55,24 +55,24 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
         };
     }
 
-    private static (DateTime From, DateTime To) LocalRange(CalendarViewMode mode, DateOnly localDate)
+    private static (DateTime From, DateTime To) LocalRange(CalendarViewMode mode, DateOnly localDate, WeekStartDay weekStart = WeekStartDay.Monday)
     {
         var dayStart = localDate.ToDateTime(TimeOnly.MinValue);
 
         return mode switch
         {
             CalendarViewMode.Day => (dayStart, dayStart.AddDays(1)),
-            CalendarViewMode.Week => (StartOfWeek(localDate).ToDateTime(TimeOnly.MinValue), StartOfWeek(localDate).AddDays(7).ToDateTime(TimeOnly.MinValue)),
+            CalendarViewMode.Week => (StartOfWeek(localDate, weekStart).ToDateTime(TimeOnly.MinValue), StartOfWeek(localDate, weekStart).AddDays(7).ToDateTime(TimeOnly.MinValue)),
             CalendarViewMode.Month => (StartOfMonth(localDate).ToDateTime(TimeOnly.MinValue), StartOfMonth(localDate).AddMonths(1).ToDateTime(TimeOnly.MinValue)),
             CalendarViewMode.Agenda => (dayStart, dayStart.AddDays(AgendaDays)),
             _ => (dayStart, dayStart.AddDays(1)),
         };
     }
 
-    private static string FormatWeekLabel(CultureInfo culture, DateOnly localDate)
+    private static string FormatWeekLabel(CultureInfo culture, DateOnly localDate, WeekStartDay weekStart = WeekStartDay.Monday)
     {
-        var start = StartOfWeek(localDate);
-        var end = EndOfWeek(localDate);
+        var start = StartOfWeek(localDate, weekStart);
+        var end = EndOfWeek(localDate, weekStart);
 
         if (start.Month == end.Month && start.Year == end.Year)
         {

@@ -201,7 +201,7 @@
                             <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Add an account" />
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Google, Microsoft and CalDAV sync will appear here. The free plan includes one account." />
+                                Text="Google, Microsoft and CalDAV sync will appear here." />
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
                                 Text="{x:Bind ViewModel.AccountStatus, Mode=OneWay}"
@@ -270,10 +270,6 @@
                                             Style="{StaticResource SettingsCardTitleStyle}"
                                             Text="{Binding Name}" />
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
-                                            <ToggleSwitch
-                                                VerticalAlignment="Center"
-                                                AutomationProperties.Name="{Binding Name}"
-                                                IsOn="{Binding IsVisible, Mode=TwoWay}" />
                                             <Button
                                                 Content="Color"
                                                 Tag="{Binding Id}"
@@ -296,56 +292,11 @@
                 <StackPanel x:Name="SectionNotifications" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Notifications &amp; sounds" />
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Reminder notifications" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Show toasts and alarms even when the app is closed." />
-                            </StackPanel>
-                            <ToggleSwitch
-                                Grid.Column="1"
-                                VerticalAlignment="Center"
-                                IsOn="True"
-                                IsEnabled="False"
-                                AutomationProperties.Name="Reminder notifications" />
-                        </Grid>
-                    </Border>
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Play a sound" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Play a sound with alarms and reminders." />
-                            </StackPanel>
-                            <ToggleSwitch
-                                Grid.Column="1"
-                                VerticalAlignment="Center"
-                                IsOn="True"
-                                IsEnabled="False"
-                                AutomationProperties.Name="Play a sound" />
-                        </Grid>
-                    </Border>
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Daily agenda" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Get a morning summary of today's schedule." />
-                            </StackPanel>
-                            <ToggleSwitch
-                                Grid.Column="1"
-                                VerticalAlignment="Center"
-                                IsOn="False"
-                                IsEnabled="False"
-                                AutomationProperties.Name="Daily agenda" />
-                        </Grid>
-                    </Border>
+
+
+
 
                     <StackPanel Spacing="{StaticResource SpaceXS}">
                         <Button
@@ -355,7 +306,7 @@
                             AutomationProperties.Name="Open Windows notification settings" />
                         <TextBlock
                             Style="{StaticResource SettingsCardDescriptionStyle}"
-                            Text="Reminder delivery and sound are currently managed by Windows notification settings." />
+                            Text="Reminders appear as Windows notifications. Sound and delivery are controlled in Windows settings." />
                     </StackPanel>
                 </StackPanel>
 
@@ -381,23 +332,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Accent colour" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Use the Windows accent, match a calendar, or pick your own." />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                MinWidth="180"
-                                VerticalAlignment="Center"
-                                ItemsSource="{x:Bind ViewModel.AccentLabels, Mode=OneWay}"
-                                SelectedIndex="{x:Bind ViewModel.AccentIndex, Mode=TwoWay}"
-                                AutomationProperties.Name="Accent colour source" />
-                        </Grid>
-                    </Border>
+
 
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnDefinitions="*,Auto">
@@ -419,23 +354,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Density" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Comfortable spacing or a tighter, compact layout." />
-                            </StackPanel>
-                            <ComboBox
-                                Grid.Column="1"
-                                MinWidth="180"
-                                VerticalAlignment="Center"
-                                ItemsSource="{x:Bind ViewModel.DensityLabels, Mode=OneWay}"
-                                SelectedIndex="{x:Bind ViewModel.DensityIndex, Mode=TwoWay}"
-                                AutomationProperties.Name="Density" />
-                        </Grid>
-                    </Border>
+
                 </StackPanel>
 
                 <!--  Shortcuts  -->

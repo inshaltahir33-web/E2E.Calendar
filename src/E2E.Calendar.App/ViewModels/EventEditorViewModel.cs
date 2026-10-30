@@ -363,7 +363,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public string DetectedMeetingUrl => DetectedMeeting?.Url ?? string.Empty;
 
-    public string ColorLabel => Color ?? "No colour";
+    public string ColorLabel => Color ?? "Calendar default";
 
     public CalendarOption? SelectedCalendar
     {
@@ -398,16 +398,12 @@ public sealed partial class EventEditorViewModel : ObservableObject
             return;
         }
 
-        var index = Color is null ? -1 : palette.ToList().IndexOf(Color);
+        var optionCount = palette.Count + 1;
+        var index = Color is null ? 0 : palette.ToList().IndexOf(Color) + 1;
 
-        if (index < 0)
-        {
-            Color = palette[0];
-        }
-        else
-        {
-            Color = palette[(index + step + palette.Count) % palette.Count];
-        }
+        var next = (index + step % optionCount + optionCount) % optionCount;
+
+        Color = next == 0 ? null : palette[next - 1];
 
         OnPropertyChanged(nameof(ColorLabel));
     }
@@ -872,6 +868,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         {
             Id = calendar.Id,
             Name = calendar.Name,
+            Color = calendar.Color,
         }));
 
         CalendarId ??= calendars.FirstOrDefault()?.Id;

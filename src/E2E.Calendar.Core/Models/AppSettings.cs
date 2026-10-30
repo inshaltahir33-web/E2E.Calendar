@@ -21,15 +21,6 @@ public enum AccentSource
 }
 
 /// <summary>
-/// Density of list-style surfaces.
-/// </summary>
-public enum AppDensity
-{
-    Comfortable,
-    Compact,
-}
-
-/// <summary>
 /// User-facing preferences persisted in the <c>settings</c> table.
 /// </summary>
 public sealed record AppSettings
@@ -59,8 +50,6 @@ public sealed record AppSettings
     public bool ShowSecondaryTimeZone { get; init; }
 
     public bool ShowBirthdays { get; init; }
-
-    public AppDensity Density { get; init; } = AppDensity.Comfortable;
 
     public string? SecondaryTimeZoneId { get; init; }
 

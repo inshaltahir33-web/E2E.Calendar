@@ -57,14 +57,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         sections.Add(new SettingsSection("Appearance", "\uE790"));
         sections.Add(new SettingsSection("Shortcuts", "\uE765"));
         sections.Add(new SettingsSection("Privacy & data", "\uE72E"));
+#if DEBUG
         sections.Add(new SettingsSection("Developer", "\uEC7A"));
+#endif
         sections.Add(new SettingsSection("About", "\uE946"));
 
         Sections = sections;
 
         ThemeLabels = ["Use system setting", "Light", "Dark"];
         AccentLabels = ["Windows accent", "Match calendar", "Custom"];
-        DensityLabels = ["Comfortable", "Compact"];
         ClockFormatLabels = ["12-hour", "24-hour"];
         WeekStartLabels = ["Sunday", "Monday", "Saturday"];
         TimeZoneLabels = new ObservableCollection<string>(TimeZoneCatalog.Common.Select(item => item.Label));
@@ -76,8 +77,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     public ObservableCollection<string> ThemeLabels { get; }
 
     public ObservableCollection<string> AccentLabels { get; }
-
-    public ObservableCollection<string> DensityLabels { get; }
 
     public ObservableCollection<string> ClockFormatLabels { get; }
 
@@ -129,9 +128,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _showBirthdays;
 
     [ObservableProperty]
-    private int _densityIndex;
-
-    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddGoogleAccountCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddMicrosoftAccountCommand))]
     private bool _isAccountOperationInProgress;
@@ -178,7 +174,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowSecondaryTimeZone = settings.ShowSecondaryTimeZone;
         SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(settings.SecondaryTimeZoneId);
         ShowBirthdays = settings.ShowBirthdays;
-        DensityIndex = settings.Density == AppDensity.Compact ? 1 : 0;
 
         var calendars = await _calendars.GetAllAsync();
 
@@ -240,12 +235,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private async Task AddAccountAsync(Provider provider)
     {
-        if (!_entitlements.Can(Feature.CalendarSets) && _sync.Accounts.Count > 0)
-        {
-            AccountStatus = "The free plan supports one connected account.";
-            return;
-        }
-
         IsAccountOperationInProgress = true;
         AccountStatus = $"Opening {provider} sign-in...";
 
@@ -285,7 +274,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowSecondaryTimeZone = false;
         SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(null);
         ShowBirthdays = false;
-        DensityIndex = 0;
 
         _loading = false;
 
@@ -310,7 +298,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowSecondaryTimeZone = ShowSecondaryTimeZone,
         SecondaryTimeZoneId = TimeZoneCatalog.Common[Math.Clamp(SecondaryTimeZoneIndex, 0, TimeZoneCatalog.Common.Count - 1)].Id,
         ShowBirthdays = ShowBirthdays,
-        Density = DensityIndex == 1 ? AppDensity.Compact : AppDensity.Comfortable,
         OnboardingComplete = true,
     };
 
@@ -436,7 +423,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         await LoadAsync();
     }
 
-    partial void OnDensityIndexChanged(int value) => Persist();
 }
 
 public sealed record SettingsSection(string Title, string Glyph);

@@ -76,6 +76,14 @@ public sealed partial class MiniCalendarViewModel : ObservableObject
         _query = query;
         _clock = clock;
 
+        _state.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CalendarStateViewModel.WeekStart))
+            {
+                _ = RefreshAsync();
+            }
+        };
+
         var today = DateOnly.FromDateTime(clock.LocalTimeZone.ToLocal(clock.UtcNow));
         VisibleYear = today.Year;
         VisibleMonth = today.Month;

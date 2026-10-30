@@ -20,7 +20,6 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     private const string ShowSecondaryTimeZoneKey = "general.show_secondary_time_zone";
     private const string ShowBirthdaysKey = "calendars.show_birthdays";
     private const string SecondaryTimeZoneIdKey = "general.secondary_time_zone_id";
-    private const string DensityKey = "appearance.density";
     private const string LastViewModeKey = "general.last_view_mode";
     private const string OnboardingCompleteKey = "app.onboarding_complete";
     private const string StartMinimizedToTrayKey = "app.start_minimized_to_tray";
@@ -51,7 +50,6 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     public bool ShowWeekNumbersMonth => _current.ShowWeekNumbers;
     public bool ShowSecondaryTimeZone => _current.ShowSecondaryTimeZone;
     public string? SecondaryTimeZoneId => _current.SecondaryTimeZoneId;
-    public AppDensity Density => _current.Density;
     public bool StartMinimizedToTray => _current.StartMinimizedToTray;
 
     public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
@@ -85,7 +83,6 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             cancellationToken);
         await _repository.SetAsync(ShowBirthdaysKey, settings.ShowBirthdays ? "1" : "0", cancellationToken);
         await _repository.SetAsync(SecondaryTimeZoneIdKey, settings.SecondaryTimeZoneId, cancellationToken);
-        await _repository.SetAsync(DensityKey, settings.Density.ToString(), cancellationToken);
         await _repository.SetAsync(LastViewModeKey, settings.LastViewMode, cancellationToken);
         await _repository.SetAsync(
             OnboardingCompleteKey,
@@ -114,7 +111,6 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
         PropertyChanged?.Invoke(this, new(nameof(ShowWeekNumbersMonth)));
         PropertyChanged?.Invoke(this, new(nameof(ShowSecondaryTimeZone)));
         PropertyChanged?.Invoke(this, new(nameof(SecondaryTimeZoneId)));
-        PropertyChanged?.Invoke(this, new(nameof(Density)));
         PropertyChanged?.Invoke(this, new(nameof(StartMinimizedToTray)));
     }
 
@@ -135,7 +131,6 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             ShowSecondaryTimeZone = ParseBool(values, ShowSecondaryTimeZoneKey, defaults.ShowSecondaryTimeZone),
             ShowBirthdays = ParseBool(values, ShowBirthdaysKey, defaults.ShowBirthdays),
             SecondaryTimeZoneId = Get(values, SecondaryTimeZoneIdKey),
-            Density = ParseEnum(values, DensityKey, defaults.Density),
             LastViewMode = Get(values, LastViewModeKey),
             OnboardingComplete = ParseBool(values, OnboardingCompleteKey, defaults.OnboardingComplete),
             StartMinimizedToTray = ParseBool(values, StartMinimizedToTrayKey, defaults.StartMinimizedToTray),

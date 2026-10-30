@@ -87,7 +87,7 @@
                 MaxWidth="380"
                 HorizontalAlignment="Center"
                 Style="{StaticResource SettingsCardDescriptionStyle}"
-                Text="Reminders and alarms appear as Windows notifications, even when the app is closed."
+                Text="Reminders and alarms appear as Windows notifications."
                 TextAlignment="Center" />
             <CheckBox
                 x:Name="EnableNotifications"

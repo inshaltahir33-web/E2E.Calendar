@@ -52,6 +52,7 @@ public partial class EventEditorView : UserControl
                 break;
             case nameof(EventEditorViewModel.Color):
             case nameof(EventEditorViewModel.ColorLabel):
+            case nameof(EventEditorViewModel.CalendarId):
                 UpdateColorSwatch();
                 break;
             case nameof(EventEditorViewModel.IsNew):
@@ -108,7 +109,8 @@ public partial class EventEditorView : UserControl
 
     private void UpdateColorSwatch()
     {
-        ColorSwatch.Background = CalendarColors.Bar(this, ViewModel.Color);
+        var color = ViewModel.Color ?? ViewModel.SelectedCalendar?.Color;
+        ColorSwatch.Background = CalendarColors.Bar(this, color);
     }
 
     private void UpdateHeader()

@@ -22,8 +22,6 @@ public static class CalendarGlyphs
 
     public static string Sync { get; } = Glyph(0xE895);
 
-    public static string Premium { get; } = Glyph(0xE734);
-
     public static string Day { get; } = Glyph(0xE7B3);
 
     public static string Week { get; } = Glyph(0xE7B4);
