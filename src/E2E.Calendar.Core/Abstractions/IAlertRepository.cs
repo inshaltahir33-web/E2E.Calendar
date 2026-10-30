@@ -34,5 +34,25 @@ public interface IAlertRepository
         DateTimeOffset firedUtc,
         CancellationToken cancellationToken = default);
 
+    Task MarkMissedAsync(
+        string instanceId,
+        DateTimeOffset missedUtc,
+        CancellationToken cancellationToken = default);
+
+    Task MarkSnoozedAsync(
+        string instanceId,
+        DateTimeOffset snoozedUntilUtc,
+        CancellationToken cancellationToken = default);
+
+    Task MarkDoneAsync(
+        string instanceId,
+        DateTimeOffset doneUtc,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteStalePendingInstancesAsync(
+        string alertId,
+        IReadOnlyList<string> keepInstanceIds,
+        CancellationToken cancellationToken = default);
+
     Task<AlertInstance?> PeekNextPendingInstanceAsync(CancellationToken cancellationToken = default);
 }

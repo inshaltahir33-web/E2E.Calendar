@@ -66,6 +66,13 @@ public partial class App : Application
         {
             _host = BuildHost();
             _crashReporter = _host.Services.GetRequiredService<CrashReportingService>();
+
+            // Register toast activation before anything can show a toast, so Snooze/Done
+            // work both at startup (app launched by a toast) and while running.
+            var toastActivation = _host.Services.GetRequiredService<ToastActivationService>();
+            toastActivation.OpenRequested += OnToastOpenRequested;
+            toastActivation.Register();
+
             await _host.StartAsync();
 
             var settings = _host.Services.GetRequiredService<SettingsService>();
@@ -137,6 +144,13 @@ public partial class App : Application
 
     private void OnQuickAddHotkey(object? sender, EventArgs e) => ShowQuickAdd();
 
+    private void OnToastOpenRequested(object? sender, EventArgs e)
+    {
+        // Toast activation arrives on a background (COM) thread; the window must be
+        // touched from the UI thread.
+        _mainWindow?.DispatcherQueue.TryEnqueue(() => _window?.Activate());
+    }
+
     public void ShowQuickAdd()
     {
         ArgumentNullException.ThrowIfNull(_host);
@@ -192,6 +206,12 @@ public partial class App : Application
                 services.AddSingleton<WeatherService>();
                 services.AddSingleton<CrashReportingService>();
                 services.AddHostedService<UpdateCheckService>();
+
+                // Registered as a singleton first so ToastActivationService can wake the
+                // reminder loop after a toast Snooze/Done.
+                services.AddSingleton<ReminderNotificationService>();
+                services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ReminderNotificationService>());
+                services.AddSingleton<ToastActivationService>();
 
                 services.AddSingleton(serviceProvider => new Db(
                     ResolveDatabasePath(),

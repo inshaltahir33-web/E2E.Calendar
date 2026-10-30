@@ -63,10 +63,16 @@ public sealed class AlertRepository : IAlertRepository
             owner_id = excluded.owner_id,
             occurrence_utc = excluded.occurrence_utc,
             fire_at_utc = excluded.fire_at_utc,
-            state = excluded.state,
-            snoozed_until_utc = excluded.snoozed_until_utc,
-            fired_utc = excluded.fired_utc,
-            repeat_count = excluded.repeat_count
+            snoozed_until_utc = CASE
+                WHEN alert_instance.state IN ('pending', 'snoozed')
+                     AND alert_instance.fire_at_utc <> excluded.fire_at_utc THEN NULL
+                ELSE alert_instance.snoozed_until_utc
+            END,
+            state = CASE
+                WHEN alert_instance.state IN ('pending', 'snoozed')
+                     AND alert_instance.fire_at_utc <> excluded.fire_at_utc THEN 'pending'
+                ELSE alert_instance.state
+            END
         """;
 
     private readonly Db _db;
@@ -227,6 +233,116 @@ public sealed class AlertRepository : IAlertRepository
                 },
                 cancellationToken: cancellationToken));
         return affected == 1;
+    }
+
+    public async Task MarkMissedAsync(
+        string instanceId,
+        DateTimeOffset missedUtc,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                UPDATE alert_instance
+                SET state = @Missed, fired_utc = @MissedUtc
+                WHERE id = @Id AND state = @Pending;
+                """,
+                new
+                {
+                    Id = instanceId,
+                    Pending = EnumText.ToText(AlertState.Pending),
+                    Missed = EnumText.ToText(AlertState.Missed),
+                    MissedUtc = SqliteTime.ToUtcText(missedUtc),
+                },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task MarkSnoozedAsync(
+        string instanceId,
+        DateTimeOffset snoozedUntilUtc,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                UPDATE alert_instance
+                SET state = @Snoozed, snoozed_until_utc = @SnoozedUntil
+                WHERE id = @Id AND state IN (@Pending, @Fired);
+                """,
+                new
+                {
+                    Id = instanceId,
+                    Pending = EnumText.ToText(AlertState.Pending),
+                    Fired = EnumText.ToText(AlertState.Fired),
+                    Snoozed = EnumText.ToText(AlertState.Snoozed),
+                    SnoozedUntil = SqliteTime.ToUtcText(snoozedUntilUtc),
+                },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task MarkDoneAsync(
+        string instanceId,
+        DateTimeOffset doneUtc,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                UPDATE alert_instance
+                SET state = @Done, fired_utc = @DoneUtc
+                WHERE id = @Id AND state IN (@Pending, @Fired, @Snoozed);
+                """,
+                new
+                {
+                    Id = instanceId,
+                    Pending = EnumText.ToText(AlertState.Pending),
+                    Fired = EnumText.ToText(AlertState.Fired),
+                    Snoozed = EnumText.ToText(AlertState.Snoozed),
+                    Done = EnumText.ToText(AlertState.Done),
+                    DoneUtc = SqliteTime.ToUtcText(doneUtc),
+                },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task DeleteStalePendingInstancesAsync(
+        string alertId,
+        IReadOnlyList<string> keepInstanceIds,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+
+        // Snoozed copies carry snoozed_until_utc and are managed by the snooze flow,
+        // never by the planner, so they are never treated as stale.
+        if (keepInstanceIds.Count == 0)
+        {
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    """
+                    DELETE FROM alert_instance
+                    WHERE alert_id = @AlertId AND state = @Pending AND snoozed_until_utc IS NULL;
+                    """,
+                    new { AlertId = alertId, Pending = EnumText.ToText(AlertState.Pending) },
+                    cancellationToken: cancellationToken));
+            return;
+        }
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                DELETE FROM alert_instance
+                WHERE alert_id = @AlertId AND state = @Pending AND snoozed_until_utc IS NULL
+                  AND id NOT IN @Ids;
+                """,
+                new
+                {
+                    AlertId = alertId,
+                    Pending = EnumText.ToText(AlertState.Pending),
+                    Ids = keepInstanceIds,
+                },
+                cancellationToken: cancellationToken));
     }
 
     public async Task<AlertInstance?> PeekNextPendingInstanceAsync(CancellationToken cancellationToken = default)

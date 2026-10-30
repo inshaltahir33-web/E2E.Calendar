@@ -38,6 +38,8 @@ public sealed class ReminderPlanner
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            var plannedInstanceIds = new List<string>();
+
             foreach (var occurrence in await GetOccurrencesAsync(alert, from, to, cancellationToken))
             {
                 var fireAt = alert.TriggerAtUtc
@@ -48,10 +50,20 @@ public sealed class ReminderPlanner
                     continue;
                 }
 
+                // Alerts whose trigger time is already past are never (re-)planned, so a
+                // fresh app start cannot toast reminders that came due while it was closed.
+                if (fireAt <= nowUtc)
+                {
+                    continue;
+                }
+
+                var instanceId = InstanceId(alert.Id, occurrence.StartUtc);
+                plannedInstanceIds.Add(instanceId);
+
                 await _alerts.UpsertInstanceAsync(
                     new AlertInstance
                     {
-                        Id = InstanceId(alert.Id, occurrence.StartUtc),
+                        Id = instanceId,
                         AlertId = alert.Id,
                         OwnerType = alert.OwnerType,
                         OwnerId = alert.OwnerId,
@@ -62,6 +74,11 @@ public sealed class ReminderPlanner
                     cancellationToken);
                 planned++;
             }
+
+            // Re-plan on change: pending instances that no longer match what the item's
+            // current rule/occurrences produce (edited or deleted item, changed rule or
+            // alert) are removed so they can never fire.
+            await _alerts.DeleteStalePendingInstancesAsync(alert.Id, plannedInstanceIds, cancellationToken);
         }
 
         return planned;
@@ -99,20 +116,66 @@ public sealed class ReminderPlanner
             case OwnerType.Reminder:
             {
                 var reminder = await _reminders.GetByIdAsync(alert.OwnerId, cancellationToken);
-                return reminder?.DueUtc is { } due && !reminder.Deleted && reminder.DoneUtc is null
-                    ? [new Occurrence { EventId = reminder.Id, StartUtc = due, EndUtc = due }]
-                    : [];
+                if (reminder is null || reminder.Deleted || reminder.DoneUtc is not null ||
+                    reminder.DueUtc is not { } due)
+                {
+                    return [];
+                }
+
+                if (string.IsNullOrWhiteSpace(reminder.RRule))
+                {
+                    return [new Occurrence { EventId = reminder.Id, StartUtc = due, EndUtc = due }];
+                }
+
+                // Recurring reminders reuse the event recurrence expansion, recurring on
+                // their due time in the reminder's own time zone.
+                return _recurrence
+                    .Expand(ToRecurrenceMaster(reminder.Id, reminder.Title, due, reminder.TimeZoneId, reminder.RRule), [], from, to)
+                    .ToArray();
             }
             case OwnerType.Task:
             {
                 var task = await _tasks.GetByIdAsync(alert.OwnerId, cancellationToken);
-                return task?.DueUtc is { } due && !task.Deleted && task.DoneUtc is null
-                    ? [new Occurrence { EventId = task.Id, StartUtc = due, EndUtc = due }]
-                    : [];
+                if (task is null || task.Deleted || task.DoneUtc is not null || task.DueUtc is not { } due)
+                {
+                    return [];
+                }
+
+                if (string.IsNullOrWhiteSpace(task.RRule))
+                {
+                    return [new Occurrence { EventId = task.Id, StartUtc = due, EndUtc = due }];
+                }
+
+                // Tasks carry no time zone of their own; the expander resolves empty
+                // zones to UTC, matching how task due times are stored.
+                return _recurrence
+                    .Expand(ToRecurrenceMaster(task.Id, task.Title, due, string.Empty, task.RRule), [], from, to)
+                    .ToArray();
             }
             default:
                 return [];
         }
+    }
+
+    private static CalendarEvent ToRecurrenceMaster(
+        string id,
+        string title,
+        DateTimeOffset dueUtc,
+        string? timeZoneId,
+        string rrule)
+    {
+        return new CalendarEvent
+        {
+            Id = id,
+            CalendarId = string.Empty,
+            Title = title,
+            StartUtc = dueUtc,
+            EndUtc = dueUtc,
+            TimeZoneId = timeZoneId ?? string.Empty,
+            RRule = rrule,
+            CreatedUtc = dueUtc,
+            UpdatedUtc = dueUtc,
+        };
     }
 
     public static string InstanceId(string alertId, DateTimeOffset occurrenceUtc) =>
