@@ -8,8 +8,7 @@
         Height="20"
         Padding="0,0,6,0"
         Background="{ThemeResource App.CardBackgroundBrush}"
-        BorderBrush="{ThemeResource App.DividerBrush}"
-        BorderThickness="1"
+        BorderThickness="0"
         CornerRadius="4">
         <Grid>
             <Grid ColumnDefinitions="3,*">
@@ -29,7 +28,7 @@
                 x:Name="FocusRing"
                 BorderBrush="{ThemeResource App.FocusBrush}"
                 BorderThickness="{StaticResource FocusStrokeThickness}"
-                CornerRadius="{StaticResource RadiusChip}"
+                CornerRadius="4"
                 Visibility="Collapsed" />
         </Grid>
     </Border>

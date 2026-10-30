@@ -86,14 +86,22 @@ public sealed partial class TodoView : Page
 
     private FrameworkElement BuildRow(TodoRow row)
     {
+        // Rows are flat with a subtle 1px divider instead of a card per item.
+        var outer = new Border
+        {
+            BorderBrush = ThemeBrushes.Get(this, "GridLine"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+        };
+
         var grid = new Grid
         {
-            ColumnSpacing = 10,
-            MinHeight = Tokens.Double("SidebarRowHeight", 36),
-            Padding = new Thickness(8, 4, 8, 4),
-            Background = ThemeBrushes.Get(this, "App.CardBackgroundBrush"),
-            CornerRadius = new CornerRadius(Tokens.CornerRadius("RadiusControl", 6).TopLeft),
+            ColumnSpacing = 8,
+            MinHeight = Tokens.Double("TodoRowHeight", 44d),
+            Padding = new Thickness(4, 0, 4, 0),
+            Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
         };
+
+        outer.Child = grid;
 
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -106,6 +114,10 @@ public sealed partial class TodoView : Page
         {
             IsChecked = row.IsDone,
             MinWidth = 0,
+            Width = 20,
+            Height = 20,
+            Padding = new Thickness(0),
+            CornerRadius = new CornerRadius(10),
             VerticalAlignment = VerticalAlignment.Center,
         };
         AutomationProperties.SetName(check, "Done: " + row.Title);
@@ -120,6 +132,11 @@ public sealed partial class TodoView : Page
             Foreground = ThemeBrushes.Get(this, row.IsDone ? "App.TextTertiaryBrush" : "App.TextPrimaryBrush"),
             Opacity = row.IsDone ? 0.6 : 1,
         };
+
+        if (row.IsDone)
+        {
+            title.TextDecorations = Windows.UI.Text.TextDecorations.Strikethrough;
+        }
         Grid.SetColumn(title, 1);
         grid.Children.Add(title);
 
@@ -190,7 +207,7 @@ public sealed partial class TodoView : Page
             grid.Children.Add(subtask);
         }
 
-        return grid;
+        return outer;
     }
 
     private async Task AddSubtaskAsync(TodoRow parent)

@@ -82,7 +82,8 @@ public sealed partial class MonthChipView : UserControl
 
     private void ApplyHover(bool hovered)
     {
-        ChipBorder.BorderBrush = ThemeBrushes.Get(this, hovered ? "App.DividerStrongBrush" : "App.DividerBrush");
+        // The chip has no border, so hover feedback is a small press-in of the pastel fill.
+        ChipBorder.Opacity = hovered ? 0.88 : 1d;
     }
 
     private void OnDragStarting(UIElement sender, DragStartingEventArgs args)

@@ -8,6 +8,7 @@
     <Border
         x:Name="CellBorder"
         MinHeight="{StaticResource MonthCellMinHeight}"
+        BorderBrush="{ThemeResource GridLine}"
         BorderThickness="0,0,1,1">
         <Grid
             x:Name="CellRoot"
@@ -23,48 +24,51 @@
         <Border
             x:Name="HoverFill"
             Background="{ThemeResource App.HoverBrush}"
-            CornerRadius="4"
+            CornerRadius="{StaticResource RadiusSwatch}"
             Visibility="Collapsed" />
 
+        <!-- Selected day is a 1px Accent border only: no fill, no strip. -->
         <Border
             x:Name="SelectionBorder"
-            BorderBrush="{ThemeResource App.AccentBrush}"
+            BorderBrush="{ThemeResource Accent}"
             BorderThickness="1"
-            CornerRadius="4"
+            CornerRadius="{StaticResource RadiusSwatch}"
             Visibility="Collapsed" />
 
         <Border
             x:Name="FocusRing"
             BorderBrush="{ThemeResource App.FocusBrush}"
             BorderThickness="{StaticResource FocusStrokeThickness}"
-            CornerRadius="4"
+            CornerRadius="{StaticResource RadiusSwatch}"
             Visibility="Collapsed" />
 
-        <StackPanel Padding="4">
+        <StackPanel
+            x:Name="CellContent"
+            Padding="4">
 
-            <Grid Height="24">
+            <Grid Height="24" HorizontalAlignment="Left">
                 <Ellipse
                     x:Name="TodayCircle"
-                    Width="24"
-                    Height="24"
+                    Width="22"
+                    Height="22"
                     HorizontalAlignment="Left"
-                    Fill="{ThemeResource App.AccentBrush}"
+                    Fill="{ThemeResource Accent}"
                     Visibility="Collapsed" />
                 <TextBlock
                     x:Name="DayText"
-                    Width="24"
+                    Width="22"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     TextAlignment="Center"
-                    FontSize="{StaticResource FontSizeBody}"
-                    Foreground="{ThemeResource App.TextPrimaryBrush}" />
+                    FontSize="{StaticResource FontSizeCaption}"
+                    Foreground="{ThemeResource TextPrimary}" />
                 <TextBlock
                     x:Name="TodayText"
-                    Width="24"
+                    Width="22"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     TextAlignment="Center"
-                    FontSize="{StaticResource FontSizeBody}"
+                    FontSize="{StaticResource FontSizeCaption}"
                     Foreground="{ThemeResource App.OnAccentBrush}"
                     Visibility="Collapsed" />
                 <StackPanel
@@ -78,7 +82,7 @@
                         Width="5"
                         Height="5"
                         CornerRadius="3"
-                        Background="{ThemeResource App.AccentBrush}"
+                        Background="{ThemeResource Accent}"
                         Opacity="0.35"
                         Visibility="Collapsed" />
                     <Border
@@ -86,7 +90,7 @@
                         Width="5"
                         Height="5"
                         CornerRadius="3"
-                        Background="{ThemeResource App.AccentBrush}"
+                        Background="{ThemeResource Accent}"
                         Opacity="0.65"
                         Visibility="Collapsed" />
                     <Border
@@ -94,7 +98,7 @@
                         Width="5"
                         Height="5"
                         CornerRadius="3"
-                        Background="{ThemeResource App.AccentBrush}"
+                        Background="{ThemeResource Accent}"
                         Opacity="0.95"
                         Visibility="Collapsed" />
                 </StackPanel>
@@ -102,18 +106,20 @@
 
             <StackPanel x:Name="ChipsHost" Spacing="2" />
 
+            <!-- "+N more" is a small link, not a button-looking pill. -->
             <Button
                 x:Name="MoreButton"
                 AutomationProperties.Name="Show the remaining events for this day"
                 HorizontalAlignment="Left"
                 Background="{ThemeResource App.TransparentBrush}"
                 BorderThickness="0"
-                Padding="4,0"
+                Padding="2,0"
                 Click="OnMoreClick"
                 Visibility="Collapsed">
                 <TextBlock
                     x:Name="MoreText"
                     FontSize="{StaticResource FontSizeChip}"
+                    FontWeight="SemiBold"
                     Foreground="{ThemeResource App.TextSecondaryBrush}" />
             </Button>
 

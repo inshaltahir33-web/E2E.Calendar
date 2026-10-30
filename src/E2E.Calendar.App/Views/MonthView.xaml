@@ -7,9 +7,20 @@
 
     <Grid Background="{ThemeResource App.TransparentBrush}" RowDefinitions="Auto,*">
 
-        <Grid x:Name="WeekdayHeaderHost" Grid.Row="0" />
-
-        <Grid x:Name="MonthHost" Grid.Row="1" />
+        <!-- The month lives inside one rounded card. The grid lines are drawn by the cells
+             with 1px GridLine borders; outer cell edges are dropped so the card border is
+             the only outer line. -->
+        <Border
+            Grid.RowSpan="2"
+            Background="{ThemeResource App.CardBackgroundBrush}"
+            BorderBrush="{ThemeResource App.DividerBrush}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource RadiusCard}">
+            <Grid RowDefinitions="Auto,*">
+                <Grid x:Name="WeekdayHeaderHost" Grid.Row="0" />
+                <Grid x:Name="MonthHost" Grid.Row="1" />
+            </Grid>
+        </Border>
 
         <ctrl:SkeletonView
             x:Name="Skeleton"

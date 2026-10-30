@@ -170,15 +170,22 @@ public partial class MonthView : Page
 
         EnsureCellCount(days.Count);
 
+        var lastRow = (days.Count - 1) / 7;
+
         for (var index = 0; index < days.Count; index++)
         {
             var cell = _cells[index];
+            var dayColumn = index % 7;
+            var dayRow = index / 7;
 
             cell.Apply(days[index]);
             cell.Visibility = Visibility.Visible;
 
-            Grid.SetColumn(cell, column + (index % 7));
-            Grid.SetRow(cell, index / 7);
+            Grid.SetColumn(cell, column + dayColumn);
+            Grid.SetRow(cell, dayRow);
+
+            // Outer edges are dropped so the 1px grid never doubles up with the card border.
+            cell.SetGridEdges(right: dayColumn < 6, bottom: dayRow < lastRow);
         }
 
         for (var index = days.Count; index < _cells.Count; index++)
@@ -227,16 +234,18 @@ public partial class MonthView : Page
 
             var label = new Border
             {
-                BorderBrush = ThemeBrushes.Get(this, "App.GridHourBrush"),
+                BorderBrush = ThemeBrushes.Get(this, "GridLine"),
                 BorderThickness = new Thickness(0, 0, 0, 1),
                 Child = new TextBlock
                 {
                     Text = name.ToUpper(culture),
                     FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
-                    Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    CharacterSpacing = 40,
+                    Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 6, 0, 6),
+                    Margin = new Thickness(0, 8, 0, 8),
                 },
             };
 

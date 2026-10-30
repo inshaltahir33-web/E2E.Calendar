@@ -105,7 +105,7 @@ public partial class AgendaView : Page
             return;
         }
 
-        if (element.FindName("AgendaDayHeader") is not FrameworkElement header)
+        if (element.FindName("AgendaDayHeader") is not TextBlock header)
         {
             return;
         }
@@ -115,6 +115,15 @@ public partial class AgendaView : Page
         if (day is null)
         {
             return;
+        }
+
+        // Weekday stays small and uppercase; today's header (weekday + date) turns Accent.
+        header.Text = day.Weekday.ToUpper(System.Globalization.CultureInfo.CurrentCulture);
+        header.Foreground = ThemeBrushes.Get(this, day.IsToday ? "Accent" : "App.TextSecondaryBrush");
+
+        if (element.FindName("AgendaDayDate") is TextBlock dateText)
+        {
+            dateText.Foreground = ThemeBrushes.Get(this, day.IsToday ? "Accent" : "App.TextPrimaryBrush");
         }
 
         _anchors.RemoveAll(anchor => ReferenceEquals(anchor.Day, day));
@@ -157,6 +166,8 @@ public partial class AgendaView : Page
         ViewModel.StickyHeader = current.IsToday
             ? $"Today \u00B7 {current.DayText} \u00B7 {current.CountLabel}"
             : $"{current.DayText} \u00B7 {current.CountLabel}";
+
+        StickyHeaderText.Foreground = ThemeBrushes.Get(this, current.IsToday ? "Accent" : "App.TextPrimaryBrush");
 
         var showSticky = AgendaScroll.VerticalOffset > 2;
 

@@ -12,27 +12,42 @@
         <TextBlock
             x:Name="HeadingText"
             Grid.Row="0"
-            Style="{ThemeResource TitleTextBlockStyle}"
+            FontSize="{StaticResource FontSizePageTitle}"
+            FontWeight="SemiBold"
             Foreground="{ThemeResource App.TextPrimaryBrush}"
             AutomationProperties.Name="List name" />
 
-        <Grid
+        <!-- One rounded input with the Add button inside it. -->
+        <Border
             Grid.Row="1"
             Margin="0,12,0,4"
-            ColumnDefinitions="*,Auto"
-            ColumnSpacing="8">
-            <TextBox
-                x:Name="AddBox"
-                PlaceholderText="Add a task or reminder, then press Enter"
-                KeyDown="OnAddKeyDown"
-                AutomationProperties.Name="New item title" />
-            <Button
-                Grid.Column="1"
-                Content="Add"
-                Style="{StaticResource AccentButtonStyle}"
-                Click="OnAddClick"
-                AutomationProperties.Name="Add item" />
-        </Grid>
+            Background="{ThemeResource App.CardBackgroundBrush}"
+            BorderBrush="{ThemeResource App.DividerBrush}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource RadiusInput}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox
+                    x:Name="AddBox"
+                    Padding="12,0"
+                    Background="{ThemeResource App.TransparentBrush}"
+                    BorderThickness="0"
+                    PlaceholderText="Add a task or reminder, then press Enter"
+                    KeyDown="OnAddKeyDown"
+                    AutomationProperties.Name="New item title" />
+                <Button
+                    Grid.Column="1"
+                    Margin="0,0,4,0"
+                    Padding="12,0"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource App.TransparentBrush}"
+                    BorderThickness="0"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource App.AccentBrush}"
+                    Content="Add"
+                    Click="OnAddClick"
+                    AutomationProperties.Name="Add item" />
+            </Grid>
+        </Border>
 
         <TextBlock
             x:Name="HintText"
@@ -47,7 +62,7 @@
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <Grid>
-                <StackPanel x:Name="RowsHost" Spacing="2" />
+                <StackPanel x:Name="RowsHost" />
                 <TextBlock
                     x:Name="EmptyText"
                     Margin="0,48,0,0"

@@ -216,17 +216,14 @@ public sealed partial class MonthDayCell : UserControl
         SelectionBorder.Visibility = IsSelected ? Visibility.Visible : Visibility.Collapsed;
         WeekendTint.Visibility = IsWeekend && !IsToday ? Visibility.Visible : Visibility.Collapsed;
         MoreButton.Visibility = MoreVisible ? Visibility.Visible : Visibility.Collapsed;
-        CellBorder.BorderBrush = ThemeBrushes.Get(this, "App.GridHourBrush");
+        CellBorder.BorderBrush = ThemeBrushes.Get(this, "GridLine");
 
         HeatDot1.Visibility = EventCount >= 1 ? Visibility.Visible : Visibility.Collapsed;
         HeatDot2.Visibility = EventCount >= 3 ? Visibility.Visible : Visibility.Collapsed;
         HeatDot3.Visibility = EventCount >= 6 ? Visibility.Visible : Visibility.Collapsed;
 
-        var opacity = IsCurrentMonth ? 1d : 0.45d;
-        DayText.Opacity = opacity;
-        TodayText.Opacity = opacity;
-        TodayCircle.Opacity = opacity;
-        HeatDots.Opacity = opacity;
+        // Other-month days are dimmed to 40% so the current month stays the focus.
+        CellContent.Opacity = IsCurrentMonth ? 1d : 0.4d;
 
         var dateText = Date == default ? string.Empty : Date.ToString("d MMMM yyyy");
         var countText = EventCount switch
@@ -240,6 +237,13 @@ public sealed partial class MonthDayCell : UserControl
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CellRoot, automationName);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetItemStatus(this, automationName);
     }
+
+    /// <summary>
+    /// The month grid is drawn with cell borders; the outer edges are dropped so they do not
+    /// double up with the card border around the view.
+    /// </summary>
+    public void SetGridEdges(bool right, bool bottom) =>
+        CellBorder.BorderThickness = new Thickness(0, 0, right ? 1 : 0, bottom ? 1 : 0);
 
     public void SetChips(IReadOnlyList<MonthChip> chips)
     {
