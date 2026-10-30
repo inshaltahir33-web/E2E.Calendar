@@ -400,7 +400,8 @@
         <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
-        <Setter Property="Padding" Value="{StaticResource InsetMD}" />
+        <!-- 16px inset keeps title / description / control comfortably apart. -->
+        <Setter Property="Padding" Value="{StaticResource InsetLG}" />
     </Style>
 
     <Style x:Key="SettingsSectionHeaderStyle" TargetType="TextBlock">
@@ -469,5 +470,42 @@
         <Setter Property="Background" Value="{ThemeResource App.SurfaceRaisedBrush}" />
     </Style>
     <Style x:Key="SegmentedViewSwitcherStyle" BasedOn="{StaticResource ViewSwitcherStyle}" TargetType="muxc:SelectorBar" />
+
+    <!-- Flyouts and menus: 8px radius, Surface background, 1px border, small shadow. -->
+    <Style x:Key="AppFlyoutPresenterStyle" TargetType="FlyoutPresenter">
+        <Setter Property="Background" Value="{ThemeResource Surface}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+        <Setter Property="Padding" Value="{StaticResource InsetMD}" />
+        <Setter Property="Shadow">
+            <Setter.Value>
+                <ThemeShadow />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="AppMenuFlyoutPresenterStyle" TargetType="MenuFlyoutPresenter">
+        <Setter Property="Background" Value="{ThemeResource Surface}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+        <Setter Property="Padding" Value="{StaticResource InsetXS}" />
+        <Setter Property="Shadow">
+            <Setter.Value>
+                <ThemeShadow />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="AppMenuFlyoutItemStyle" TargetType="MenuFlyoutItem">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="12,0" />
+    </Style>
+
+    <Style x:Key="AppToggleMenuFlyoutItemStyle" TargetType="ToggleMenuFlyoutItem">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="12,0" />
+    </Style>
 
 </ResourceDictionary>

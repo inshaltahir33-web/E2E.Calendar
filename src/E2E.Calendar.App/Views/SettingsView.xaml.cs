@@ -25,21 +25,32 @@ public sealed partial class SettingsView : UserControl
         InitializeComponent();
 
         BirthdayImportCard.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+        SectionAccounts.Visibility = Visibility.Collapsed;
 
-        _sections =
-        [
+        // The panel array must mirror SettingsViewModel.Sections index for index, because the
+        // selected index drives which panel is shown. Accounts only exists when sync UI is on,
+        // Developer only in debug builds.
+        var sections = new List<(string Name, FrameworkElement Panel)>
+        {
             ("General", SectionGeneral),
-            ("Accounts", SectionAccounts),
-            ("Calendars", SectionCalendars),
-            ("Notifications & sounds", SectionNotifications),
-            ("Appearance", SectionAppearance),
-            ("Shortcuts", SectionShortcuts),
-            ("Privacy & data", SectionPrivacy),
+        };
+
+        if (AppFeatures.SyncUiEnabled)
+        {
+            sections.Add(("Accounts", SectionAccounts));
+        }
+
+        sections.Add(("Calendars", SectionCalendars));
+        sections.Add(("Notifications", SectionNotifications));
+        sections.Add(("Appearance", SectionAppearance));
+        sections.Add(("Shortcuts", SectionShortcuts));
+        sections.Add(("Privacy & data", SectionPrivacy));
 #if DEBUG
-            ("Developer", SectionDeveloper),
+        sections.Add(("Developer", SectionDeveloper));
 #endif
-            ("About", SectionAbout),
-        ];
+        sections.Add(("About", SectionAbout));
+
+        _sections = sections.ToArray();
 
         SectionList.ItemsSource = ViewModel.Sections;
         SectionList.SelectedIndex = 0;

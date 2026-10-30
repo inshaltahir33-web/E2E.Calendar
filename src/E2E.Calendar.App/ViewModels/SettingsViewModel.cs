@@ -53,7 +53,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
 
         sections.Add(new SettingsSection("Calendars", "\uE787"));
-        sections.Add(new SettingsSection("Notifications & sounds", "\uEA8F"));
+        sections.Add(new SettingsSection("Notifications", "\uEA8F"));
         sections.Add(new SettingsSection("Appearance", "\uE790"));
         sections.Add(new SettingsSection("Shortcuts", "\uE765"));
         sections.Add(new SettingsSection("Privacy & data", "\uE72E"));

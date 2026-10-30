@@ -200,24 +200,77 @@
                         ToolTipService.ToolTip="Narrow search results by date, tags or category">
                         <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE71C;" />
                         <Button.Flyout>
-                            <Flyout>
-                                <StackPanel MinWidth="300" Spacing="{StaticResource SpaceSM}">
-                                    <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Filter search results" />
-                                    <TextBlock
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Opacity="0.7"
-                                        TextWrapping="Wrap"
-                                        Text="Type in Search first, then choose filters here and press Apply. Only matching events are shown." />
-                                    <CheckBox x:Name="SearchFromEnabled" Content="Limit from date" />
-                                    <DatePicker x:Name="SearchFromDate" Header="From date" />
-                                    <CheckBox x:Name="SearchToEnabled" Content="Limit to date" />
-                                    <DatePicker x:Name="SearchToDate" Header="To date" />
-                                    <TextBox x:Name="SearchTagsBox" Header="Tags (comma separated)" PlaceholderText="work, travel" />
-                                    <TextBox x:Name="SearchCategoryBox" Header="Category" PlaceholderText="Meeting" />
-                                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
-                                        <Button Content="Apply" Click="OnApplySearchFiltersClick" Style="{StaticResource AccentButtonStyle}" />
-                                        <Button Content="Clear" Click="OnClearSearchFiltersClick" />
+                            <Flyout
+                                FlyoutPresenterStyle="{StaticResource AppFlyoutPresenterStyle}"
+                                Placement="BottomEdgeAlignedRight">
+                                <StackPanel MinWidth="320" Spacing="{StaticResource SpaceMD}">
+                                    <StackPanel Spacing="{StaticResource SpaceXS}">
+                                        <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Filter search results" />
+                                        <TextBlock
+                                            Style="{StaticResource SettingsCardDescriptionStyle}"
+                                            Text="Type in Search first, then choose filters here and press Apply. Only matching events are shown." />
                                     </StackPanel>
+
+                                    <StackPanel Spacing="{StaticResource SpaceXS}">
+                                        <CheckBox
+                                            x:Name="SearchFromEnabled"
+                                            Content="From date"
+                                            Checked="OnSearchDateFilterToggled"
+                                            Unchecked="OnSearchDateFilterToggled" />
+                                        <CalendarDatePicker
+                                            x:Name="SearchFromDate"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"
+                                            PlaceholderText="Any date"
+                                            AutomationProperties.Name="From date" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="{StaticResource SpaceXS}">
+                                        <CheckBox
+                                            x:Name="SearchToEnabled"
+                                            Content="To date"
+                                            Checked="OnSearchDateFilterToggled"
+                                            Unchecked="OnSearchDateFilterToggled" />
+                                        <CalendarDatePicker
+                                            x:Name="SearchToDate"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"
+                                            PlaceholderText="Any date"
+                                            AutomationProperties.Name="To date" />
+                                    </StackPanel>
+
+                                    <TextBox
+                                        x:Name="SearchTagsBox"
+                                        PlaceholderText="e.g. work, travel"
+                                        PlaceholderForeground="{ThemeResource App.TextSecondaryBrush}"
+                                        AutomationProperties.Name="Tags" />
+
+                                    <ComboBox
+                                        x:Name="SearchCategoryBox"
+                                        HorizontalAlignment="Stretch"
+                                        IsEditable="True"
+                                        PlaceholderText="Any category"
+                                        AutomationProperties.Name="Category">
+                                        <x:String>Meeting</x:String>
+                                        <x:String>Personal</x:String>
+                                        <x:String>Travel</x:String>
+                                        <x:String>Focus</x:String>
+                                    </ComboBox>
+
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                                        <Button
+                                            HorizontalAlignment="Left"
+                                            Content="Clear"
+                                            Click="OnClearSearchFiltersClick"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            AutomationProperties.Name="Clear search filters" />
+                                        <Button
+                                            Grid.Column="1"
+                                            Content="Apply"
+                                            Click="OnApplySearchFiltersClick"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            AutomationProperties.Name="Apply search filters" />
+                                    </Grid>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
@@ -242,11 +295,30 @@
                         </StackPanel>
                     </muxc:SplitButton.Content>
                     <muxc:SplitButton.Flyout>
-                        <MenuFlyout>
-                            <MenuFlyoutItem AutomationProperties.Name="New event" Click="OnNewEventClick" Text="Event" KeyboardAcceleratorTextOverride="N" />
-                            <MenuFlyoutItem AutomationProperties.Name="New reminder" Click="OnNewReminderClick" Text="Reminder" KeyboardAcceleratorTextOverride="R" />
-                            <MenuFlyoutItem AutomationProperties.Name="New task" Click="OnNewTaskClick" Text="Task" />
-                            <MenuFlyoutItem AutomationProperties.Name="Quick add" Click="OnQuickAddClick" Text="Quick add" KeyboardAcceleratorTextOverride="Win+Alt+C" />
+                        <MenuFlyout MenuFlyoutPresenterStyle="{StaticResource AppMenuFlyoutPresenterStyle}">
+                            <MenuFlyoutItem
+                                AutomationProperties.Name="New event"
+                                Click="OnNewEventClick"
+                                KeyboardAcceleratorTextOverride="N"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Event" />
+                            <MenuFlyoutItem
+                                AutomationProperties.Name="New reminder"
+                                Click="OnNewReminderClick"
+                                KeyboardAcceleratorTextOverride="R"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Reminder" />
+                            <MenuFlyoutItem
+                                AutomationProperties.Name="New task"
+                                Click="OnNewTaskClick"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Task" />
+                            <MenuFlyoutItem
+                                AutomationProperties.Name="Quick add"
+                                Click="OnQuickAddClick"
+                                KeyboardAcceleratorTextOverride="Win+Alt+C"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Quick add" />
                         </MenuFlyout>
                     </muxc:SplitButton.Flyout>
                 </muxc:SplitButton>
@@ -259,30 +331,43 @@
                     ToolTipService.ToolTip="More options">
                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE712;" />
                     <Button.Flyout>
-                        <muxc:MenuFlyout>
+                        <muxc:MenuFlyout MenuFlyoutPresenterStyle="{StaticResource AppMenuFlyoutPresenterStyle}">
                             <muxc:ToggleMenuFlyoutItem
                                 AutomationProperties.Name="Show weekends"
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekends, Mode=TwoWay}"
+                                Style="{StaticResource AppToggleMenuFlyoutItemStyle}"
                                 Text="Show weekends" />
                             <muxc:ToggleMenuFlyoutItem
+                                x:Name="ShowWeekNumbersToggle"
                                 AutomationProperties.Name="Show week numbers"
+                                Click="OnShowWeekNumbersClick"
                                 IsChecked="{x:Bind WeekViewModel.ShowWeekNumbers, Mode=TwoWay}"
+                                Style="{StaticResource AppToggleMenuFlyoutItemStyle}"
                                 Text="Show week numbers" />
                             <muxc:ToggleMenuFlyoutItem
                                 AutomationProperties.Name="Show the secondary time zone column"
                                 IsChecked="{x:Bind WeekViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
+                                Style="{StaticResource AppToggleMenuFlyoutItemStyle}"
                                 Text="Secondary time zone" />
                             <muxc:MenuFlyoutSeparator />
-                            <muxc:MenuFlyoutItem Text="Export PDF" Click="OnExportPdfClick" />
-                            <muxc:MenuFlyoutItem Text="Export HTML" Click="OnExportHtmlClick" />
+                            <muxc:MenuFlyoutItem
+                                Click="OnExportPdfClick"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Export PDF" />
+                            <muxc:MenuFlyoutItem
+                                Click="OnExportHtmlClick"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Export HTML" />
                             <muxc:MenuFlyoutSeparator />
                             <muxc:MenuFlyoutItem
                                 x:Name="SyncMenuItem"
-                                Text="Sync now"
-                                Click="OnSyncClick" />
+                                Click="OnSyncClick"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                Text="Sync now" />
                             <muxc:MenuFlyoutItem
                                 x:Name="SyncStatusText"
                                 IsEnabled="False"
+                                Style="{StaticResource AppMenuFlyoutItemStyle}"
                                 Text="{x:Bind ViewModel.SyncStatus, Mode=OneWay}" />
                         </muxc:MenuFlyout>
                     </Button.Flyout>

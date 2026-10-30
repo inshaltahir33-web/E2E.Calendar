@@ -7,19 +7,19 @@
     <Grid Background="{ThemeResource App.CardBackgroundBrush}">
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="248" />
+            <ColumnDefinition Width="264" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!--  Section list  -->
-        <Grid Grid.Column="0" Padding="12,16,8,16">
+        <Grid Grid.Column="0" Padding="12,16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <TextBlock
-                Margin="8,0,0,8"
+                Margin="12,0,0,8"
                 Style="{StaticResource SettingsSectionHeaderStyle}"
                 AutomationProperties.Name="Settings"
                 Text="Settings" />
@@ -31,6 +31,22 @@
                 SelectionChanged="OnSectionSelectionChanged"
                 SelectionMode="Single"
                 AutomationProperties.Name="Settings sections">
+                <ListView.Resources>
+                    <!-- Selected row is a soft Accent pill, not the default grey highlight. -->
+                    <StaticResource x:Key="ListViewItemBackgroundSelected" ResourceKey="AccentSoft" />
+                    <StaticResource x:Key="ListViewItemBackgroundSelectedPointerOver" ResourceKey="AccentSoft" />
+                    <StaticResource x:Key="ListViewItemBackgroundSelectedPressed" ResourceKey="AccentSoft" />
+                    <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="App.HoverBrush" />
+                </ListView.Resources>
+                <ListView.ItemContainerStyle>
+                    <Style BasedOn="{StaticResource DefaultListViewItemStyle}" TargetType="ListViewItem">
+                        <Setter Property="MinHeight" Value="36" />
+                        <Setter Property="Margin" Value="0,0,0,2" />
+                        <Setter Property="Padding" Value="12,0" />
+                        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceMD}">
@@ -131,37 +147,28 @@
                     </Border>
 
                     <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Secondary time zone" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Add a second time zone column to the time grid." />
-                            </StackPanel>
-                            <ToggleSwitch
-                                Grid.Column="1"
-                                VerticalAlignment="Center"
-                                IsOn="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
-                                AutomationProperties.Name="Show secondary time zone" />
-                        </Grid>
-                    </Border>
-
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Secondary time zone" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Choose the zone shown beside your local schedule. Event times are converted from their stored UTC instant." />
-                            </StackPanel>
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Secondary time zone" />
+                                    <TextBlock
+                                        Style="{StaticResource SettingsCardDescriptionStyle}"
+                                        Text="Add a second time zone column to the time grid, converted from each event's stored UTC instant." />
+                                </StackPanel>
+                                <ToggleSwitch
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    IsOn="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=TwoWay}"
+                                    AutomationProperties.Name="Show secondary time zone" />
+                            </Grid>
+                            <!-- The zone picker only exists while the column is switched on. -->
                             <ComboBox
-                                Grid.Column="1"
-                                MinWidth="220"
-                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"
                                 ItemsSource="{x:Bind ViewModel.TimeZoneLabels, Mode=OneWay}"
                                 SelectedIndex="{x:Bind ViewModel.SecondaryTimeZoneIndex, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
                                 AutomationProperties.Name="Secondary time zone" />
-                        </Grid>
+                        </StackPanel>
                     </Border>
 
                 </StackPanel>
@@ -288,26 +295,26 @@
                     </ItemsControl>
                 </StackPanel>
 
-                <!--  Notifications & sounds  -->
+                <!--  Notifications  -->
                 <StackPanel x:Name="SectionNotifications" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Notifications &amp; sounds" />
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Notifications" />
 
-
-
-
-
-
-
-                    <StackPanel Spacing="{StaticResource SpaceXS}">
-                        <Button
-                            HorizontalAlignment="Left"
-                            Click="OnWindowsNotificationSettingsClick"
-                            Content="Open Windows notification settings"
-                            AutomationProperties.Name="Open Windows notification settings" />
-                        <TextBlock
-                            Style="{StaticResource SettingsCardDescriptionStyle}"
-                            Text="Reminders appear as Windows notifications. Sound and delivery are controlled in Windows settings." />
-                    </StackPanel>
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Reminder notifications" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Reminders appear as Windows notifications. Sound and delivery are controlled in Windows settings." />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Click="OnWindowsNotificationSettingsClick"
+                                Content="Open Windows settings"
+                                AutomationProperties.Name="Open Windows notification settings" />
+                        </Grid>
+                    </Border>
                 </StackPanel>
 
                 <!--  Appearance  -->

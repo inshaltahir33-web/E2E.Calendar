@@ -893,17 +893,27 @@ public sealed partial class MainWindow : Window
         SearchToDate.Date = _searchCriteria.ToUtc?.ToLocalTime() ?? _clock.UtcNow.ToLocalTime();
         SearchTagsBox.Text = string.Join(", ", _searchCriteria.Tags);
         SearchCategoryBox.Text = _searchCriteria.Category ?? string.Empty;
+        ApplySearchDateFilterState();
+    }
+
+    /// <summary>Each checkbox enables only its own date picker.</summary>
+    private void OnSearchDateFilterToggled(object sender, RoutedEventArgs e) => ApplySearchDateFilterState();
+
+    private void ApplySearchDateFilterState()
+    {
+        SearchFromDate.IsEnabled = SearchFromEnabled.IsChecked == true;
+        SearchToDate.IsEnabled = SearchToEnabled.IsChecked == true;
     }
 
     private void OnApplySearchFiltersClick(object sender, RoutedEventArgs e)
     {
         _searchCriteria = new EventSearchCriteria
         {
-            FromUtc = SearchFromEnabled.IsChecked == true
-                ? new DateTimeOffset(SearchFromDate.Date.Date, TimeSpan.Zero)
+            FromUtc = SearchFromEnabled.IsChecked == true && SearchFromDate.Date is { } from
+                ? new DateTimeOffset(from.Date, TimeSpan.Zero)
                 : null,
-            ToUtc = SearchToEnabled.IsChecked == true
-                ? new DateTimeOffset(SearchToDate.Date.Date.AddDays(1), TimeSpan.Zero)
+            ToUtc = SearchToEnabled.IsChecked == true && SearchToDate.Date is { } to
+                ? new DateTimeOffset(to.Date.AddDays(1), TimeSpan.Zero)
                 : null,
             Tags = SearchTagsBox.Text
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -924,13 +934,33 @@ public sealed partial class MainWindow : Window
         _searchCriteria = new EventSearchCriteria();
         SearchFromEnabled.IsChecked = false;
         SearchToEnabled.IsChecked = false;
-        SearchFromDate.Date = _clock.UtcNow.ToLocalTime();
-        SearchToDate.Date = _clock.UtcNow.ToLocalTime();
+        SearchFromDate.Date = null;
+        SearchToDate.Date = null;
         SearchTagsBox.Text = string.Empty;
         SearchCategoryBox.Text = string.Empty;
+        ApplySearchDateFilterState();
         SearchFiltersButton.Flyout?.Hide();
         _searchDebounce.Stop();
         _ = RefreshSearchResultsAsync(SearchBox.Text);
+    }
+
+    /// <summary>
+    /// The overflow menu exposes the same Show week numbers value as Settings, so the toggle
+    /// writes through the settings service instead of keeping a second, divergent copy.
+    /// </summary>
+    private void OnShowWeekNumbersClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleMenuFlyoutItem item)
+        {
+            return;
+        }
+
+        if (_settings.Current.ShowWeekNumbers == item.IsChecked)
+        {
+            return;
+        }
+
+        _ = _settings.UpdateAsync(_settings.Current with { ShowWeekNumbers = item.IsChecked });
     }
 
     private static string FormatSearchResult(CalendarItem item)
