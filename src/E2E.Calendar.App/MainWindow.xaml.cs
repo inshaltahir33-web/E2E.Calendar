@@ -483,10 +483,6 @@ public sealed partial class MainWindow : Window
 
     private void OnTodayClick(object sender, RoutedEventArgs e) => StateViewModel.GoToTodayCommand.Execute(null);
 
-    private void OnPreviousMonthClick(object sender, RoutedEventArgs e) => StateViewModel.PreviousMonthCommand.Execute(null);
-
-    private void OnNextMonthClick(object sender, RoutedEventArgs e) => StateViewModel.NextMonthCommand.Execute(null);
-
     private void OnPreviousClick(object sender, RoutedEventArgs e) => StateViewModel.GoPreviousCommand.Execute(null);
 
     private void OnNextClick(object sender, RoutedEventArgs e) => StateViewModel.GoNextCommand.Execute(null);

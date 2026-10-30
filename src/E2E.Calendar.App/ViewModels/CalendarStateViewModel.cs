@@ -66,40 +66,32 @@ public sealed partial class CalendarStateViewModel : ObservableObject
         SelectDate(DateOnly.FromDateTime(_clock.LocalTimeZone.ToLocal(CurrentDate)));
     }
 
+    /// <summary>Moves the visible period one unit back: Day 1 day, Week 7 days, Month 1 month, Agenda its range.</summary>
     [RelayCommand]
-    public void PreviousMonth()
-    {
-        CurrentDate = CurrentDate.AddMonths(-1);
-    }
+    public void GoPrevious() => MovePeriod(-1);
 
+    /// <summary>Moves the visible period one unit forward: Day 1 day, Week 7 days, Month 1 month, Agenda its range.</summary>
     [RelayCommand]
-    public void NextMonth()
-    {
-        CurrentDate = CurrentDate.AddMonths(1);
-    }
+    public void GoNext() => MovePeriod(1);
 
-    [RelayCommand]
-    public void GoPrevious()
+    /// <summary>
+    /// Shifts the visible period by whole LOCAL calendar units (Day 1 day, Week 7 days,
+    /// Month 1 month, Agenda its range) and re-anchors at local midnight, so month lengths
+    /// and the local UTC offset can never move the period by an extra day.
+    /// </summary>
+    private void MovePeriod(int direction)
     {
-        CurrentDate = ViewMode switch
+        var anchor = LocalDate;
+        var target = ViewMode switch
         {
-            CalendarViewMode.Month => CurrentDate.AddMonths(-1),
-            CalendarViewMode.Day => CurrentDate.AddDays(-1),
-            CalendarViewMode.Agenda => CurrentDate.AddDays(-1),
-            _ => CurrentDate.AddDays(-7),
+            CalendarViewMode.Day => anchor.AddDays(direction),
+            CalendarViewMode.Week => anchor.AddDays(7 * direction),
+            CalendarViewMode.Month => anchor.AddMonths(direction),
+            CalendarViewMode.Agenda => anchor.AddDays(CalendarPeriod.AgendaDays * direction),
+            _ => anchor.AddDays(direction),
         };
-    }
 
-    [RelayCommand]
-    public void GoNext()
-    {
-        CurrentDate = ViewMode switch
-        {
-            CalendarViewMode.Month => CurrentDate.AddMonths(1),
-            CalendarViewMode.Day => CurrentDate.AddDays(1),
-            CalendarViewMode.Agenda => CurrentDate.AddDays(1),
-            _ => CurrentDate.AddDays(7),
-        };
+        CurrentDate = _clock.LocalTimeZone.ToUtc(target.ToDateTime(TimeOnly.MinValue));
     }
 
     [RelayCommand]

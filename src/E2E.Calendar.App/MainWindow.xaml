@@ -115,19 +115,21 @@
                             AutomationProperties.Name="Go to today"
                             ToolTipService.ToolTip="Go to today (T)" />
                         <Button
-                            Click="OnPreviousMonthClick"
+                            Click="OnPreviousClick"
                             Style="{StaticResource ToolbarButtonStyle}"
                             AutomationProperties.Name="Previous period"
                             ToolTipService.ToolTip="Previous period (Left arrow)">
                             <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
                         </Button>
                         <Button
-                            Click="OnNextMonthClick"
+                            Click="OnNextClick"
                             Style="{StaticResource ToolbarButtonStyle}"
                             AutomationProperties.Name="Next period"
                             ToolTipService.ToolTip="Next period (Right arrow)">
                             <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
                         </Button>
+                        <!-- Title is computed from the state view model (visible period + view mode),
+                             so it follows the arrows, the view switcher and Today. -->
                         <TextBlock
                             x:Name="PeriodLabelText"
                             MinWidth="160"
@@ -135,7 +137,7 @@
                             VerticalAlignment="Center"
                             FontSize="{StaticResource FontSizeSubtitle}"
                             FontWeight="SemiBold"
-                            Text="{x:Bind ShellState.Title, Mode=OneWay}"
+                            Text="{x:Bind StateViewModel.PeriodLabel, Mode=OneWay}"
                             TextTrimming="CharacterEllipsis"
                             AutomationProperties.Name="Current period" />
                     </StackPanel>

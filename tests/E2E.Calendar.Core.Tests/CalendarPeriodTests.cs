@@ -99,7 +99,7 @@ public sealed class CalendarPeriodTests
     }
 
     [Theory]
-    [InlineData(CalendarViewMode.Day, "Wed 21 Oct 2026")]
+    [InlineData(CalendarViewMode.Day, "21 Oct 2026")]
     [InlineData(CalendarViewMode.Month, "October 2026")]
     [InlineData(CalendarViewMode.Agenda, "21 Oct – 19 Nov 2026")]
     public void The_period_label_describes_the_visible_period(CalendarViewMode mode, string expected)
@@ -110,9 +110,18 @@ public sealed class CalendarPeriodTests
     [Fact]
     public void The_week_label_spans_the_first_and_the_last_day()
     {
-        var label = CalendarPeriod.FormatLabel(CalendarViewMode.Week, Wednesday, "en-US");
+        // Wed 28 Oct 2026 -> week Mon 26 Oct – Sun 1 Nov 2026.
+        var label = CalendarPeriod.FormatLabel(CalendarViewMode.Week, new DateOnly(2026, 10, 28), "en-US");
 
-        label.Should().StartWith("19");
-        label.Should().EndWith("25 Oct 2026");
+        label.Should().Be("26 Oct – 1 Nov 2026");
+    }
+
+    [Fact]
+    public void The_week_label_shows_both_years_when_the_week_crosses_a_year()
+    {
+        // Wed 30 Dec 2026 -> week Mon 28 Dec 2026 – Sun 3 Jan 2027.
+        var label = CalendarPeriod.FormatLabel(CalendarViewMode.Week, new DateOnly(2026, 12, 30), "en-US");
+
+        label.Should().Be("28 Dec 2026 – 3 Jan 2027");
     }
 }

@@ -43,7 +43,7 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
 
         return mode switch
         {
-            CalendarViewMode.Day => date.ToString("ddd d MMM yyyy", culture),
+            CalendarViewMode.Day => date.ToString("d MMM yyyy", culture),
             CalendarViewMode.Week => FormatWeekLabel(culture, localDate, weekStart),
             CalendarViewMode.Month => date.ToString("Y", culture),
             CalendarViewMode.Agenda => string.Format(
@@ -74,15 +74,14 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
         var start = StartOfWeek(localDate, weekStart);
         var end = EndOfWeek(localDate, weekStart);
 
-        if (start.Month == end.Month && start.Year == end.Year)
-        {
-            return string.Format(culture, "{0} – {1}", start.Day, end.ToString("d MMM yyyy", culture));
-        }
+        // The start year is only shown when the week straddles a year boundary, so a
+        // normal week reads "26 Oct – 1 Nov 2026" and a year-crossing one shows both.
+        var startFormat = start.Year == end.Year ? "d MMM" : "d MMM yyyy";
 
         return string.Format(
             culture,
             "{0} – {1}",
-            start.ToString("d MMM", culture),
+            start.ToString(startFormat, culture),
             end.ToString("d MMM yyyy", culture));
     }
 }
