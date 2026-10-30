@@ -30,6 +30,12 @@ public partial class WeekView : Page
 
         TimeGridInteractions.Wire(TimeGrid, _editor, _events, _eventService, reminders, ViewModel.RefreshAsync);
 
+        TimeGrid.ItemCompleted += async (_, args) =>
+        {
+            await ViewModel.ToggleCompletedAsync(args.Item);
+            await ViewModel.RefreshAsync();
+        };
+
         ViewModel.PeriodChanged += OnPeriodChanged;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
     }

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;using E2E.Calendar.Core;
@@ -53,15 +54,52 @@ public sealed partial class MainWindow : Window
     private EventSearchCriteria _searchCriteria = new();
 
     private HotkeyService? _hotkey;
+    private IntPtr _hotkeyWindowHandle;
+    private IntPtr _previousWindowProc;
+    private HotkeyWindowProc? _hotkeyWindowProc;
 
     public void InitializeQuickAddHotkey(HotkeyService hotkey)
     {
         _hotkey = hotkey;
 
+        _hotkeyWindowHandle = WindowNative.GetWindowHandle(this);
+        _hotkeyWindowProc = HotkeyWindowProcedure;
+        var procPointer = Marshal.GetFunctionPointerForDelegate(_hotkeyWindowProc);
+        _previousWindowProc = SetWindowLongPtr(_hotkeyWindowHandle, GwlWndProc, procPointer);
+
         // App owns the hotkey subscription; the window only ensures the native
         // registration is released when the window closes.
-        this.AppWindow.Closing += (_, _) => _hotkey?.Dispose();
+        this.AppWindow.Closing += (_, _) =>
+        {
+            if (_hotkeyWindowHandle != IntPtr.Zero && _previousWindowProc != IntPtr.Zero)
+            {
+                SetWindowLongPtr(_hotkeyWindowHandle, GwlWndProc, _previousWindowProc);
+                _previousWindowProc = IntPtr.Zero;
+            }
+
+            _hotkey?.Dispose();
+        };
     }
+
+    private IntPtr HotkeyWindowProcedure(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
+    {
+        if (_hotkey is not null && _hotkey.HandleMessage((int)message, wParam))
+        {
+            return IntPtr.Zero;
+        }
+
+        return CallWindowProc(_previousWindowProc, hwnd, message, wParam, lParam);
+    }
+
+    private const int GwlWndProc = -4;
+
+    private delegate IntPtr HotkeyWindowProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     public MainWindow(
         MainWindowViewModel viewModel,
@@ -1166,6 +1204,11 @@ public sealed partial class MainWindow : Window
 
     private void OnFindAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        if (IsTextInputActive())
+        {
+            return;
+        }
+
         args.Handled = true;
         SearchBox.Focus(FocusState.Programmatic);
     }

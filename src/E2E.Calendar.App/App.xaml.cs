@@ -19,6 +19,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Serilog;
+using WinRT.Interop;
 using Serilog.Events;
 
 namespace E2E.Calendar.App;
@@ -94,6 +95,12 @@ public partial class App : Application
 
             _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
             _hotkey.Pressed += OnQuickAddHotkey;
+
+            var windowHandle = WindowNative.GetWindowHandle(_mainWindow);
+            if (!_hotkey.TryRegister(windowHandle))
+            {
+                Log.Warning("Global hotkey Win+Alt+C could not be registered.");
+            }
 
             _mainWindow.InitializeQuickAddHotkey(_hotkey);
 

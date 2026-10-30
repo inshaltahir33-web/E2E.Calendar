@@ -143,6 +143,33 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
         });
     }
 
+    public async Task ToggleCompletedAsync(CalendarItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        var now = DateTimeOffset.UtcNow;
+
+        if (item.Kind == CalendarItemKind.Reminder)
+        {
+            var reminder = await _reminders.GetByIdAsync(item.Id);
+
+            if (reminder is not null)
+            {
+                await _reminders.UpsertAsync(
+                    reminder with { DoneUtc = item.IsDone ? now : null, UpdatedUtc = now });
+            }
+        }
+        else if (item.Kind == CalendarItemKind.Task)
+        {
+            var task = await _tasks.GetByIdAsync(item.Id);
+
+            if (task is not null)
+            {
+                await _tasks.UpsertAsync(task with { DoneUtc = item.IsDone ? now : null });
+            }
+        }
+    }
+
     private void ApplySettings(AppSettings settings)
     {
         ClockFormat = settings.ClockFormat;
