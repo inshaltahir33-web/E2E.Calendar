@@ -124,93 +124,110 @@ public sealed partial class MainWindow : Window
         TodoService todo,
         IDialogService dialogs)
     {
-        ArgumentNullException.ThrowIfNull(viewModel);
-        ArgumentNullException.ThrowIfNull(stateViewModel);
-        ArgumentNullException.ThrowIfNull(navigation);
-        ArgumentNullException.ThrowIfNull(calendars);
-        ArgumentNullException.ThrowIfNull(events);
-        ArgumentNullException.ThrowIfNull(query);
-        ArgumentNullException.ThrowIfNull(clock);
-        ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(editor);
-        ArgumentNullException.ThrowIfNull(weekViewModel);
-        ArgumentNullException.ThrowIfNull(monthViewModel);
-        ArgumentNullException.ThrowIfNull(miniCalendar);
-        ArgumentNullException.ThrowIfNull(reminders);
-        ArgumentNullException.ThrowIfNull(settings);
-        ArgumentNullException.ThrowIfNull(shellState);
-        ArgumentNullException.ThrowIfNull(todo);
-        ArgumentNullException.ThrowIfNull(dialogs);
-
-        ViewModel = viewModel;
-        StateViewModel = stateViewModel;
-        _navigation = navigation;
-        _calendars = calendars;
-        _events = events;
-        _eventRepository = eventRepository;
-        _query = query;
-        _clock = clock;
-        _logger = logger;
-        _editor = editor;
-        WeekViewModel = weekViewModel;
-        MonthViewModel = monthViewModel;
-        MiniCalendar = miniCalendar;
-        _reminders = reminders;
-        _settings = settings;
-        _shellState = shellState;
-        _sync = sync;
-        _ics = ics;
-        _scheduleExport = scheduleExport;
-        _todo = todo;
-        _dialogs = dialogs;
-
-        this.InitializeComponent();
-
-        SyncMenuItem.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
-        SyncStatusText.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
-        InvitationInfoBar.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
-
-        _searchDebounce = DispatcherQueue.GetForCurrentThread().CreateTimer();
-        _searchDebounce.Interval = TimeSpan.FromMilliseconds(250);
-        _searchDebounce.IsRepeating = false;
-        _searchDebounce.Tick += OnSearchDebounceTick;
-
-        _navigation.Frame = ContentFrame;
-        _navigation.Navigated += OnNavigated;
-
-        StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
-
-        EditorHost.Children.Add(new Views.EventEditorView(editor));
-        MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar, dialogs));
-
-        editor.Opened += OnEditorOpened;
-        editor.CloseRequested += OnEditorCloseRequested;
-        editor.SaveRequested += OnEditorSaveRequested;
-        editor.DeleteRequested += OnEditorDeleteRequested;
-
-        EditorHost.KeyDown += OnEditorKeyDown;
-
-        Snackbar.ActionInvoked += OnSnackbarAction;
-
-        this.ExtendsContentIntoTitleBar = true;
-        this.SetTitleBar(TitleBarElement);
-        RootGrid.ActualThemeChanged += OnActualThemeChanged;
-        UpdateTitleBarColors();
-
-        // Sidebar counts follow every add / complete / delete made on the to-do page.
-        _todo.Changed += (_, _) => _ = RefreshReminderCountsAsync();
-
-        // Single-key shortcuts (N, R, T, D, W, M, A) must not fire while the user is typing in a text box.
-        RootGrid.GotFocus += OnRootGotFocus;
-
-        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        try
         {
-            this.SystemBackdrop = new MicaBackdrop();
-        }
+            ArgumentNullException.ThrowIfNull(viewModel);
+            ArgumentNullException.ThrowIfNull(stateViewModel);
+            ArgumentNullException.ThrowIfNull(navigation);
+            ArgumentNullException.ThrowIfNull(calendars);
+            ArgumentNullException.ThrowIfNull(events);
+            ArgumentNullException.ThrowIfNull(query);
+            ArgumentNullException.ThrowIfNull(clock);
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(editor);
+            ArgumentNullException.ThrowIfNull(weekViewModel);
+            ArgumentNullException.ThrowIfNull(monthViewModel);
+            ArgumentNullException.ThrowIfNull(miniCalendar);
+            ArgumentNullException.ThrowIfNull(reminders);
+            ArgumentNullException.ThrowIfNull(settings);
+            ArgumentNullException.ThrowIfNull(shellState);
+            ArgumentNullException.ThrowIfNull(todo);
+            ArgumentNullException.ThrowIfNull(dialogs);
 
-        this.SizeChanged += OnWindowSizeChanged;
-        this.AppWindow.Closing += OnWindowClosingSaveBounds;
-        RootGrid.Loaded += OnLoaded;
+            ViewModel = viewModel;
+            StateViewModel = stateViewModel;
+            _navigation = navigation;
+            _calendars = calendars;
+            _events = events;
+            _eventRepository = eventRepository;
+            _query = query;
+            _clock = clock;
+            _logger = logger;
+            _editor = editor;
+            WeekViewModel = weekViewModel;
+            MonthViewModel = monthViewModel;
+            MiniCalendar = miniCalendar;
+            _reminders = reminders;
+            _settings = settings;
+            _shellState = shellState;
+            _sync = sync;
+            _ics = ics;
+            _scheduleExport = scheduleExport;
+            _todo = todo;
+            _dialogs = dialogs;
+
+            this.InitializeComponent();
+
+            SyncMenuItem.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+            SyncStatusText.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+            InvitationInfoBar.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
+
+            _searchDebounce = DispatcherQueue.GetForCurrentThread().CreateTimer();
+            _searchDebounce.Interval = TimeSpan.FromMilliseconds(250);
+            _searchDebounce.IsRepeating = false;
+            _searchDebounce.Tick += OnSearchDebounceTick;
+
+            _navigation.Frame = ContentFrame;
+            _navigation.Navigated += OnNavigated;
+
+            StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
+
+            EditorHost.Children.Add(new Views.EventEditorView(editor));
+            MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar, dialogs));
+
+            editor.Opened += OnEditorOpened;
+            editor.CloseRequested += OnEditorCloseRequested;
+            editor.SaveRequested += OnEditorSaveRequested;
+            editor.DeleteRequested += OnEditorDeleteRequested;
+
+            EditorHost.KeyDown += OnEditorKeyDown;
+
+            Snackbar.ActionInvoked += OnSnackbarAction;
+
+            this.ExtendsContentIntoTitleBar = true;
+            this.SetTitleBar(TitleBarElement);
+            RootGrid.ActualThemeChanged += OnActualThemeChanged;
+            UpdateTitleBarColors();
+
+            // Sidebar counts follow every add / complete / delete made on the to-do page.
+            _todo.Changed += (_, _) => _ = RefreshReminderCountsAsync();
+
+            // Single-key shortcuts (N, R, T, D, W, M, A) must not fire while the user is typing in a text box.
+            RootGrid.GotFocus += OnRootGotFocus;
+
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            {
+                this.SystemBackdrop = new MicaBackdrop();
+            }
+
+            this.SizeChanged += OnWindowSizeChanged;
+            this.AppWindow.Closing += OnWindowClosingSaveBounds;
+            RootGrid.Loaded += OnLoaded;
+        }
+        catch (Exception ex)
+        {
+            // XAML parse failures (bad StaticResource, unmatched binding paths, custom control
+            // errors) and service-resolution failures are captured to the desktop crash log before
+            // being rethrown, so the exact error is visible instead of a silent crash.
+            var crashLogPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "desktop-crash.txt");
+            System.IO.File.WriteAllText(crashLogPath, ex.ToString());
+
+            _logger?.LogError(ex, "MainWindow: failed to initialize the window.");
+
+            throw;
+        }
     }
 
     public IShellState ShellState => _shellState;
@@ -548,6 +565,27 @@ public sealed partial class MainWindow : Window
             .FirstOrDefault(item => Equals(item.Tag, mode.ToString())) is { } target)
         {
             ViewSwitcher.SelectedItem = target;
+        }
+
+        ApplyViewSwitcherSelection();
+    }
+
+    /// <summary>
+    /// Selected switcher tab renders as an Accent filled pill with white text; every other tab
+    /// stays transparent. All paths that change the view (selector, keyboard shortcuts and
+    /// state-driven updates) funnel through SelectViewInSwitcher, so the highlight always follows.
+    /// </summary>
+    private void ApplyViewSwitcherSelection()
+    {
+        foreach (var item in ViewSwitcher.Items.OfType<SelectorBarItem>())
+        {
+            var selected = Equals(item, ViewSwitcher.SelectedItem);
+            item.Background = selected
+                ? ThemeBrushes.Get(RootGrid, "Accent")
+                : ThemeBrushes.Get(RootGrid, "App.TransparentBrush");
+            item.Foreground = selected
+                ? ThemeBrushes.Get(RootGrid, "App.OnAccentBrush")
+                : ThemeBrushes.Get(RootGrid, "TextPrimary");
         }
     }
 

@@ -391,13 +391,17 @@ public sealed partial class TimeGrid : UserControl
     /// <summary>
     /// Today's column is tinted AccentSoft and weekend columns slightly darker. The tint is
     /// reapplied on every rebuild so it follows week/month navigation instead of freezing on
-    /// the days that were visible when the canvases were created.
+    /// the days that were visible when the canvases were created. The today tint only applies
+    /// to multi-day views (week): a single-day Day view shows one column and skips the tint.
     /// </summary>
     private void ApplyDayTints(IReadOnlyList<TimeGridDay> days)
     {
+        // Day view renders a single day column, so only week views tint the today column.
+        var showTodayTint = days.Count > 1;
+
         for (var index = 0; index < _dayCanvases.Count && index < days.Count; index++)
         {
-            _dayCanvases[index].Background = days[index].IsToday
+            _dayCanvases[index].Background = days[index].IsToday && showTodayTint
                 ? ThemeBrushes.Get(this, "AccentSoft")
                 : days[index].IsWeekend
                     ? ThemeBrushes.Get(this, "App.WeekendTintBrush")
@@ -1178,13 +1182,6 @@ public sealed partial class TimeGrid : UserControl
 
     private void EnsureInitialScroll(IReadOnlyList<TimeGridDay> days)
     {
-        if (_hasScrolled)
-        {
-            return;
-        }
-
-        _hasScrolled = true;
-
         if (_sessionScrollOffset >= 0)
         {
             ApplyScroll(_sessionScrollOffset);
@@ -1195,12 +1192,39 @@ public sealed partial class TimeGrid : UserControl
         var today = DateOnly.FromDateTime(LocalTimeZone.ToLocal(now));
         var isTodayVisible = days.Any(day => day.Date == today);
 
-
+        // Initial position: keep "now" about two hours below the top edge (never above 06:00 at
+        // the top), or start at 08:00 when the selected day is not today.
         var offset = isTodayVisible
-            ? ((now.AddMinutes(-90) - DayStartUtc(today)).TotalMinutes / 60 * HourHeight)
-            : 7 * HourHeight;
+            ? GetInitialOffset(now, today)
+            : 8 * HourHeight;
 
+        if (_hasScrolled && !isTodayVisible)
+        {
+            // The user already browsed away from today, so keep their scroll position.
+            return;
+        }
+
+        _hasScrolled = true;
         ApplyScroll(Math.Max(0, offset));
+        _sessionScrollOffset = -1;
+    }
+
+    /// <summary>
+    /// Offset that places the current time two hours below the top edge of the grid, clamped so
+    /// the top edge is never above 06:00.
+    /// </summary>
+    private double GetInitialOffset(DateTimeOffset now, DateOnly today)
+    {
+        var dayStartUtc = DayStartUtc(today);
+        var topUtc = now.AddMinutes(-120);
+        var minTopUtc = dayStartUtc.AddHours(6);
+
+        if (topUtc < minTopUtc)
+        {
+            topUtc = minTopUtc;
+        }
+
+        return (topUtc - dayStartUtc).TotalHours * HourHeight;
     }
 
     private void ApplyScroll(double offset)

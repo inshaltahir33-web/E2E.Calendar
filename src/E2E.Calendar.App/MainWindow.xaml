@@ -6,7 +6,8 @@
     xmlns:muxcp="using:Microsoft.UI.Xaml.Controls.Primitives"
     xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:views="using:E2E.Calendar.App.Views"
-    xmlns:vm="using:E2E.Calendar.App.ViewModels">
+    xmlns:vm="using:E2E.Calendar.App.ViewModels"
+    Title="E2E Calendar">
 
     <!-- FIX 1: KeyboardAcceleratorPlacementMode="Hidden" removes the stray "N" badge that followed the cursor. -->
     <Grid
@@ -151,7 +152,7 @@
                 </Grid>
             </StackPanel>
 
-            <!-- RIGHT: view switcher, search (with filter), + New, overflow, settings. -->
+            <!-- RIGHT: view switcher, search (with filter), overflow. -->
             <StackPanel
                 Grid.Column="2"
                 Margin="{StaticResource MarginEndCaption}"
@@ -277,52 +278,6 @@
                     </Button>
                 </Grid>
 
-                <!-- Primary New split button: Event, Reminder, Task, Quick add. -->
-                <muxc:SplitButton
-                    x:Name="TopNewSplitButton"
-                    Height="32"
-                    Padding="12,0"
-                    Background="{ThemeResource App.AccentBrush}"
-                    Foreground="{ThemeResource App.OnAccentBrush}"
-                    CornerRadius="{StaticResource RadiusControl}"
-                    Click="OnNewSplitButtonClick"
-                    AutomationProperties.Name="Create new"
-                    ToolTipService.ToolTip="Create a new event, reminder or task">
-                    <muxc:SplitButton.Content>
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
-                            <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
-                            <TextBlock VerticalAlignment="Center" Text="New" />
-                        </StackPanel>
-                    </muxc:SplitButton.Content>
-                    <muxc:SplitButton.Flyout>
-                        <MenuFlyout MenuFlyoutPresenterStyle="{StaticResource AppMenuFlyoutPresenterStyle}">
-                            <MenuFlyoutItem
-                                AutomationProperties.Name="New event"
-                                Click="OnNewEventClick"
-                                KeyboardAcceleratorTextOverride="N"
-                                Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                Text="Event" />
-                            <MenuFlyoutItem
-                                AutomationProperties.Name="New reminder"
-                                Click="OnNewReminderClick"
-                                KeyboardAcceleratorTextOverride="R"
-                                Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                Text="Reminder" />
-                            <MenuFlyoutItem
-                                AutomationProperties.Name="New task"
-                                Click="OnNewTaskClick"
-                                Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                Text="Task" />
-                            <MenuFlyoutItem
-                                AutomationProperties.Name="Quick add"
-                                Click="OnQuickAddClick"
-                                KeyboardAcceleratorTextOverride="Win+Alt+C"
-                                Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                Text="Quick add" />
-                        </MenuFlyout>
-                    </muxc:SplitButton.Flyout>
-                </muxc:SplitButton>
-
                 <!-- Overflow menu: view options, exports, sync. -->
                 <Button
                     x:Name="ViewOptionsButton"
@@ -373,14 +328,6 @@
                     </Button.Flyout>
                 </Button>
 
-                <Button
-                    Click="OnSettingsClick"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    AutomationProperties.Name="Settings"
-                    ToolTipService.ToolTip="Settings">
-                    <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE713;" />
-                </Button>
-
             </StackPanel>
 
         </Grid>
@@ -404,7 +351,7 @@
                         Grid.Row="0"
                         HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
-                        <StackPanel Padding="{StaticResource PaddingSidebar}" Spacing="{StaticResource SpaceXS}">
+                        <StackPanel Padding="12,8,12,44" Spacing="{StaticResource SpaceXS}">
 
                             <Button
                                 Click="OnNewSplitButtonClick"
@@ -417,6 +364,33 @@
                                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
                                     <TextBlock Text="New" />
                                 </StackPanel>
+                                <Button.Flyout>
+                                    <MenuFlyout MenuFlyoutPresenterStyle="{StaticResource AppMenuFlyoutPresenterStyle}">
+                                        <MenuFlyoutItem
+                                            AutomationProperties.Name="New event"
+                                            Click="OnNewEventClick"
+                                            KeyboardAcceleratorTextOverride="N"
+                                            Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                            Text="Event" />
+                                        <MenuFlyoutItem
+                                            AutomationProperties.Name="New reminder"
+                                            Click="OnNewReminderClick"
+                                            KeyboardAcceleratorTextOverride="R"
+                                            Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                            Text="Reminder" />
+                                        <MenuFlyoutItem
+                                            AutomationProperties.Name="New task"
+                                            Click="OnNewTaskClick"
+                                            Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                            Text="Task" />
+                                        <MenuFlyoutItem
+                                            AutomationProperties.Name="Quick add"
+                                            Click="OnQuickAddClick"
+                                            KeyboardAcceleratorTextOverride="Win+Alt+C"
+                                            Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                            Text="Quick add" />
+                                    </MenuFlyout>
+                                </Button.Flyout>
                             </Button>
 
                             <!-- Viewbox keeps the fixed-cell mini calendar inside the 264px sidebar
@@ -516,7 +490,7 @@
                         Grid.Row="1"
                         Padding="8,4,8,8"
                         Background="{ThemeResource App.SidebarBackgroundBrush}"
-                        BorderBrush="{ThemeResource App.Border}"
+                        BorderBrush="{ThemeResource App.DividerBrush}"
                         BorderThickness="0,1,0,0"
                         ColumnDefinitions="Auto,*">
                         <Button
@@ -554,6 +528,7 @@
                     <Button Click="OnMonthViewClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Month view" ToolTipService.ToolTip="Month view (M)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE7B5;" /></Button>
                     <Button Click="OnAgendaViewClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Agenda view" ToolTipService.ToolTip="Agenda view (A)"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE8A5;" /></Button>
                     <Button Click="OnTasksClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Tasks" ToolTipService.ToolTip="Tasks"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE9D5;" /></Button>
+                    <Button Click="OnSettingsClick" Style="{StaticResource ToolbarButtonStyle}" AutomationProperties.Name="Settings" ToolTipService.ToolTip="Settings"><FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE713;" /></Button>
                 </StackPanel>
             </Grid>
 

@@ -5,7 +5,7 @@
 
     <Style x:Key="CardStyle" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource App.CardBackgroundBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource App.Border}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource Border}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
         <Setter Property="Padding" Value="0" />
@@ -444,7 +444,7 @@
     <Style x:Key="SecondaryButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{ThemeResource App.SurfaceRaisedBrush}" />
         <Setter Property="Foreground" Value="{ThemeResource App.TextPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource App.Border}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource Border}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Height" Value="32" />
         <Setter Property="MinHeight" Value="32" />
