@@ -116,7 +116,7 @@ public static class Motion
 
     /// <summary>
     /// Slides a drawer in horizontally from the right edge and fades it in.
-    /// Only the composition translation (Offset X) and opacity are animated —
+    /// Only the element's layout-relative Translation X and opacity are animated —
     /// layout (width, margins, columns) never changes, so nothing behind the
     /// drawer reflows. Used to open the event editor.
     /// </summary>
@@ -130,13 +130,22 @@ public static class Motion
             return;
         }
 
+        ElementCompositionPreview.SetIsTranslationEnabled(element, true);
+
         if (!IsEnabled)
         {
             element.Opacity = 1;
+            element.Translation = Vector3.Zero;
             return;
         }
 
         element.Opacity = 1;
+
+        // Translate relative to the element's own layout position (never the absolute
+        // composition Offset, which depends on the right-aligned position and is unknown
+        // before the first arrange). Setting the hidden start here means the first open
+        // uses exactly the same values as every later open.
+        element.Translation = new Vector3((float)offsetPixels, 0, 0);
 
         var visual = ElementCompositionPreview.GetElementVisual(element);
         var compositor = visual.Compositor;
@@ -150,13 +159,13 @@ public static class Motion
         opacity.InsertKeyFrame(1f, 1f, easing);
         opacity.Duration = TimeSpan.FromMilliseconds(durationMs);
 
-        var offset = compositor.CreateVector3KeyFrameAnimation();
-        offset.InsertKeyFrame(0f, new Vector3((float)offsetPixels, 0, 0));
-        offset.InsertKeyFrame(1f, Vector3.Zero, easing);
-        offset.Duration = TimeSpan.FromMilliseconds(durationMs);
+        var translation = compositor.CreateVector3KeyFrameAnimation();
+        translation.InsertKeyFrame(0f, new Vector3((float)offsetPixels, 0, 0));
+        translation.InsertKeyFrame(1f, Vector3.Zero, easing);
+        translation.Duration = TimeSpan.FromMilliseconds(durationMs);
 
         visual.StartAnimation("Opacity", opacity);
-        visual.StartAnimation("Offset", offset);
+        visual.StartAnimation("Translation", translation);
 
         await Task.Delay(durationMs);
     }
@@ -177,9 +186,12 @@ public static class Motion
             return;
         }
 
+        ElementCompositionPreview.SetIsTranslationEnabled(element, true);
+
         if (!IsEnabled)
         {
             element.Opacity = 0;
+            element.Translation = Vector3.Zero;
             return;
         }
 
@@ -195,13 +207,13 @@ public static class Motion
         opacity.InsertKeyFrame(1f, 0f, easing);
         opacity.Duration = TimeSpan.FromMilliseconds(durationMs);
 
-        var offset = compositor.CreateVector3KeyFrameAnimation();
-        offset.InsertKeyFrame(0f, Vector3.Zero);
-        offset.InsertKeyFrame(1f, new Vector3((float)offsetPixels, 0, 0), easing);
-        offset.Duration = TimeSpan.FromMilliseconds(durationMs);
+        var translation = compositor.CreateVector3KeyFrameAnimation();
+        translation.InsertKeyFrame(0f, Vector3.Zero);
+        translation.InsertKeyFrame(1f, new Vector3((float)offsetPixels, 0, 0), easing);
+        translation.Duration = TimeSpan.FromMilliseconds(durationMs);
 
         visual.StartAnimation("Opacity", opacity);
-        visual.StartAnimation("Offset", offset);
+        visual.StartAnimation("Translation", translation);
 
         await Task.Delay(durationMs);
     }
