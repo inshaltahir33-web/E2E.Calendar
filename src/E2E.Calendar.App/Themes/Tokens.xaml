@@ -124,7 +124,7 @@
     <CornerRadius x:Key="HeatDotRadius">3</CornerRadius>
     <x:Double x:Key="AgendaDotSize">8</x:Double>
     <x:Double x:Key="MonthDayNumberHeight">20</x:Double>
-    <x:Double x:Key="NotesBoxHeight">90</x:Double>
+    <x:Double x:Key="NotesBoxHeight">96</x:Double>
 
     <x:Double x:Key="FontSizeSectionHeader">11</x:Double>
     <x:Double x:Key="FontSizeCaption">12</x:Double>

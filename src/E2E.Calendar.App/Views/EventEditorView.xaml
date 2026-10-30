@@ -5,247 +5,316 @@
     xmlns:core="using:E2E.Calendar.Core.Models"
     xmlns:vm="using:E2E.Calendar.App.ViewModels">
 
-    <Grid Background="{ThemeResource App.CardBackgroundBrush}" RowDefinitions="Auto,*,Auto">
+    <!-- Right-side drawer: 1px separation from the content, shadow is applied in code-behind. -->
+    <Border
+        x:Name="EditorRoot"
+        Background="{ThemeResource App.CardBackgroundBrush}"
+        BorderBrush="{ThemeResource App.DividerBrush}"
+        BorderThickness="1,0,0,0">
+        <Grid RowDefinitions="Auto,*,Auto">
 
-        <Grid Grid.Row="0" Padding="{StaticResource PaddingEditorHeader}" ColumnDefinitions="*,Auto">
-            <StackPanel>
-                <TextBlock
-                    x:Name="HeaderText"
-                    VerticalAlignment="Center"
-                    Style="{ThemeResource SubtitleTextBlockStyle}"
-                    Text="New event" />
-                <TextBlock
-                    x:Name="DirtyText"
-                    Opacity="{StaticResource TextSecondaryOpacity}"
-                    Style="{ThemeResource CaptionTextBlockStyle}"
-                    Text="Unsaved changes"
-                    Visibility="{x:Bind ViewModel.IsDirty, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-            </StackPanel>
-            <Button
-                Grid.Column="1"
-                Click="OnCloseClick"
-                Style="{StaticResource ToolbarButtonStyle}"
-                AutomationProperties.Name="Close the event editor"
-                ToolTipService.ToolTip="Close (Esc)">
-                <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE711;" />
-            </Button>
-        </Grid>
-
-        <ScrollViewer
-            x:Name="EditorScrollViewer"
-            Grid.Row="1"
-            HorizontalScrollBarVisibility="Disabled"
-            VerticalScrollBarVisibility="Auto">
-            <StackPanel Padding="{StaticResource PaddingEditorBody}" Spacing="{StaticResource SpaceMD}">
-
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="TEMPLATE" />
-                        <ComboBox
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Event template"
-                            DisplayMemberPath="Name"
-                            ItemsSource="{x:Bind ViewModel.Templates, Mode=OneWay}"
-                            PlaceholderText="Start from a template"
-                            SelectionChanged="OnTemplateSelected" />
+            <Border
+                Grid.Row="0"
+                Padding="{StaticResource PaddingEditorHeader}"
+                BorderBrush="{ThemeResource GridLine}"
+                BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock
+                            x:Name="HeaderText"
+                            FontSize="{StaticResource FontSizePageTitle}"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource App.TextPrimaryBrush}"
+                            Text="New event" />
+                        <TextBlock
+                            x:Name="DirtyText"
+                            FontSize="{StaticResource FontSizeCaption}"
+                            Foreground="{ThemeResource App.TextSecondaryBrush}"
+                            Text="Unsaved changes"
+                            Visibility="{x:Bind ViewModel.IsDirty, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
-                </Border>
+                    <Button
+                        Grid.Column="1"
+                        VerticalAlignment="Top"
+                        Click="OnCloseClick"
+                        Style="{StaticResource ToolbarButtonStyle}"
+                        AutomationProperties.Name="Close the event editor"
+                        ToolTipService.ToolTip="Close (Esc)">
+                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE711;" />
+                    </Button>
+                </Grid>
+            </Border>
 
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="TITLE" />
+            <ScrollViewer
+                x:Name="EditorScrollViewer"
+                Grid.Row="1"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="16,12,16,16" Spacing="{StaticResource SpaceMD}">
+
+                    <!-- Large borderless title input. -->
+                    <StackPanel Spacing="{StaticResource SpaceXS}">
                         <TextBox
+                            MinHeight="44"
+                            Padding="0,6"
+                            Background="{ThemeResource App.TransparentBrush}"
+                            BorderThickness="0"
+                            FontSize="{StaticResource FontSizePageTitle}"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource App.TextPrimaryBrush}"
+                            PlaceholderText="Add title"
                             AutomationProperties.Name="Event title"
-                            PlaceholderText="Add a title"
                             Text="{x:Bind ViewModel.Title, Mode=TwoWay}" />
                         <TextBlock
+                            FontSize="{StaticResource FontSizeCaption}"
                             Foreground="{ThemeResource App.DangerBrush}"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
                             Text="{x:Bind ViewModel.TitleError, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.HasTitleError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
-                </Border>
 
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock
+                    <!-- Colour chip + calendar selector. -->
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource SpaceSM}">
+                        <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                            <Button
+                                Click="OnPreviousColorClick"
+                                Style="{StaticResource ToolbarButtonStyle}"
+                                Padding="{StaticResource InsetXS}"
+                                AutomationProperties.Name="Previous colour">
+                                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72B;" />
+                            </Button>
+                            <Border
+                                x:Name="ColorSwatch"
+                                Width="{StaticResource CalendarSwatchSize}"
+                                Height="{StaticResource CalendarSwatchSize}"
                                 VerticalAlignment="Center"
-                                Style="{StaticResource EditorCardHeaderStyle}"
-                                Text="WHEN" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                                CornerRadius="{StaticResource RadiusSwatch}"
+                                ToolTipService.ToolTip="{x:Bind ViewModel.ColorLabel, Mode=OneWay}" />
+                            <Button
+                                Click="OnNextColorClick"
+                                Style="{StaticResource ToolbarButtonStyle}"
+                                Padding="{StaticResource InsetXS}"
+                                AutomationProperties.Name="Next colour">
+                                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72A;" />
+                            </Button>
+                        </StackPanel>
+                        <ComboBox
+                            Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="Calendar"
+                            DisplayMemberPath="Name"
+                            ItemsSource="{x:Bind ViewModel.CalendarOptions, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedCalendar, Mode=TwoWay}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock
                                     VerticalAlignment="Center"
-                                    Opacity="{StaticResource TextSecondaryOpacity}"
-                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                    Text="All day" />
-                                <ToggleSwitch
-                                    x:Name="AllDaySwitch"
-                                    MinWidth="0"
-                                    AutomationProperties.Name="All day"
-                                    IsOn="{x:Bind ViewModel.IsAllDay, Mode=TwoWay}" />
+                                    Style="{StaticResource EditorCardHeaderStyle}"
+                                    Text="WHEN" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="{StaticResource FontSizeCaption}"
+                                        Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                        Text="All day" />
+                                    <ToggleSwitch
+                                        x:Name="AllDaySwitch"
+                                        MinWidth="0"
+                                        AutomationProperties.Name="All day"
+                                        IsOn="{x:Bind ViewModel.IsAllDay, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel x:Name="TimedPickers" Spacing="{StaticResource SpaceSM}">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                                    <CalendarDatePicker
+                                        x:Name="StartDatePicker"
+                                        HorizontalAlignment="Stretch"
+                                        AutomationProperties.Name="Start date"
+                                        Date="{x:Bind ViewModel.StartDate, Mode=TwoWay}" />
+                                    <TimePicker
+                                        Grid.Column="1"
+                                        AutomationProperties.Name="Start time"
+                                        Time="{x:Bind ViewModel.StartTime, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                                    <CalendarDatePicker
+                                        x:Name="EndDatePicker"
+                                        HorizontalAlignment="Stretch"
+                                        AutomationProperties.Name="End date"
+                                        Date="{x:Bind ViewModel.EndDate, Mode=TwoWay}" />
+                                    <TimePicker
+                                        Grid.Column="1"
+                                        AutomationProperties.Name="End time"
+                                        Time="{x:Bind ViewModel.EndTime, Mode=TwoWay}" />
+                                </Grid>
+                                <TextBlock
+                                    FontSize="{StaticResource FontSizeCaption}"
+                                    Foreground="{ThemeResource App.DangerBrush}"
+                                    Text="{x:Bind ViewModel.TimeError, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.HasTimeError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
-                        </Grid>
-                        <StackPanel x:Name="TimedPickers" Spacing="{StaticResource SpaceSM}">
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                            <StackPanel
+                                x:Name="AllDayPickers"
+                                Spacing="{StaticResource SpaceSM}"
+                                Visibility="Collapsed">
                                 <CalendarDatePicker
+                                    x:Name="AllDayStartDatePicker"
                                     HorizontalAlignment="Stretch"
                                     AutomationProperties.Name="Start date"
                                     Date="{x:Bind ViewModel.StartDate, Mode=TwoWay}" />
-                                <TimePicker
-                                    Grid.Column="1"
-                                    AutomationProperties.Name="Start time"
-                                    Time="{x:Bind ViewModel.StartTime, Mode=TwoWay}" />
-                            </Grid>
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                                 <CalendarDatePicker
+                                    x:Name="AllDayEndDatePicker"
                                     HorizontalAlignment="Stretch"
                                     AutomationProperties.Name="End date"
                                     Date="{x:Bind ViewModel.EndDate, Mode=TwoWay}" />
-                                <TimePicker
-                                    Grid.Column="1"
-                                    AutomationProperties.Name="End time"
-                                    Time="{x:Bind ViewModel.EndTime, Mode=TwoWay}" />
-                            </Grid>
-                            <TextBlock
-                                Foreground="{ThemeResource App.DangerBrush}"
-                                Style="{ThemeResource CaptionTextBlockStyle}"
-                                Text="{x:Bind ViewModel.TimeError, Mode=OneWay}"
-                                Visibility="{x:Bind ViewModel.HasTimeError, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-                        </StackPanel>
-                        <StackPanel
-                            x:Name="AllDayPickers"
-                            Spacing="{StaticResource SpaceSM}"
-                            Visibility="Collapsed">
-                            <CalendarDatePicker
-                                HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="Start date"
-                                Date="{x:Bind ViewModel.StartDate, Mode=TwoWay}" />
-                            <CalendarDatePicker
-                                HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="End date"
-                                Date="{x:Bind ViewModel.EndDate, Mode=TwoWay}" />
-                        </StackPanel>
-                        <ComboBox
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Time zone"
-                            ItemsSource="{x:Bind ViewModel.AvailableTimeZones, Mode=OneWay}"
-                            SelectedItem="{x:Bind ViewModel.TimeZoneId, Mode=TwoWay}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="REPEAT" />
-                        <ComboBox
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Repeat frequency"
-                            ItemsSource="{x:Bind ViewModel.FrequencyOptions, Mode=OneWay}"
-                            SelectedIndex="{x:Bind ViewModel.FrequencyIndex, Mode=TwoWay}" />
-                        <TextBlock
-                            Opacity="{StaticResource TextSecondaryOpacity}"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Text="{x:Bind ViewModel.RecurrenceSummary, Mode=OneWay}" />
-                        <NumberBox
-                            Visibility="{x:Bind ViewModel.IsRepeating, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
-                            Header="Every"
-                            Minimum="1"
-                            SpinButtonPlacementMode="Compact"
-                            Value="{x:Bind ViewModel.IntervalValue, Mode=TwoWay}" />
-                        <StackPanel
-                            Spacing="{StaticResource SpaceXS}"
-                            Visibility="{x:Bind ViewModel.IsWeekly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
-                <ToggleButton AutomationProperties.Name="Repeat on Mondays" Content="M" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" />
-                <ToggleButton AutomationProperties.Name="Repeat on Tuesdays" Content="T" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" />
-                <ToggleButton AutomationProperties.Name="Repeat on Wednesdays" Content="W" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" />
-                <ToggleButton AutomationProperties.Name="Repeat on Thursdays" Content="T" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" />
-                <ToggleButton AutomationProperties.Name="Repeat on Fridays" Content="F" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" />
-                <ToggleButton AutomationProperties.Name="Repeat on Saturdays" Content="S" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" />
-                <ToggleButton AutomationProperties.Name="Repeat on Sundays" Content="S" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" />
                             </StackPanel>
+                            <!-- Time zone is a small link; the picker lives in its flyout. -->
+                            <Button
+                                x:Name="TimeZoneLink"
+                                Padding="0,2"
+                                HorizontalAlignment="Left"
+                                Background="{ThemeResource App.TransparentBrush}"
+                                BorderThickness="0"
+                                AutomationProperties.Name="Event time zone"
+                                ToolTipService.ToolTip="Change the time zone">
+                                <Button.Flyout>
+                                    <Flyout Placement="Top">
+                                        <ComboBox
+                                            Width="260"
+                                            AutomationProperties.Name="Time zone"
+                                            ItemsSource="{x:Bind ViewModel.AvailableTimeZones, Mode=OneWay}"
+                                            SelectedItem="{x:Bind ViewModel.TimeZoneId, Mode=TwoWay}" />
+                                    </Flyout>
+                                </Button.Flyout>
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                                    <FontIcon
+                                        FontSize="{StaticResource IconSizeSmall}"
+                                        Foreground="{ThemeResource App.AccentBrush}"
+                                        Glyph="&#xE823;" />
+                                    <TextBlock
+                                        FontSize="{StaticResource FontSizeCaption}"
+                                        Foreground="{ThemeResource App.AccentBrush}"
+                                        Text="{x:Bind ViewModel.TimeZoneId, Mode=OneWay}"
+                                        TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
-                        <StackPanel
-                            Spacing="{StaticResource SpaceXS}"
-                            Visibility="{x:Bind ViewModel.IsMonthly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                    </Border>
+
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="REPEAT" />
                             <ComboBox
                                 HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="Monthly pattern"
-                                ItemsSource="{x:Bind ViewModel.MonthlyPatternOptions, Mode=OneWay}"
-                                SelectedIndex="{x:Bind ViewModel.MonthlyPatternIndex, Mode=TwoWay}" />
-                            <NumberBox
-                                Header="Day of the month"
-                                Minimum="1"
-                                Maximum="31"
-                                SpinButtonPlacementMode="Compact"
-                                Value="{x:Bind ViewModel.MonthlyDayValue, Mode=TwoWay}" />
-                        </StackPanel>
-                        <StackPanel
-                            Spacing="{StaticResource SpaceXS}"
-                            Visibility="{x:Bind ViewModel.IsYearly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                            <NumberBox
-                                Header="Month"
-                                Minimum="1"
-                                Maximum="12"
-                                SpinButtonPlacementMode="Compact"
-                                Value="{x:Bind ViewModel.YearlyMonthValue, Mode=TwoWay}" />
-                            <NumberBox
-                                Header="Day"
-                                Minimum="1"
-                                Maximum="31"
-                                SpinButtonPlacementMode="Compact"
-                                Value="{x:Bind ViewModel.MonthlyDayValue, Mode=TwoWay}" />
-                        </StackPanel>
-                        <ComboBox
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Repeat ends"
-                            ItemsSource="{x:Bind ViewModel.RecurrenceEndOptions, Mode=OneWay}"
-                            SelectedIndex="{x:Bind ViewModel.RecurrenceEndIndex, Mode=TwoWay}"
-                            Visibility="{x:Bind ViewModel.IsRepeating, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-                        <CalendarDatePicker
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Repeat ends on"
-                            Date="{x:Bind ViewModel.RepeatEndDate, Mode=TwoWay}"
-                            Visibility="{x:Bind ViewModel.IsEndOnDate, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-                        <NumberBox
-                            Header="Number of occurrences"
-                            Minimum="1"
-                            SpinButtonPlacementMode="Compact"
-                            Value="{x:Bind ViewModel.OccurrenceCountValue, Mode=TwoWay}"
-                            Visibility="{x:Bind ViewModel.IsEndAfterCount, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <Grid ColumnDefinitions="*,Auto">
+                                AutomationProperties.Name="Repeat frequency"
+                                ItemsSource="{x:Bind ViewModel.FrequencyOptions, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.FrequencyIndex, Mode=TwoWay}" />
+                            <!-- The ComboBox already says "Does not repeat", so the summary only
+                                 shows once the event actually repeats. -->
                             <TextBlock
-                                VerticalAlignment="Center"
-                                Style="{StaticResource EditorCardHeaderStyle}"
-                                Text="ALERTS" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                                FontSize="{StaticResource FontSizeCaption}"
+                                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                Text="{x:Bind ViewModel.RecurrenceSummary, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.IsRepeating, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            <NumberBox
+                                Visibility="{x:Bind ViewModel.IsRepeating, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                                Header="Every"
+                                Minimum="1"
+                                SpinButtonPlacementMode="Compact"
+                                Value="{x:Bind ViewModel.IntervalValue, Mode=TwoWay}" />
+                            <StackPanel
+                                Spacing="{StaticResource SpaceXS}"
+                                Visibility="{x:Bind ViewModel.IsWeekly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
+                                    <ToggleButton AutomationProperties.Name="Repeat on Mondays" Content="M" IsChecked="{x:Bind ViewModel.IsMonday, Mode=TwoWay}" />
+                                    <ToggleButton AutomationProperties.Name="Repeat on Tuesdays" Content="T" IsChecked="{x:Bind ViewModel.IsTuesday, Mode=TwoWay}" />
+                                    <ToggleButton AutomationProperties.Name="Repeat on Wednesdays" Content="W" IsChecked="{x:Bind ViewModel.IsWednesday, Mode=TwoWay}" />
+                                    <ToggleButton AutomationProperties.Name="Repeat on Thursdays" Content="T" IsChecked="{x:Bind ViewModel.IsThursday, Mode=TwoWay}" />
+                                    <ToggleButton AutomationProperties.Name="Repeat on Fridays" Content="F" IsChecked="{x:Bind ViewModel.IsFriday, Mode=TwoWay}" />
+                                    <ToggleButton AutomationProperties.Name="Repeat on Saturdays" Content="S" IsChecked="{x:Bind ViewModel.IsSaturday, Mode=TwoWay}" />
+                                    <ToggleButton AutomationProperties.Name="Repeat on Sundays" Content="S" IsChecked="{x:Bind ViewModel.IsSunday, Mode=TwoWay}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel
+                                Spacing="{StaticResource SpaceXS}"
+                                Visibility="{x:Bind ViewModel.IsMonthly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <ComboBox
+                                    HorizontalAlignment="Stretch"
+                                    AutomationProperties.Name="Monthly pattern"
+                                    ItemsSource="{x:Bind ViewModel.MonthlyPatternOptions, Mode=OneWay}"
+                                    SelectedIndex="{x:Bind ViewModel.MonthlyPatternIndex, Mode=TwoWay}" />
+                                <NumberBox
+                                    Header="Day of the month"
+                                    Minimum="1"
+                                    Maximum="31"
+                                    SpinButtonPlacementMode="Compact"
+                                    Value="{x:Bind ViewModel.MonthlyDayValue, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel
+                                Spacing="{StaticResource SpaceXS}"
+                                Visibility="{x:Bind ViewModel.IsYearly, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <NumberBox
+                                    Header="Month"
+                                    Minimum="1"
+                                    Maximum="12"
+                                    SpinButtonPlacementMode="Compact"
+                                    Value="{x:Bind ViewModel.YearlyMonthValue, Mode=TwoWay}" />
+                                <NumberBox
+                                    Header="Day"
+                                    Minimum="1"
+                                    Maximum="31"
+                                    SpinButtonPlacementMode="Compact"
+                                    Value="{x:Bind ViewModel.MonthlyDayValue, Mode=TwoWay}" />
+                            </StackPanel>
+                            <ComboBox
+                                HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="Repeat ends"
+                                ItemsSource="{x:Bind ViewModel.RecurrenceEndOptions, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.RecurrenceEndIndex, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsRepeating, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            <CalendarDatePicker
+                                HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="Repeat ends on"
+                                Date="{x:Bind ViewModel.RepeatEndDate, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsEndOnDate, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            <NumberBox
+                                Header="Number of occurrences"
+                                Minimum="1"
+                                SpinButtonPlacementMode="Compact"
+                                Value="{x:Bind ViewModel.OccurrenceCountValue, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsEndAfterCount, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource EditorCardHeaderStyle}"
+                                    Text="ALERTS" />
                                 <Button
+                                    Grid.Column="1"
                                     Click="OnAddAlertClick"
                                     Style="{StaticResource ToolbarButtonStyle}"
                                     AutomationProperties.Name="Add an alert"
                                     ToolTipService.ToolTip="Add an alert">
                                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE710;" />
                                 </Button>
-                            </StackPanel>
-                        </Grid>
-                        <TextBlock
-                            Opacity="{StaticResource TextSecondaryOpacity}"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Text="{x:Bind ViewModel.AlertSummary, Mode=OneWay}" />
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.AlertRows, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:AlertRow">
-                                    <Border
-                                        Margin="0,0,0,4"
-                                        Padding="{StaticResource PaddingMonthChip}"
-                                        Background="{ThemeResource App.HoverBrush}"
-                                        CornerRadius="{StaticResource RadiusChip}">
-                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceXS}">
+                            </Grid>
+                            <TextBlock
+                                FontSize="{StaticResource FontSizeCaption}"
+                                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                Text="{x:Bind ViewModel.AlertSummary, Mode=OneWay}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.AlertRows, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:AlertRow">
+                                        <Grid
+                                            Margin="0,0,0,4"
+                                            ColumnDefinitions="*,Auto"
+                                            ColumnSpacing="{StaticResource SpaceXS}">
                                             <ComboBox
                                                 HorizontalAlignment="Stretch"
                                                 AutomationProperties.Name="Alert time"
@@ -260,123 +329,105 @@
                                                 <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE711;" />
                                             </Button>
                                         </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="MEETING" />
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
-                            <TextBox
-                                AutomationProperties.Name="Meeting link"
-                                PlaceholderText="Paste a Teams, Zoom or Meet link"
-                                Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
-                            <HyperlinkButton
-                                Grid.Column="1"
-                                AutomationProperties.Name="Open the location in a map"
-                                Content="Map"
-                                NavigateUri="{x:Bind ViewModel.MapSearchUri, Mode=OneWay}" />
-                        </Grid>
-                        <StackPanel
-                            Orientation="Horizontal"
-                            Spacing="{StaticResource SpaceSM}"
-                            Visibility="{x:Bind ViewModel.HasDetectedMeeting, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                            <HyperlinkButton
-                                AutomationProperties.Name="Join the meeting"
-                                Content="{x:Bind ViewModel.DetectedMeetingLabel, Mode=OneWay}"
-                                NavigateUri="{x:Bind ViewModel.DetectedMeetingUri, Mode=OneWay}" />
-                            <Button
-                                AutomationProperties.Name="Clear the detected meeting link"
-                                Click="OnClearMeetingClick"
-                                Content="Clear"
-                                Style="{StaticResource ToolbarButtonStyle}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
+                    </Border>
 
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="NOTES" />
-                        <RichEditBox
-                            x:Name="NotesBox"
-                            AutomationProperties.Name="Event notes"
-                            FontSize="{StaticResource FontSizeBody}"
-                            Height="{StaticResource NotesBoxHeight}"
-                            PlaceholderText="Add notes"
-                            TextChanged="OnNotesTextChanged"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource EditorCardStyle}">
-                    <StackPanel Spacing="{StaticResource SpaceSM}">
-                        <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="CALENDAR" />
-                        <ComboBox
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Calendar"
-                            DisplayMemberPath="Name"
-                            ItemsSource="{x:Bind ViewModel.CalendarOptions, Mode=OneWay}"
-                            SelectedItem="{x:Bind ViewModel.SelectedCalendar, Mode=TwoWay}" />
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXSS}">
-                            <Button
-                                Click="OnPreviousColorClick"
-                                Style="{StaticResource ToolbarButtonStyle}"
-                                AutomationProperties.Name="Previous colour">
-                                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72B;" />
-                            </Button>
-                            <Button
-                                Click="OnNextColorClick"
-                                Style="{StaticResource ToolbarButtonStyle}"
-                                AutomationProperties.Name="Next colour">
-                                <FontIcon FontSize="{StaticResource IconSizeSmall}" Glyph="&#xE72A;" />
-                            </Button>
-                            <Border
-                                x:Name="ColorSwatch"
-                                Width="{StaticResource CalendarSwatchSize}"
-                                Height="{StaticResource CalendarSwatchSize}"
-                                VerticalAlignment="Center"
-                                CornerRadius="{StaticResource RadiusSwatch}" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                Style="{ThemeResource CaptionTextBlockStyle}"
-                                Text="{x:Bind ViewModel.ColorLabel, Mode=OneWay}" />
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="MEETING LINK" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                                <TextBox
+                                    AutomationProperties.Name="Meeting link"
+                                    PlaceholderText="Paste a Teams, Zoom or Meet link"
+                                    Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
+                                <HyperlinkButton
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Open the location in a map"
+                                    Content="Map"
+                                    NavigateUri="{x:Bind ViewModel.MapSearchUri, Mode=OneWay}" />
+                            </Grid>
+                            <StackPanel
+                                Orientation="Horizontal"
+                                Spacing="{StaticResource SpaceSM}"
+                                Visibility="{x:Bind ViewModel.HasDetectedMeeting, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <HyperlinkButton
+                                    AutomationProperties.Name="Join the meeting"
+                                    Content="{x:Bind ViewModel.DetectedMeetingLabel, Mode=OneWay}"
+                                    NavigateUri="{x:Bind ViewModel.DetectedMeetingUri, Mode=OneWay}" />
+                                <Button
+                                    AutomationProperties.Name="Clear the detected meeting link"
+                                    Click="OnClearMeetingClick"
+                                    Content="Clear"
+                                    Style="{StaticResource ToolbarButtonStyle}" />
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
+                    </Border>
 
-            </StackPanel>
-        </ScrollViewer>
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="NOTES" />
+                            <RichEditBox
+                                x:Name="NotesBox"
+                                MinHeight="{StaticResource NotesBoxHeight}"
+                                AutomationProperties.Name="Event notes"
+                                FontSize="{StaticResource FontSizeBody}"
+                                PlaceholderText="Add notes"
+                                TextChanged="OnNotesTextChanged"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
 
-        <Grid
-            Grid.Row="2"
-            Padding="{StaticResource PaddingEditorFooter}"
-            Background="{ThemeResource App.CardBackgroundBrush}"
-            ColumnDefinitions="Auto,*,Auto,Auto">
-            <Button
-                x:Name="DeleteButton"
-                Grid.Column="0"
-                Click="OnDeleteClick"
-                Content="Delete"
-                AutomationProperties.Name="Delete the event" />
-            <Button
-                Grid.Column="2"
-                Click="OnCloseClick"
-                Content="Cancel"
-                AutomationProperties.Name="Close without saving" />
-            <Button
-                Grid.Column="3"
-                Margin="{StaticResource MarginStartMedium}"
-                Click="OnSaveClick"
-                Content="Save"
-                Style="{StaticResource AccentButtonStyle}"
-                AutomationProperties.Name="Save the event"
-                ToolTipService.ToolTip="Save (Ctrl+Enter)" />
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="TEMPLATE" />
+                            <ComboBox
+                                HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="Event template"
+                                DisplayMemberPath="Name"
+                                ItemsSource="{x:Bind ViewModel.Templates, Mode=OneWay}"
+                                PlaceholderText="Start from a template"
+                                SelectionChanged="OnTemplateSelected" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Pinned footer: always visible, never scrolls with the form. -->
+            <Border
+                Grid.Row="2"
+                Padding="{StaticResource PaddingEditorFooter}"
+                BorderBrush="{ThemeResource GridLine}"
+                BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+                    <Button
+                        x:Name="DeleteButton"
+                        Grid.Column="0"
+                        Click="OnDeleteClick"
+                        Content="Delete"
+                        Style="{StaticResource ToolbarButtonStyle}"
+                        Foreground="{ThemeResource App.DangerBrush}"
+                        AutomationProperties.Name="Delete the event" />
+                    <Button
+                        Grid.Column="2"
+                        Click="OnCloseClick"
+                        Content="Cancel"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        AutomationProperties.Name="Close without saving" />
+                    <Button
+                        Grid.Column="3"
+                        Click="OnSaveClick"
+                        Content="Save"
+                        Style="{StaticResource AccentButtonStyle}"
+                        AutomationProperties.Name="Save the event"
+                        ToolTipService.ToolTip="Save (Ctrl+Enter)" />
+                </Grid>
+            </Border>
+
         </Grid>
-
-    </Grid>
+    </Border>
 
 </UserControl>

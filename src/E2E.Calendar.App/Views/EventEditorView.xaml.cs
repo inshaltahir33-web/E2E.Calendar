@@ -7,11 +7,18 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace E2E.Calendar.App.Views;
 
 public partial class EventEditorView : UserControl
 {
+    // "Wed, 21 Oct 2026" — CalendarDatePicker takes a DateTimeFormatter template, not a
+    // .NET format string, so the pattern is spelled out here and applied to every date picker.
+    private const string DateFormatPattern =
+        "{dayofweek.abbreviated(3)}, {day.integer} {month.abbreviated} {year.full}";
+
+    private readonly ThemeShadow _drawerShadow = new();
     private string? _notesSnapshot;
     private bool _syncingNotes = true;
 
@@ -21,6 +28,9 @@ public partial class EventEditorView : UserControl
 
         InitializeComponent();
 
+        ApplyDrawerShadow();
+        ApplyDateFormat();
+
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         ViewModel.Opened += OnOpened;
 
@@ -29,6 +39,21 @@ public partial class EventEditorView : UserControl
         UpdateHeader();
         UpdateDeleteVisibility();
         LoadNotesIntoEditor();
+    }
+
+    /// <summary>The editor is a right-side drawer, so it floats above the content with a shadow.</summary>
+    private void ApplyDrawerShadow()
+    {
+        EditorRoot.Shadow = _drawerShadow;
+        EditorRoot.Translation = new System.Numerics.Vector3(0, 0, 32);
+    }
+
+    private void ApplyDateFormat()
+    {
+        StartDatePicker.DateFormat = DateFormatPattern;
+        EndDatePicker.DateFormat = DateFormatPattern;
+        AllDayStartDatePicker.DateFormat = DateFormatPattern;
+        AllDayEndDatePicker.DateFormat = DateFormatPattern;
     }
 
     public EventEditorViewModel ViewModel { get; }

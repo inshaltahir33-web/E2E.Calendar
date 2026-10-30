@@ -381,13 +381,17 @@
         <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
-        <Setter Property="Padding" Value="{StaticResource SpaceMD}" />
+        <!-- 16px inset so section labels keep a clean left margin and never clip. -->
+        <Setter Property="Padding" Value="{StaticResource SpaceLG}" />
     </Style>
 
     <Style x:Key="EditorCardHeaderStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeSectionLabel}" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CharacterSpacing" Value="40" />
         <Setter Property="Foreground" Value="{ThemeResource App.TextSecondaryBrush}" />
+        <Setter Property="TextTrimming" Value="None" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
         <Setter Property="IsTextSelectionEnabled" Value="False" />
     </Style>
 
