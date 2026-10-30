@@ -754,8 +754,18 @@ public sealed partial class MainWindow : Window
 
         if (!alreadyOpen)
         {
+            // Commit the drawer's layout before animating so the very first open uses the
+            // same path and values as every later open (its right-aligned offset is known).
+            EditorHost.UpdateLayout();
+
             _ = Motion.SlideInFromRightAsync(EditorHost, EditorPaneWidth, Motion.FastDurationMs);
         }
+
+        _logger.LogInformation(
+            "Event editor opened (new={IsNew}, visible={Visible}, translation={Translation})",
+            _editor.IsNew,
+            EditorHost.Visibility,
+            EditorHost.Translation);
 
         _editorView?.FocusTitle();
     }

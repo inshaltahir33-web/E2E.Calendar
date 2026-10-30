@@ -132,20 +132,17 @@ public static class Motion
 
         ElementCompositionPreview.SetIsTranslationEnabled(element, true);
 
+        // Resting state = the element's own layout position, fully opaque. An animation
+        // reverts to this base value when it ends, so the drawer always ends up visible.
+        // The hidden start comes only from the animation's first keyframe, never from the
+        // base value and never from a measured offset.
+        element.Opacity = 1;
+        element.Translation = Vector3.Zero;
+
         if (!IsEnabled)
         {
-            element.Opacity = 1;
-            element.Translation = Vector3.Zero;
             return;
         }
-
-        element.Opacity = 1;
-
-        // Translate relative to the element's own layout position (never the absolute
-        // composition Offset, which depends on the right-aligned position and is unknown
-        // before the first arrange). Setting the hidden start here means the first open
-        // uses exactly the same values as every later open.
-        element.Translation = new Vector3((float)offsetPixels, 0, 0);
 
         var visual = ElementCompositionPreview.GetElementVisual(element);
         var compositor = visual.Compositor;
@@ -188,10 +185,15 @@ public static class Motion
 
         ElementCompositionPreview.SetIsTranslationEnabled(element, true);
 
+        // Hidden resting state: off the right edge and transparent, so an animation that
+        // reverts to its base can never leave the drawer visible, and the next open starts
+        // from the same place every time.
+        var hidden = new Vector3((float)offsetPixels, 0, 0);
+        element.Opacity = 0;
+        element.Translation = hidden;
+
         if (!IsEnabled)
         {
-            element.Opacity = 0;
-            element.Translation = Vector3.Zero;
             return;
         }
 
@@ -209,7 +211,7 @@ public static class Motion
 
         var translation = compositor.CreateVector3KeyFrameAnimation();
         translation.InsertKeyFrame(0f, Vector3.Zero);
-        translation.InsertKeyFrame(1f, new Vector3((float)offsetPixels, 0, 0), easing);
+        translation.InsertKeyFrame(1f, hidden, easing);
         translation.Duration = TimeSpan.FromMilliseconds(durationMs);
 
         visual.StartAnimation("Opacity", opacity);
