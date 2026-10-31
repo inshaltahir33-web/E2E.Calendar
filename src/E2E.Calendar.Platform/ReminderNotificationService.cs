@@ -5,14 +5,13 @@ using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Windows.Data.Xml.Dom;
-using Windows.UI.Notifications;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 
 namespace E2E.Calendar.Platform;
 
 public sealed class ReminderNotificationService : BackgroundService
 {
-    private const int ScheduledToastLimit = 200;
     private static readonly TimeSpan FreshWindow = TimeSpan.FromMinutes(5);
     private readonly IAlertRepository _alerts;
     private readonly IEventRepository _events;
@@ -21,6 +20,7 @@ public sealed class ReminderNotificationService : BackgroundService
     private readonly IClock _clock;
     private readonly ReminderPlanner _planner;
     private readonly ReminderEngine _engine;
+    private readonly ISettingsService _settings;
     private readonly ILogger<ReminderNotificationService> _logger;
     private readonly SemaphoreSlim _wake = new(0, 1);
 
@@ -32,6 +32,7 @@ public sealed class ReminderNotificationService : BackgroundService
         IClock clock,
         ReminderPlanner planner,
         ReminderEngine engine,
+        ISettingsService settings,
         ILogger<ReminderNotificationService> logger)
     {
         _alerts = alerts;
@@ -41,6 +42,7 @@ public sealed class ReminderNotificationService : BackgroundService
         _clock = clock;
         _planner = planner;
         _engine = engine;
+        _settings = settings;
         _logger = logger;
     }
 
@@ -63,6 +65,14 @@ public sealed class ReminderNotificationService : BackgroundService
             try
             {
                 var next = await _alerts.PeekNextPendingInstanceAsync(stoppingToken);
+
+                _logger.LogInformation(
+                    "Reminder tick, next due: {NextDue}.",
+                    next is null
+                        ? "none"
+                        : _clock.LocalTimeZone.ToLocal(next.FireAtUtc)
+                            .ToString("ddd d MMM, HH:mm:ss", CultureInfo.InvariantCulture));
+
                 var delay = next is null
                     ? TimeSpan.FromMinutes(1)
                     : next.FireAtUtc - _clock.UtcNow;
@@ -71,15 +81,17 @@ public sealed class ReminderNotificationService : BackgroundService
                     delay = TimeSpan.Zero;
                 }
 
-                var delayTask = Task.Delay(TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds, 60)), stoppingToken);
-                var wakeTask = _wake.WaitAsync(stoppingToken);
-                await Task.WhenAny(delayTask, wakeTask);
-                await ProcessDueAsync(stoppingToken, catchUp: false);
+                // Wait for the next due time or for a wake (an alert was created or
+                // edited), capped at a minute. The plan is refreshed every tick so a
+                // new alert gets an instance without an app restart; previously the
+                // plan only ran when the stale next-due was null or under a minute away,
+                // which is why freshly created reminders were never materialised.
+                await _wake.WaitAsync(
+                    TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds, 60)),
+                    stoppingToken);
 
-                if (next is null || delay.TotalSeconds <= 60)
-                {
-                    await PlanAndScheduleAsync(stoppingToken);
-                }
+                await PlanAndScheduleAsync(stoppingToken);
+                await ProcessDueAsync(stoppingToken, catchUp: false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -98,45 +110,12 @@ public sealed class ReminderNotificationService : BackgroundService
     private async Task PlanAndScheduleAsync(CancellationToken cancellationToken)
     {
         // Alerts are planned for the next 30 days so recurring reminders and tasks keep
-        // materialising instances as they approach.
-        await _planner.PlanAsync(_clock.UtcNow, TimeSpan.FromDays(30), cancellationToken);
-        await ScheduleUpcomingToastsAsync(cancellationToken);
-    }
+        // materialising instances as they approach. An unpackaged build cannot queue OS
+        // toasts (AppNotification has no schedule API), so due instances are always shown
+        // by the in-app loop in ExecuteAsync.
+        var planned = await _planner.PlanAsync(_clock.UtcNow, TimeSpan.FromDays(30), cancellationToken);
 
-    private async Task ScheduleUpcomingToastsAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var notifier = ToastNotificationManager.CreateToastNotifier();
-            var pending = await _alerts.GetPendingInstancesForSchedulingAsync(ScheduledToastLimit, cancellationToken);
-
-            // Re-adding on every plan run would pile up duplicates, so everything
-            // scheduled for this group is dropped first. Toasts for instances that
-            // were re-planned, done or deleted therefore disappear automatically.
-            ToastCleanup.RemoveScheduledGroup(notifier);
-
-            foreach (var instance in pending)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (instance.FireAtUtc <= _clock.UtcNow ||
-                    instance.FireAtUtc > _clock.UtcNow.AddDays(30))
-                {
-                    continue;
-                }
-
-                notifier.AddToSchedule(new ScheduledToastNotification(
-                    await CreateToastXmlAsync(instance, "Scheduled reminder", cancellationToken),
-                    instance.FireAtUtc.LocalDateTime)
-                {
-                    Tag = instance.Id,
-                    Group = ToastCleanup.Group,
-                });
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "OS reminder scheduling is unavailable; in-app fallback remains active.");
-        }
+        _logger.LogInformation("Reminder plan: {Planned} instance(s) planned.", planned);
     }
 
     private async Task ProcessDueAsync(CancellationToken cancellationToken, bool catchUp)
@@ -173,6 +152,12 @@ public sealed class ReminderNotificationService : BackgroundService
                 continue;
             }
 
+            _logger.LogInformation(
+                "Reminder fired: {InstanceId} at {FireAtUtc} (catch-up: {CatchUp}).",
+                instance.Id,
+                instance.FireAtUtc,
+                catchUp);
+
             await _engine.TryScheduleRepeatAsync(instance, _clock.UtcNow, cancellationToken);
             await ShowToastAsync(instance, catchUp ? "Missed reminder" : "Reminder");
         }
@@ -182,104 +167,75 @@ public sealed class ReminderNotificationService : BackgroundService
     {
         try
         {
-            var notifier = ToastNotificationManager.CreateToastNotifier();
-            var toast = new ToastNotification(
-                await CreateToastXmlAsync(instance, heading, CancellationToken.None))
+            var (title, timeLabel, meetingUrl) = await GetOwnerSummaryAsync(instance, CancellationToken.None);
+
+            // AppNotificationBuilder is the supported way to attach actions without hand
+            // writing toast XML. The body activation opens the app; Snooze and Done carry
+            // action + instance id so ToastActivationService can resolve the instance.
+            var builder = new AppNotificationBuilder()
+                .AddArgument("action", "open")
+                .AddArgument("id", instance.Id)
+                .SetTag(ToastCleanup.TagFor(instance.Id))
+                .SetGroup(ToastCleanup.Group)
+                .AddText(heading)
+                .AddText(title)
+                .AddText(timeLabel);
+
+            var snoozeMinutes = Math.Max(1, _settings.Current.DefaultSnoozeMinutes);
+            builder.AddButton(CreateButton($"Snooze {snoozeMinutes} min", "snooze", instance.Id));
+            builder.AddButton(CreateButton("Done", "done", instance.Id));
+
+            if (!string.IsNullOrWhiteSpace(meetingUrl))
             {
-                Tag = instance.Id,
-                Group = ToastCleanup.Group,
-            };
-
-            toast.Dismissed += OnToastDismissed;
-            notifier.Show(toast);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Could not display reminder notification for {InstanceId}.", instance.Id);
-        }
-    }
-
-    private void OnToastDismissed(ToastNotification sender, ToastDismissedEventArgs args)
-    {
-        // Dismissing the toast itself must end a persistent chain; a timeout must not.
-        if (args.Reason != ToastDismissalReason.UserCanceled || string.IsNullOrEmpty(sender.Tag))
-        {
-            return;
-        }
-
-        _ = StopRepeatChainAsync(sender.Tag);
-    }
-
-    private async Task StopRepeatChainAsync(string instanceId)
-    {
-        try
-        {
-            var instance = await _alerts.GetInstanceByIdAsync(instanceId);
-
-            // Programmatic history cleanup can surface as a dismissal too; only a toast
-            // that is still the live fired instance may end its repeat chain.
-            if (instance is not null && instance.State == AlertState.Fired)
-            {
-                await _engine.StopRepeatChainAsync(instance);
-                ToastCleanup.RemoveByTag(ReminderEngine.RepeatInstanceId(
-                    instance.AlertId,
-                    instance.OccurrenceUtc,
-                    instance.RepeatCount + 1));
+                builder.AddButton(CreateButton("Join", "join", instance.Id));
             }
+
+            // AppNotificationManager is the supported path without package identity. The
+            // legacy ToastNotificationManager requires package identity or a Start menu
+            // shortcut whose AppUserModelID matches the process.
+            AppNotificationManager.Default.Show(builder.BuildNotification());
+
+            _logger.LogInformation("Reminder toast shown for {InstanceId}.", instance.Id);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Could not stop the repeat chain for {InstanceId}.", instanceId);
+            _logger.LogError(ex, "Could not display reminder notification for {InstanceId}.", instance.Id);
         }
     }
 
-    private async Task<XmlDocument> CreateToastXmlAsync(
-        AlertInstance instance,
-        string heading,
-        CancellationToken cancellationToken)
+    private static AppNotificationButton CreateButton(string content, string action, string instanceId)
     {
-        var (title, timeLabel) = await GetOwnerSummaryAsync(instance, cancellationToken);
-        var id = System.Security.SecurityElement.Escape(instance.Id);
-
-        var xml = new XmlDocument();
-        xml.LoadXml($"""
-            <toast launch="action=open&id={id}">
-              <visual>
-                <binding template="ToastGeneric">
-                  <text>{System.Security.SecurityElement.Escape(heading)}</text>
-                  <text>{System.Security.SecurityElement.Escape(title)}</text>
-                  <text>{System.Security.SecurityElement.Escape(timeLabel)}</text>
-                </binding>
-              </visual>
-              <actions>
-                <action content="Snooze 5 min" activationType="background" arguments="action=snooze&id={id}&minutes=5" />
-                <action content="Snooze 10 min" activationType="background" arguments="action=snooze&id={id}&minutes=10" />
-                <action content="Snooze 30 min" activationType="background" arguments="action=snooze&id={id}&minutes=30" />
-                <action content="Snooze 1 h" activationType="background" arguments="action=snooze&id={id}&minutes=60" />
-                <action content="Snooze Tomorrow" activationType="background" arguments="action=snooze&id={id}&minutes=tomorrow" />
-                <action content="Done" activationType="background" arguments="action=done&id={id}" />
-                <action content="Open" activationType="background" arguments="action=open&id={id}" />
-              </actions>
-            </toast>
-            """);
-        return xml;
+        var button = new AppNotificationButton(content);
+        button.AddArgument("action", action);
+        button.AddArgument("id", instanceId);
+        return button;
     }
 
-    private async Task<(string Title, string TimeLabel)> GetOwnerSummaryAsync(
+    private async Task<(string Title, string TimeLabel, string? MeetingUrl)> GetOwnerSummaryAsync(
         AlertInstance instance,
         CancellationToken cancellationToken)
     {
         string? title = null;
+        string? meetingUrl = null;
 
         try
         {
-            title = instance.OwnerType switch
+            switch (instance.OwnerType)
             {
-                OwnerType.Event => (await _events.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title,
-                OwnerType.Reminder => (await _reminders.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title,
-                OwnerType.Task => (await _tasks.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title,
-                _ => null,
-            };
+                case OwnerType.Event:
+                    var calendarEvent = await _events.GetByIdAsync(instance.OwnerId, cancellationToken);
+                    title = calendarEvent?.Title;
+                    meetingUrl = calendarEvent?.MeetingUrl;
+                    break;
+
+                case OwnerType.Reminder:
+                    title = (await _reminders.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title;
+                    break;
+
+                case OwnerType.Task:
+                    title = (await _tasks.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title;
+                    break;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -293,7 +249,7 @@ public sealed class ReminderNotificationService : BackgroundService
         var local = _clock.LocalTimeZone.ToLocal(instance.OccurrenceUtc);
         var timeLabel = local.ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture);
 
-        return (string.IsNullOrWhiteSpace(title) ? "Reminder" : title, timeLabel);
+        return (string.IsNullOrWhiteSpace(title) ? "Reminder" : title, timeLabel, meetingUrl);
     }
 }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
@@ -9,33 +10,39 @@ namespace E2E.Calendar.Platform;
 
 /// <summary>
 /// The single place that handles toast activation (toast tapped or Snooze / Done /
-/// Open pressed), both at startup and while the app runs. Windows App SDK's
+/// Join / Open pressed), both at startup and while the app runs. Windows App SDK's
 /// <see cref="AppNotificationManager"/> routes every toast of this app into
 /// <see cref="AppNotificationManager.NotificationInvoked"/> after
 /// <see cref="Register"/> has been called.
 ///
-/// Toast payloads use flat key/value arguments: action=snooze|done|open, id=instance,
-/// minutes=5|10|30|60|tomorrow.
+/// Toast payloads use flat key/value arguments: action=snooze|done|join|open, id=instance.
+/// Snooze re-fires after the default snooze from settings unless minutes is supplied.
 /// </summary>
 public sealed class ToastActivationService
 {
     private readonly IAlertRepository _alerts;
+    private readonly IEventRepository _events;
     private readonly IClock _clock;
     private readonly ReminderNotificationService _scheduler;
     private readonly ReminderEngine _engine;
+    private readonly ISettingsService _settings;
     private readonly ILogger<ToastActivationService> _logger;
 
     public ToastActivationService(
         IAlertRepository alerts,
+        IEventRepository events,
         IClock clock,
         ReminderNotificationService scheduler,
         ReminderEngine engine,
+        ISettingsService settings,
         ILogger<ToastActivationService> logger)
     {
         _alerts = alerts;
+        _events = events;
         _clock = clock;
         _scheduler = scheduler;
         _engine = engine;
+        _settings = settings;
         _logger = logger;
     }
 
@@ -52,6 +59,7 @@ public sealed class ToastActivationService
         {
             AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
             AppNotificationManager.Default.Register();
+            _logger.LogInformation("App notification activation registered.");
         }
         catch (Exception ex)
         {
@@ -67,6 +75,8 @@ public sealed class ToastActivationService
             arguments.TryGetValue("action", out var action);
             arguments.TryGetValue("id", out var instanceId);
 
+            _logger.LogInformation("Toast action: {Action} {InstanceId}", action ?? "open", instanceId);
+
             if (string.IsNullOrWhiteSpace(instanceId))
             {
                 return;
@@ -81,6 +91,10 @@ public sealed class ToastActivationService
 
                 case "done":
                     await MarkDoneAsync(instanceId);
+                    break;
+
+                case "join":
+                    await JoinAsync(instanceId);
                     break;
 
                 default:
@@ -100,7 +114,7 @@ public sealed class ToastActivationService
         var instance = await _alerts.GetInstanceByIdAsync(instanceId);
         if (instance is null)
         {
-            ToastCleanup.RemoveByTag(instanceId);
+            await ToastCleanup.RemoveByTagAsync(instanceId);
             return;
         }
 
@@ -114,7 +128,7 @@ public sealed class ToastActivationService
         // Any repeat queued for the original chain is dropped first so snoozing cannot
         // leave two nagging chains running.
         await _engine.StopRepeatChainAsync(instance);
-        ToastCleanup.RemoveByTag(QueuedRepeatTag(instance));
+        await ToastCleanup.RemoveByTagAsync(QueuedRepeatTag(instance));
         await _alerts.MarkSnoozedAsync(instance.Id, fireAt);
         await _alerts.UpsertInstanceAsync(instance with
         {
@@ -125,7 +139,7 @@ public sealed class ToastActivationService
             FiredUtc = null,
         });
 
-        ToastCleanup.RemoveByTag(instance.Id);
+        await ToastCleanup.RemoveByTagAsync(instance.Id);
         _scheduler.Wake();
     }
 
@@ -139,11 +153,32 @@ public sealed class ToastActivationService
         if (instance is not null)
         {
             await _engine.StopRepeatChainAsync(instance);
-            ToastCleanup.RemoveByTag(QueuedRepeatTag(instance));
+            await ToastCleanup.RemoveByTagAsync(QueuedRepeatTag(instance));
         }
 
-        ToastCleanup.RemoveByTag(instanceId);
+        await ToastCleanup.RemoveByTagAsync(instanceId);
         _scheduler.Wake();
+    }
+
+    /// <summary>Opens the meeting link of the event behind the toast.</summary>
+    private async Task JoinAsync(string instanceId)
+    {
+        var instance = await _alerts.GetInstanceByIdAsync(instanceId);
+        if (instance is null || instance.OwnerType != OwnerType.Event)
+        {
+            return;
+        }
+
+        var calendarEvent = await _events.GetByIdAsync(instance.OwnerId);
+        if (calendarEvent?.MeetingUrl is not { Length: > 0 } meetingUrl ||
+            !Uri.TryCreate(meetingUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            _logger.LogWarning("Toast join ignored: no usable meeting link for event {OwnerId}.", instance.OwnerId);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
     }
 
     private static string QueuedRepeatTag(AlertInstance instance) =>
@@ -158,8 +193,10 @@ public sealed class ToastActivationService
     private static bool IsTomorrow(string? minutes) =>
         string.Equals(minutes, "tomorrow", StringComparison.OrdinalIgnoreCase);
 
-    private static int ParseMinutes(string? minutes) =>
-        int.TryParse(minutes, out var value) && value > 0 ? value : 5;
+    private int ParseMinutes(string? minutes) =>
+        int.TryParse(minutes, out var value) && value > 0
+            ? value
+            : Math.Max(1, _settings.Current.DefaultSnoozeMinutes);
 
     private DateTimeOffset TomorrowAtSameTime(DateTimeOffset nowUtc)
     {
