@@ -34,8 +34,11 @@ public sealed record TodoRow(
 /// <summary>What the add box read from the typed shortcut: the cleaned title and the day/clock it named.</summary>
 public sealed record TodoAddPreview(string Title, DateOnly? Date, TimeOnly? Time);
 
+/// <summary>A section of the to-do page: a header for Scheduled/Today, null when the page is flat.</summary>
+public sealed record TodoGroup(string? Header, IReadOnlyList<TodoRow> Rows);
+
 /// <summary>
-/// Single place that answers "what is in Today / Scheduled / Overdue / Completed / Flagged / Inbox / Work".
+/// Single place that answers "what is in Today / Scheduled / Overdue / Completed / Flagged / Inbox / any named list".
 /// The to-do page and the sidebar counts both use it, so the number next to a row always matches the list.
 /// </summary>
 public sealed class TodoService
@@ -46,9 +49,8 @@ public sealed class TodoService
     public const string Completed = "Completed";
     public const string Flagged = "Flagged";
     public const string Inbox = "Inbox";
-    public const string Work = "Work";
 
-    private static readonly string[] AllFilters = { Today, Scheduled, Overdue, Completed, Flagged, Inbox, Work };
+    private static readonly string[] SmartFilters = { Today, Scheduled, Overdue, Completed, Flagged, Inbox };
 
     private readonly IReminderRepository _reminders;
     private readonly ITaskRepository _tasks;
@@ -83,9 +85,15 @@ public sealed class TodoService
     /// <summary>Raised after any add / complete / flag / delete so the page and sidebar counts refresh.</summary>
     public event EventHandler? Changed;
 
+    /// <summary>True for Inbox and every named list; smart views filter reminders instead.</summary>
     public static bool IsTaskList(string? filter) =>
-        string.Equals(filter, Inbox, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(filter, Work, StringComparison.OrdinalIgnoreCase);
+        !string.IsNullOrWhiteSpace(filter)
+        && Normalize(filter) is not (Today or Scheduled or Overdue or Completed or Flagged);
+
+    /// <summary>Names that cannot be used for a user list because they are built-in views or Inbox.</summary>
+    public static bool IsReservedListName(string? name) =>
+        !string.IsNullOrWhiteSpace(name)
+        && SmartFilters.Contains(name.Trim(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Overdue, Completed and Flagged are read-only views: no add box.</summary>
     public static bool CanAdd(string? filter) => Normalize(filter) switch
@@ -160,17 +168,122 @@ public sealed class TodoService
         return ordered.ToList();
     }
 
+    /// <summary>
+    /// The same rows as <see cref="LoadAsync"/>, split for display: Scheduled by day,
+    /// Today as Overdue then Later today, every other page as one unheaded section.
+    /// </summary>
+    public async Task<IReadOnlyList<TodoGroup>> LoadGroupedAsync(string? filter)
+    {
+        var rows = await LoadAsync(filter);
+        var name = Normalize(filter);
+
+        if (name == Scheduled)
+        {
+            return rows
+                .GroupBy(row => LocalDate(row.DueUtc))
+                .Select(group => new TodoGroup(
+                    FormatDay(group.Key),
+                    group.OrderBy(row => row.DueUtc).ToList()))
+                .ToList();
+        }
+
+        if (name == Today)
+        {
+            var groups = new List<TodoGroup>();
+            var overdue = rows.Where(row => row.IsOverdue).ToList();
+            var later = rows.Where(row => !row.IsOverdue).ToList();
+
+            if (overdue.Count > 0)
+            {
+                groups.Add(new TodoGroup("Overdue", overdue));
+            }
+
+            if (later.Count > 0)
+            {
+                groups.Add(new TodoGroup("Later today", later));
+            }
+
+            return groups;
+        }
+
+        return rows.Count == 0
+            ? Array.Empty<TodoGroup>()
+            : new[] { new TodoGroup(null, rows) };
+    }
+
+    private DateOnly LocalDate(DateTimeOffset? due) =>
+        DateOnly.FromDateTime(_clock.LocalTimeZone.ToLocal(due ?? _clock.UtcNow));
+
+    private string FormatDay(DateOnly day)
+    {
+        var today = LocalDate(_clock.UtcNow);
+
+        return (day.DayNumber - today.DayNumber) switch
+        {
+            0 => "Today",
+            1 => "Tomorrow",
+            _ => day.ToString("ddd d MMM"),
+        };
+    }
+
     public async Task<IReadOnlyDictionary<string, int>> GetCountsAsync()
     {
         var all = await LoadAllAsync();
+        var lists = await GetListsAsync();
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var filter in AllFilters)
+        foreach (var filter in SmartFilters.Concat(lists.Select(list => list.Name)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             counts[filter] = all.Count(row => Matches(filter, row));
         }
 
         return counts;
+    }
+
+    /// <summary>The named lists shown under LISTS. Inbox is virtual and comes first in the sidebar.</summary>
+    public async Task<IReadOnlyList<TaskList>> GetListsAsync()
+    {
+        var lists = await _tasks.GetListsAsync();
+
+        return lists
+            .Where(list => !IsReservedListName(list.Name))
+            .OrderBy(list => list.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<TaskList> CreateListAsync(string name)
+    {
+        var clean = ValidateListName(name);
+        var list = await _tasks.GetOrCreateListAsync(clean);
+
+        Changed?.Invoke(this, EventArgs.Empty);
+        return list;
+    }
+
+    public async Task RenameListAsync(string id, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        var clean = ValidateListName(name);
+        var lists = await _tasks.GetListsAsync();
+
+        if (lists.Any(list => !string.Equals(list.Id, id, StringComparison.Ordinal)
+            && string.Equals(list.Name, clean, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"A list named “{clean}” already exists.");
+        }
+
+        await _tasks.RenameListAsync(id, clean);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Deletes a named list; its tasks fall back to Inbox.</summary>
+    public async Task DeleteListAsync(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        await _tasks.DeleteListAsync(id);
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -202,8 +315,8 @@ public sealed class TodoService
 
             if (!string.Equals(name, Inbox, StringComparison.OrdinalIgnoreCase))
             {
-                // The sidebar lists are not seeded into task_list, so create the row
-                // on first use; otherwise adding to "Work" would find no list and fail.
+                // Named lists live in task_list; create the row when a stale filter
+                // names one that no longer exists.
                 listId = (await _tasks.GetOrCreateListAsync(name)).Id;
             }
 
@@ -382,6 +495,23 @@ public sealed class TodoService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    private static string ValidateListName(string name)
+    {
+        var clean = (name ?? string.Empty).Trim();
+
+        if (clean.Length == 0)
+        {
+            throw new ArgumentException("A list needs a name.", nameof(name));
+        }
+
+        if (IsReservedListName(clean))
+        {
+            throw new InvalidOperationException($"“{clean}” is reserved and cannot be used as a list name.");
+        }
+
+        return clean;
+    }
+
     private static string Normalize(string? filter)
     {
         if (string.IsNullOrWhiteSpace(filter))
@@ -389,10 +519,11 @@ public sealed class TodoService
             return Today;
         }
 
-        var match = AllFilters.FirstOrDefault(entry =>
-            string.Equals(entry, filter.Trim(), StringComparison.OrdinalIgnoreCase));
+        var trimmed = filter.Trim();
+        var match = SmartFilters.FirstOrDefault(entry =>
+            string.Equals(entry, trimmed, StringComparison.OrdinalIgnoreCase));
 
-        return match ?? Today;
+        return match ?? trimmed;
     }
 
     private bool Matches(string filter, TodoRow row)
@@ -410,9 +541,8 @@ public sealed class TodoService
             Scheduled => !row.IsDone && row.DueUtc is { } due
                 && DateOnly.FromDateTime(timeZone.ToLocal(due)) > today,
             Overdue => !row.IsDone && row.DueUtc is { } due && due < now,
-            Inbox or Work => !row.IsDone && row.Kind == TodoKind.Task
+            _ => !row.IsDone && row.Kind == TodoKind.Task
                 && string.Equals(row.ListName, filter, StringComparison.OrdinalIgnoreCase),
-            _ => false,
         };
     }
 

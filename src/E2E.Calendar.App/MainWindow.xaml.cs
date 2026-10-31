@@ -347,6 +347,7 @@ public sealed partial class MainWindow : Window
         {
             Motion.Refresh();
 
+            await RefreshTaskListsAsync();
             await RefreshCalendarsAsync();
             _countsRefresh.Start();
             _navigation.NavigateTo(NavigationKeys.Week);
@@ -566,6 +567,182 @@ public sealed partial class MainWindow : Window
 
     private void OnNewTaskClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
 
+    private async void OnNewListClick(object sender, RoutedEventArgs e)
+    {
+        var name = await PromptForListNameAsync("New list", "Create", string.Empty);
+
+        if (name is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var list = await _todo.CreateListAsync(name);
+            await RefreshTaskListsAsync();
+            await RefreshReminderCountsAsync();
+            OpenTodo(list.Name);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private void OnTaskListRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement host)
+        {
+            return;
+        }
+
+        var element = e.OriginalSource as FrameworkElement;
+        var row = element is null ? null : FindAncestor<Button>(element);
+
+        if (row?.DataContext is not NavigationListItem { IsUserList: true } item)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+
+        var rename = new MenuFlyoutItem { Text = "Rename" };
+        rename.Click += async (_, _) => await RenameTaskListAsync(item);
+        flyout.Items.Add(rename);
+
+        var delete = new MenuFlyoutItem { Text = "Delete" };
+        delete.Click += async (_, _) => await DeleteTaskListAsync(item);
+        flyout.Items.Add(delete);
+
+        OverlayFocus.ShowAt(flyout, host, new FlyoutShowOptions { Position = e.GetPosition(host) });
+    }
+
+    private async Task RenameTaskListAsync(NavigationListItem item)
+    {
+        if (item.ListId is not { } id)
+        {
+            return;
+        }
+
+        var name = await PromptForListNameAsync("Rename list", "Rename", item.Label);
+
+        if (name is null || string.Equals(name, item.Label, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var wasOpen = IsTodoPageFor(item.Label);
+
+        try
+        {
+            await _todo.RenameListAsync(id, name);
+            await RefreshTaskListsAsync();
+            await RefreshReminderCountsAsync();
+
+            if (wasOpen)
+            {
+                OpenTodo(name);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private async Task DeleteTaskListAsync(NavigationListItem item)
+    {
+        if (item.ListId is not { } id)
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = RootGrid.XamlRoot,
+            Title = $"Delete “{item.Label}”?",
+            Content = "Its tasks will move to Inbox.",
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        AutomationProperties.SetName(dialog, "Delete list");
+
+        if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var wasOpen = IsTodoPageFor(item.Label);
+
+        try
+        {
+            await _todo.DeleteListAsync(id);
+            await RefreshTaskListsAsync();
+            await RefreshReminderCountsAsync();
+
+            if (wasOpen)
+            {
+                OpenTodo(TodoService.Inbox);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private bool IsTodoPageFor(string listName) =>
+        _shellState.Mode == ShellMode.Todo
+        && string.Equals(_shellState.TodoFilter, listName, StringComparison.OrdinalIgnoreCase);
+
+    private async Task<string?> PromptForListNameAsync(string title, string primaryButtonText, string initial)
+    {
+        var value = initial;
+
+        while (true)
+        {
+            var box = new TextBox
+            {
+                PlaceholderText = "List name",
+                Text = value,
+            };
+
+            AutomationProperties.SetName(box, "List name");
+
+            var dialog = new ContentDialog
+            {
+                XamlRoot = RootGrid.XamlRoot,
+                Title = title,
+                Content = box,
+                PrimaryButtonText = primaryButtonText,
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+            };
+
+            AutomationProperties.SetName(dialog, title);
+
+            if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary)
+            {
+                return null;
+            }
+
+            var name = box.Text.Trim();
+
+            if (name.Length == 0 || TodoService.IsReservedListName(name))
+            {
+                ShowStatus(
+                    name.Length == 0 ? "Enter a list name." : $"“{name}” is reserved.",
+                    InfoBarSeverity.Warning);
+                value = name;
+                continue;
+            }
+
+            return name;
+        }
+    }
+
     private void OpenTodo(string filter)
     {
         ViewModel.SelectItem(ViewModel.TaskLists.FirstOrDefault(item => item.Label == filter)
@@ -698,6 +875,19 @@ public sealed partial class MainWindow : Window
 
         await RefreshReminderCountsAsync();
         await RefreshTagsAsync();
+    }
+
+    private async Task RefreshTaskListsAsync()
+    {
+        try
+        {
+            var lists = await _todo.GetListsAsync();
+            ViewModel.SetTaskLists(lists);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not refresh the LISTS section");
+        }
     }
 
     private async Task RefreshReminderCountsAsync()

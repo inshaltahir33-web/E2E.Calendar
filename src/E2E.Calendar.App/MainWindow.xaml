@@ -494,11 +494,33 @@
 
                             <TextBlock
                                 Style="{StaticResource SectionHeaderStyle}"
-                                Text="TASKS" />
+                                Text="LISTS" />
                             <ItemsControl
                                 ItemsSource="{x:Bind ViewModel.TaskLists, Mode=OneWay}"
                                 ItemTemplate="{StaticResource NavItemTemplate}"
-                                AutomationProperties.Name="Task lists" />
+                                RightTapped="OnTaskListRightTapped"
+                                AutomationProperties.Name="Lists" />
+                            <Button
+                                Margin="4,2,4,0"
+                                Padding="12,4"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Background="{ThemeResource App.TransparentBrush}"
+                                BorderThickness="0"
+                                Click="OnNewListClick"
+                                AutomationProperties.Name="New list"
+                                ToolTipService.ToolTip="Create a list">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon
+                                        FontSize="{StaticResource IconSizeMedium}"
+                                        Glyph="&#xE710;"
+                                        Foreground="{ThemeResource App.AccentBrush}" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Foreground="{ThemeResource App.AccentBrush}"
+                                        Text="New list" />
+                                </StackPanel>
+                            </Button>
 
                             <StackPanel x:Name="TagsSection" Visibility="Collapsed">
                                 <TextBlock

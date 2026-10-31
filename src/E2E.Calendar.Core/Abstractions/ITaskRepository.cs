@@ -15,5 +15,10 @@ public interface ITaskRepository
     /// <summary>Returns the list with this name, creating it when it does not exist yet.</summary>
     Task<TaskList> GetOrCreateListAsync(string name, CancellationToken cancellationToken = default);
 
+    Task RenameListAsync(string id, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes the list and moves its tasks to Inbox (null list id).</summary>
+    Task DeleteListAsync(string id, CancellationToken cancellationToken = default);
+
     Task UpsertAsync(TaskItem task, CancellationToken cancellationToken = default);
 }

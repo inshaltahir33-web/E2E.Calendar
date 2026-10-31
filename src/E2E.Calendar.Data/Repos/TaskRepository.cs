@@ -127,6 +127,39 @@ public sealed class TaskRepository : ITaskRepository
         return created;
     }
 
+    public async Task RenameListAsync(string id, string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE task_list SET name = @Name WHERE id = @Id;",
+                new { Id = id, Name = name },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task DeleteListAsync(string id, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE task SET list_id = NULL WHERE list_id = @Id;",
+                new { Id = id },
+                cancellationToken: cancellationToken));
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                "DELETE FROM task_list WHERE id = @Id;",
+                new { Id = id },
+                cancellationToken: cancellationToken));
+    }
+
     public async Task UpsertAsync(TaskItem task, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(task);

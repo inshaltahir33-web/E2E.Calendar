@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using E2E.Calendar.App.Services;
+using E2E.Calendar.Core.Models;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -46,7 +47,38 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ReminderLists.Add(new NavigationListItem { Label = "Flagged", Glyph = CalendarGlyphs.Flagged, TargetKey = NavigationKeys.Reminders });
 
         TaskLists.Add(new NavigationListItem { Label = "Inbox", Glyph = CalendarGlyphs.Inbox, TargetKey = NavigationKeys.Tasks });
-        TaskLists.Add(new NavigationListItem { Label = "Work", Glyph = CalendarGlyphs.Work, TargetKey = NavigationKeys.Tasks });
+    }
+
+    /// <summary>Rebuilds the LISTS section from stored lists, keeping Inbox first and the selection.</summary>
+    public void SetTaskLists(IReadOnlyList<TaskList> lists)
+    {
+        var selected = TaskLists.FirstOrDefault(item => item.IsSelected);
+
+        TaskLists.Clear();
+        TaskLists.Add(new NavigationListItem
+        {
+            Label = TodoService.Inbox,
+            Glyph = CalendarGlyphs.Inbox,
+            TargetKey = NavigationKeys.Tasks,
+        });
+
+        foreach (var list in lists)
+        {
+            TaskLists.Add(new NavigationListItem
+            {
+                Label = list.Name,
+                Glyph = CalendarGlyphs.List,
+                TargetKey = NavigationKeys.Tasks,
+                ListId = list.Id,
+                IsUserList = true,
+            });
+        }
+
+        if (selected is not null)
+        {
+            SelectItem(TaskLists.FirstOrDefault(item =>
+                string.Equals(item.ListId, selected.ListId, StringComparison.Ordinal)));
+        }
     }
 
     public bool CanUndoLastDelete => !string.IsNullOrEmpty(LastDeletedEventId);

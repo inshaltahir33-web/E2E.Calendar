@@ -41,6 +41,24 @@ public sealed partial class TodoView : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e) => _ = ReloadAsync();
 
+    /// <summary>Keeps the content column at 880px max and centered; a centered Grid alone would shrink to its text.</summary>
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (RootGrid is null)
+        {
+            return;
+        }
+
+        var target = Math.Min(e.NewSize.Width, 880d);
+
+        if (!double.IsNaN(RootGrid.Width) && Math.Abs(RootGrid.Width - target) < 0.5)
+        {
+            return;
+        }
+
+        RootGrid.Width = target;
+    }
+
     private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(IShellState.TodoFilter) && _shell.Mode == ShellMode.Todo)
@@ -69,11 +87,20 @@ public sealed partial class TodoView : Page
         HintText.Text = TodoService.IsTaskList(filter)
             ? "Tasks in this list. New items are added here."
             : "Reminders and tasks that match. New items are added as reminders.";
-        EmptyText.Text = canAdd ? "Nothing here yet. Add something above." : "Nothing here.";
+        EmptyText.Text = filter switch
+        {
+            TodoService.Today => "Nothing left for today.",
+            TodoService.Scheduled => "Nothing scheduled. Add one above.",
+            TodoService.Overdue => "Nothing overdue.",
+            TodoService.Completed => "Nothing completed yet.",
+            TodoService.Flagged => "Nothing flagged.",
+            TodoService.Inbox => "Inbox is empty. Add a task above.",
+            _ => "This list is empty.",
+        };
 
         try
         {
-            var rows = await _todo.LoadAsync(filter);
+            var groups = await _todo.LoadGroupedAsync(filter);
 
             if (version != _loadVersion)
             {
@@ -81,13 +108,23 @@ public sealed partial class TodoView : Page
             }
 
             RowsHost.Children.Clear();
+            var count = 0;
 
-            foreach (var row in rows)
+            foreach (var group in groups)
             {
-                RowsHost.Children.Add(BuildRow(row));
+                if (group.Header is not null)
+                {
+                    RowsHost.Children.Add(BuildGroupHeader(group.Header));
+                }
+
+                foreach (var row in group.Rows)
+                {
+                    RowsHost.Children.Add(BuildRow(row));
+                    count++;
+                }
             }
 
-            EmptyText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            EmptyText.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception exception)
         {
@@ -184,12 +221,13 @@ public sealed partial class TodoView : Page
         {
             BorderBrush = ThemeBrushes.Get(this, "GridLine"),
             BorderThickness = new Thickness(0, 0, 0, 1),
+            Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
         };
 
         var grid = new Grid
         {
             ColumnSpacing = 8,
-            MinHeight = Tokens.Double("TodoRowHeight", 44d),
+            Height = Tokens.Double("TodoRowHeight", 48d),
             Padding = new Thickness(4, 0, 4, 0),
             Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
         };
@@ -198,8 +236,6 @@ public sealed partial class TodoView : Page
 
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -233,74 +269,131 @@ public sealed partial class TodoView : Page
         Grid.SetColumn(title, 1);
         grid.Children.Add(title);
 
-        var due = new TextBlock
-        {
-            Text = row.DueText,
-            VerticalAlignment = VerticalAlignment.Center,
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            Foreground = ThemeBrushes.Get(this, row.IsOverdue ? "App.DangerBrush" : "App.TextSecondaryBrush"),
-        };
-        Grid.SetColumn(due, 2);
-        grid.Children.Add(due);
-
         var list = new TextBlock
         {
             Text = row.ListName,
             VerticalAlignment = VerticalAlignment.Center,
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
             Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+            Visibility = string.Equals(row.ListName, Filter, StringComparison.OrdinalIgnoreCase)
+                ? Visibility.Collapsed
+                : Visibility.Visible,
         };
-        Grid.SetColumn(list, 3);
+        Grid.SetColumn(list, 2);
         grid.Children.Add(list);
 
-        var flag = new Button
-        {
-            Content = new FontIcon { Glyph = "\uE734", FontSize = Tokens.Double("IconSizeMedium", 14d) },
-            Padding = new Thickness(6),
-            Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
-            BorderThickness = new Thickness(0),
-            Foreground = ThemeBrushes.Get(this, row.IsFlagged ? "App.WarningBrush" : "App.TextTertiaryBrush"),
-        };
-        AutomationProperties.SetName(flag, "Flag " + row.Title);
-        ToolTipService.SetToolTip(flag, row.Kind == TodoKind.Reminder ? "Flag" : "High priority");
-        flag.Click += async (_, _) => await _todo.ToggleFlagAsync(row);
-        Grid.SetColumn(flag, 4);
-        grid.Children.Add(flag);
+        // The right edge shows the due chip; hovering the row swaps it for the actions.
+        var hasDue = !string.IsNullOrEmpty(row.DueText);
 
-        var delete = new Button
+        var right = new Grid
         {
-            Content = new FontIcon { Glyph = "\uE74D", FontSize = Tokens.Double("IconSizeMedium", 14d) },
-            Padding = new Thickness(6),
-            Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
-            BorderThickness = new Thickness(0),
-            Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
+            MinWidth = 132,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
         };
-        AutomationProperties.SetName(delete, "Delete " + row.Title);
-        ToolTipService.SetToolTip(delete, "Delete");
-        delete.Click += async (_, _) => await _todo.DeleteAsync(row);
-        Grid.SetColumn(delete, 5);
-        grid.Children.Add(delete);
+        Grid.SetColumn(right, 3);
+        grid.Children.Add(right);
+
+        var dueChip = new Border
+        {
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(8, 2, 8, 2),
+            CornerRadius = new CornerRadius(6),
+            Background = ThemeBrushes.Get(this, "App.CardBackgroundBrush"),
+            BorderBrush = ThemeBrushes.Get(this, row.IsOverdue ? "App.DangerBrush" : "App.DividerBrush"),
+            BorderThickness = new Thickness(1),
+            Visibility = hasDue ? Visibility.Visible : Visibility.Collapsed,
+            Child = new TextBlock
+            {
+                Text = row.DueText,
+                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+                Foreground = ThemeBrushes.Get(this, row.IsOverdue ? "App.DangerBrush" : "App.TextSecondaryBrush"),
+            },
+        };
+        right.Children.Add(dueChip);
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 2,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Visibility = Visibility.Collapsed,
+        };
+        right.Children.Add(actions);
+
+        actions.Children.Add(CreateRowButton(
+            "\uE734",
+            row.Kind == TodoKind.Reminder ? "Flag" : "High priority",
+            "Flag " + row.Title,
+            row.IsFlagged ? "App.WarningBrush" : "App.TextTertiaryBrush",
+            () => _todo.ToggleFlagAsync(row)));
+
+        actions.Children.Add(CreateRowButton(
+            "\uE74D",
+            "Delete",
+            "Delete " + row.Title,
+            "App.TextTertiaryBrush",
+            () => _todo.DeleteAsync(row)));
 
         if (row.Kind == TodoKind.Task)
         {
-            var subtask = new Button
-            {
-                Content = new FontIcon { Glyph = "\uE710", FontSize = Tokens.Double("IconSizeMedium", 14d) },
-                Padding = new Thickness(6),
-                Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
-                BorderThickness = new Thickness(0),
-                Foreground = ThemeBrushes.Get(this, "App.TextTertiaryBrush"),
-            };
-            AutomationProperties.SetName(subtask, "Add sub-task to " + row.Title);
-            ToolTipService.SetToolTip(subtask, "Add sub-task");
-            subtask.Click += async (_, _) => await AddSubtaskAsync(row);
-            Grid.SetColumn(subtask, 5);
-            Grid.SetColumn(delete, 6);
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.Children.Add(subtask);
+            actions.Children.Add(CreateRowButton(
+                "\uE710",
+                "Add sub-task",
+                "Add sub-task to " + row.Title,
+                "App.TextTertiaryBrush",
+                () => AddSubtaskAsync(row)));
         }
 
+        outer.PointerEntered += (_, _) =>
+        {
+            grid.Background = ThemeBrushes.Get(this, "App.HoverBrush");
+            dueChip.Visibility = Visibility.Collapsed;
+            actions.Visibility = Visibility.Visible;
+        };
+
+        outer.PointerExited += (_, _) =>
+        {
+            grid.Background = ThemeBrushes.Get(this, "App.TransparentBrush");
+            actions.Visibility = Visibility.Collapsed;
+            dueChip.Visibility = hasDue ? Visibility.Visible : Visibility.Collapsed;
+        };
+
         return outer;
+    }
+
+    private FrameworkElement BuildGroupHeader(string header)
+    {
+        var text = new TextBlock
+        {
+            Text = header,
+            Margin = new Thickness(4, 12, 4, 4),
+            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
+        };
+        return text;
+    }
+
+    private Button CreateRowButton(string glyph, string tooltip, string automationName, string brushKey, Func<Task> action)
+    {
+        var button = new Button
+        {
+            Content = new FontIcon { Glyph = glyph, FontSize = Tokens.Double("IconSizeMedium", 14d) },
+            Width = 28,
+            Height = 28,
+            MinWidth = 0,
+            Padding = new Thickness(0),
+            Background = ThemeBrushes.Get(this, "App.TransparentBrush"),
+            BorderThickness = new Thickness(0),
+            Foreground = ThemeBrushes.Get(this, brushKey),
+        };
+        AutomationProperties.SetName(button, automationName);
+        ToolTipService.SetToolTip(button, tooltip);
+        button.Click += async (_, _) => await action();
+        return button;
     }
 
     private async Task AddSubtaskAsync(TodoRow parent)

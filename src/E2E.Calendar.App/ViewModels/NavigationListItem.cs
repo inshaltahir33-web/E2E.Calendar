@@ -19,6 +19,12 @@ public sealed partial class NavigationListItem : ObservableObject
 
     public string? TargetParameter { get; init; }
 
+    /// <summary>Set for named task lists; null for Inbox and the smart views.</summary>
+    public string? ListId { get; init; }
+
+    /// <summary>Named lists can be renamed or deleted; Inbox cannot.</summary>
+    public bool IsUserList { get; init; }
+
     public Visibility AccentVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
     partial void OnIsSelectedChanged(bool value)
