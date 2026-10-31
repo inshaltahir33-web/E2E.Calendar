@@ -6,11 +6,12 @@
     <Grid
         x:Name="RootLayout"
         KeyDown="OnGridKeyDown"
-        RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
+        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
 
-        <!-- Row 0: weather chip, top-right of the header. Row 1: day headers. Rows 2-4: all-day
-             strip. Row 5: scrollable body. Header, all-day strip and body share one set of
-             column definitions so they can never drift out of alignment. -->
+        <!-- Row 0: weather chip, top-right of the header. Row 1: day headers. Rows 2-4: banner
+             lanes. Row 5: hidden-banner "+N" chips. Row 6: scrollable body. Header, banner
+             strip and body share one set of column definitions so they can never drift out
+             of alignment. -->
 
         <Border
             x:Name="WeatherChip"
@@ -47,7 +48,7 @@
 
         <ScrollViewer
             x:Name="BodyScroll"
-            Grid.Row="5"
+            Grid.Row="6"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Hidden"
             VerticalScrollMode="Enabled"
@@ -69,7 +70,7 @@
 
         <Border
             x:Name="ScrollIndicator"
-            Grid.Row="5"
+            Grid.Row="6"
             Width="4"
             Margin="0,2,2,2"
             HorizontalAlignment="Right"
@@ -83,7 +84,7 @@
              grid so it never lands on top of the now line. -->
         <StackPanel
             x:Name="EmptyHint"
-            Grid.Row="5"
+            Grid.Row="6"
             MaxWidth="{StaticResource EmptyStateMaxWidth}"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"

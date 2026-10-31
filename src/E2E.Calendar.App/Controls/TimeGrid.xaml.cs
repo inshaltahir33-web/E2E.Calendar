@@ -35,6 +35,12 @@ public sealed partial class TimeGrid : UserControl
         typeof(TimeGrid),
         new PropertyMetadata(Tokens.Double("GridHourHeight", 56d), OnLayoutSourceChanged));
 
+    public static readonly DependencyProperty WeekStartProperty = DependencyProperty.Register(
+        nameof(WeekStart),
+        typeof(WeekStartDay),
+        typeof(TimeGrid),
+        new PropertyMetadata(WeekStartDay.Monday, OnLayoutSourceChanged));
+
     public static readonly DependencyProperty NowProperty = DependencyProperty.Register(
         nameof(Now),
         typeof(DateTimeOffset?),
@@ -72,9 +78,10 @@ public sealed partial class TimeGrid : UserControl
         new PropertyMetadata(null, OnWeatherTextChanged));
 
     private const int HoursPerDay = 24;
-    private const int MaxAllDayRows = 3;
-    private const int MaxOverlapColumns = 4;
-    private const double MaxDayChipWidth = 360;
+    private const int BannerLanes = 3;
+    private const int WeekViewMaxColumns = 3;
+    private const int DayViewMaxColumns = 4;
+    private const double MinChipHeight = 22;
     private const double ResizeEdgeInPixels = 6;
     private const double SecondaryColumnWidth = 72;
     private const int SnapMinutes = 15;
@@ -99,6 +106,11 @@ public sealed partial class TimeGrid : UserControl
     private double _columnWidth;
     private int _dayCount;
     private DateTimeOffset _now = DateTimeOffset.Now;
+    private CalendarLayoutResult? _layout;
+    private int _layoutRevision;
+    private IReadOnlyDictionary<string, CalendarItem> _itemsById =
+        new Dictionary<string, CalendarItem>(StringComparer.Ordinal);
+    private long _lastCreateTick;
 
     private bool _rebuildQueued;
     private int _columnsSignature = int.MinValue;
@@ -138,6 +150,12 @@ public sealed partial class TimeGrid : UserControl
     {
         get => (double)GetValue(HourHeightProperty);
         set => SetValue(HourHeightProperty, value);
+    }
+
+    public WeekStartDay WeekStart
+    {
+        get => (WeekStartDay)GetValue(WeekStartProperty);
+        set => SetValue(WeekStartProperty, value);
     }
 
     public DateTimeOffset? Now
@@ -362,6 +380,7 @@ public sealed partial class TimeGrid : UserControl
 
         if (days.Count == 0)
         {
+            _layout = null;
             return;
         }
 
@@ -376,6 +395,7 @@ public sealed partial class TimeGrid : UserControl
         }
 
         _columnWidth = ComputeColumnWidth(days.Count);
+        BuildLayout(days);
 
         RenderWeatherChip();
         ApplyDayTints(days);
@@ -386,6 +406,34 @@ public sealed partial class TimeGrid : UserControl
         UpdateEmptyHint();
         UpdateScrollIndicator();
         EnsureInitialScroll(days);
+    }
+
+    /// <summary>
+    /// The only source of placement geometry for the strip and the body: all-day
+    /// items and items longer than a day become week bars, everything else is
+    /// split per day and packed into columns.
+    /// </summary>
+    private void BuildLayout(IReadOnlyList<TimeGridDay> days)
+    {
+        var items = Items ?? Array.Empty<CalendarItem>();
+        var byId = new Dictionary<string, CalendarItem>(items.Count, StringComparer.Ordinal);
+        var occurrences = new List<LayoutOccurrence>(items.Count);
+
+        foreach (var item in items)
+        {
+            byId[item.Id] = item;
+            occurrences.Add(CalendarLayout.ToOccurrence(item, LocalTimeZone));
+        }
+
+        _itemsById = byId;
+        _layout = CalendarLayout.Build(
+            occurrences,
+            days[0].Date,
+            days[^1].Date,
+            WeekStart,
+            maxBannerLanes: BannerLanes,
+            maxColumns: days.Count == 1 ? DayViewMaxColumns : WeekViewMaxColumns);
+        _layoutRevision++;
     }
 
     /// <summary>
@@ -422,13 +470,6 @@ public sealed partial class TimeGrid : UserControl
         }
 
         return builder.ToString();
-    }
-
-    private string ItemSignature()
-    {
-        var identity = Items is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Items);
-
-        return $"{identity}:{Items?.Count ?? 0}";
     }
 
     private void ApplySharedColumns(int dayCount)
@@ -503,6 +544,8 @@ public sealed partial class TimeGrid : UserControl
             canvas.PointerReleased += OnDayCanvasPointerReleased;
             canvas.PointerCaptureLost += OnDayCanvasPointerReleased;
             canvas.RightTapped += OnDayCanvasRightTapped;
+            canvas.IsDoubleTapEnabled = true;
+            canvas.DoubleTapped += OnDayCanvasDoubleTapped;
             BodyGrid.Children.Add(canvas);
             _dayCanvases.Add(canvas);
         }
@@ -699,7 +742,7 @@ public sealed partial class TimeGrid : UserControl
             return;
         }
 
-        var signature = $"{DaySignature(days)}|{ItemSignature()}";
+        var signature = $"{DaySignature(days)}|{_layoutRevision}";
 
         if (_allDayCells.Count > 0 && _allDaySignature == signature)
         {
@@ -730,84 +773,98 @@ public sealed partial class TimeGrid : UserControl
         RootLayout.Children.Add(label);
         _allDayCells.Add(label);
 
-        var allDayItems = (Items ?? Array.Empty<CalendarItem>())
-            .Where(item => item.AllDay)
-            .OrderBy(item => item.StartUtc)
-            .ToList();
-
-        var rowEnds = new List<int>();
-        var overflow = new Dictionary<int, int>();
-
-        foreach (var item in allDayItems)
+        if (_layout is null)
         {
-            var startIndex = DayIndexFor(item.StartUtc, days);
-            var endIndex = DayIndexFor(item.EndUtc.AddTicks(-1), days);
-
-            if (startIndex < 0)
-            {
-                continue;
-            }
-
-            if (endIndex < startIndex)
-            {
-                endIndex = startIndex;
-            }
-
-            var row = rowEnds.FindIndex(end => end < startIndex);
-
-            if (row < 0)
-            {
-                row = rowEnds.Count;
-                rowEnds.Add(endIndex);
-            }
-            else
-            {
-                rowEnds[row] = endIndex;
-            }
-
-            if (row >= MaxAllDayRows)
-            {
-                overflow[endIndex] = overflow.TryGetValue(endIndex, out var count) ? count + 1 : 1;
-                continue;
-            }
-
-            var bar = CreateAllDayBar(item);
-            Grid.SetRow(bar, 2 + row);
-            Grid.SetColumn(bar, startIndex + 1);
-            Grid.SetColumnSpan(bar, endIndex - startIndex + 1);
-            RootLayout.Children.Add(bar);
-            _allDayCells.Add(bar);
+            return;
         }
 
-        foreach (var pair in overflow)
-        {
-            var chip = new TextBlock
-            {
-                Text = $"+{pair.Value} more",
-                FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
-                Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 2, 4, 2),
-            };
+        var dayIndexByDate = new Dictionary<DateOnly, int>(days.Count);
 
-            Grid.SetRow(chip, MaxAllDayRows + 1);
-            Grid.SetColumn(chip, pair.Key + 1);
-            RootLayout.Children.Add(chip);
-            _allDayCells.Add(chip);
+        for (var index = 0; index < days.Count; index++)
+        {
+            dayIndexByDate[days[index].Date] = index;
+        }
+
+        var hiddenByDay = new Dictionary<DateOnly, List<BannerPlacement>>();
+
+        foreach (var week in _layout.Weeks)
+        {
+            foreach (var banner in week.Banners)
+            {
+                if (!dayIndexByDate.TryGetValue(banner.StartDay, out var startIndex))
+                {
+                    continue;
+                }
+
+                var endIndex = dayIndexByDate.TryGetValue(banner.EndDay, out var found)
+                    ? found
+                    : days.Count - 1;
+
+                if (endIndex < startIndex)
+                {
+                    endIndex = startIndex;
+                }
+
+                var item = ResolveItem(banner.Occurrence);
+
+                if (item is null)
+                {
+                    continue;
+                }
+
+                var bar = CreateAllDayBar(item, banner);
+                Grid.SetRow(bar, 2 + banner.Lane);
+                Grid.SetColumn(bar, startIndex + 1);
+                Grid.SetColumnSpan(bar, endIndex - startIndex + 1);
+                RootLayout.Children.Add(bar);
+                _allDayCells.Add(bar);
+            }
+
+            foreach (var hidden in week.HiddenPlacements)
+            {
+                for (var day = hidden.StartDay; day <= hidden.EndDay; day = day.AddDays(1))
+                {
+                    if (!dayIndexByDate.ContainsKey(day))
+                    {
+                        continue;
+                    }
+
+                    if (!hiddenByDay.TryGetValue(day, out var list))
+                    {
+                        list = new List<BannerPlacement>();
+                        hiddenByDay[day] = list;
+                    }
+
+                    list.Add(hidden);
+                }
+            }
+        }
+
+        foreach (var pair in hiddenByDay.OrderBy(entry => entry.Key))
+        {
+            var button = CreateOverflowButton(
+                $"+{pair.Value.Count}",
+                BuildBannerFlyoutRows(pair.Value),
+                $"Show {pair.Value.Count} more all-day items");
+
+            Grid.SetRow(button, 2 + BannerLanes);
+            Grid.SetColumn(button, dayIndexByDate[pair.Key] + 1);
+            button.HorizontalAlignment = HorizontalAlignment.Left;
+            RootLayout.Children.Add(button);
+            _allDayCells.Add(button);
         }
     }
 
-    private Border CreateAllDayBar(CalendarItem item)
+    private Border CreateAllDayBar(CalendarItem item, BannerPlacement placement)
     {
         var chipBrushes = EventColorService.GetChipBrushes(item.Color, ActualTheme);
         var content = new Grid();
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var bar = new Border { Background = chipBrushes.Stripe };
-        Grid.SetColumn(bar, 0);
-        content.Children.Add(bar);
+        var stripe = new Border { Background = chipBrushes.Stripe };
+        Grid.SetColumn(stripe, 0);
+        content.Children.Add(stripe);
 
         var text = new TextBlock
         {
@@ -823,12 +880,22 @@ public sealed partial class TimeGrid : UserControl
         Grid.SetColumn(text, 1);
         content.Children.Add(text);
 
+        var radius = Tokens.Double("RadiusChip", 6d);
+
         return new Border
         {
             Child = content,
             Background = chipBrushes.Fill,
-            CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
-            Margin = new Thickness(2, 1, 2, 1),
+            CornerRadius = new CornerRadius(
+                placement.ContinuesFromPrev ? 0 : radius,
+                placement.ContinuesToNext ? 0 : radius,
+                placement.ContinuesToNext ? 0 : radius,
+                placement.ContinuesFromPrev ? 0 : radius),
+            Margin = new Thickness(
+                placement.ContinuesFromPrev ? 0 : 2,
+                1,
+                placement.ContinuesToNext ? 0 : 2,
+                1),
         };
     }
 
@@ -843,17 +910,14 @@ public sealed partial class TimeGrid : UserControl
 
         _columnWidth = ComputeColumnWidth(days.Count);
 
-        var visible = VisibleRange();
         var signature = string.Join(
             '|',
             DaySignature(days),
-            ItemSignature(),
+            _layoutRevision,
             SelectedItemId,
             ClockFormat,
             Math.Round(_columnWidth, 1),
-            Math.Round(HourHeight, 1),
-            Math.Round((visible.Start - DateTimeOffset.UnixEpoch).TotalMinutes / 10),
-            Math.Round((visible.End - visible.Start).TotalMinutes, 1));
+            Math.Round(HourHeight, 1));
 
         if (_bodySignature == signature)
         {
@@ -868,94 +932,131 @@ public sealed partial class TimeGrid : UserControl
             canvas.Width = _columnWidth;
         }
 
-        var timed = (Items ?? Array.Empty<CalendarItem>())
-            .Where(item => !item.AllDay)
-            .Where(item => item.EndUtc > visible.Start && item.StartUtc < visible.End)
-            .ToList();
-
-        var reminders = (Items ?? Array.Empty<CalendarItem>())
-            .Where(item => item.Kind is CalendarItemKind.Reminder or CalendarItemKind.Task)
-            .Where(item => item.StartUtc >= visible.Start && item.StartUtc < visible.End)
-            .ToList();
-
-        for (var dayIndex = 0; dayIndex < days.Count; dayIndex++)
+        if (_layout is null)
         {
-            var dayStart = DayStartUtc(days[dayIndex].Date);
-            var dayEnd = dayStart.AddDays(1);
+            RenderLines();
+            RenderNowLine();
+            return;
+        }
 
-            var dayItems = timed
-                .Where(item => item.StartUtc < dayEnd && item.EndUtc > dayStart)
-                .ToList();
+        var firstDate = days[0].Date;
 
-            var packed = OverlapLayout.Pack(dayItems, dayStart, dayEnd);
+        foreach (var day in _layout.Days)
+        {
+            var dayIndex = day.Date.DayNumber - firstDate.DayNumber;
 
-            foreach (var group in packed.GroupBy(entry => entry.ClusterIndex))
+            if (dayIndex < 0 || dayIndex >= _dayCanvases.Count)
             {
-                var entries = group.ToList();
-                var columnCount = Math.Min(entries[0].ColumnCount, MaxOverlapColumns);
-                var hidden = entries.Count(entry => entry.Column >= MaxOverlapColumns);
-
-                foreach (var entry in entries)
-                {
-                    if (entry.Column >= MaxOverlapColumns)
-                    {
-                        continue;
-                    }
-
-                    var chip = CreateChip(entry.Item, days[dayIndex]);
-
-                    var y = (entry.Item.StartUtc - dayStart).TotalHours * HourHeight;
-                    var height = Math.Max(22, (entry.Item.EndUtc - entry.Item.StartUtc).TotalHours * HourHeight - 2);
-                    var width = Math.Max(24, (_columnWidth / columnCount) - 1);
-
-                    if (days.Count == 1)
-                    {
-                        // Day view has one day column, so a lone or split event
-                        // would otherwise stretch across the whole window.
-                        width = Math.Min(width, MaxDayChipWidth);
-                    }
-
-                    Canvas.SetTop(chip, y);
-                    Canvas.SetLeft(chip, (entry.Column * _columnWidth / columnCount) + 1);
-                    chip.Width = width;
-                    chip.Height = height;
-
-                    _dayCanvases[dayIndex].Children.Add(chip);
-                }
-
-                if (hidden > 0)
-                {
-                    var more = new TextBlock
-                    {
-                        Text = $"+{hidden}",
-                        FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
-                        Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
-                        HorizontalAlignment = HorizontalAlignment.Left,
-                    };
-
-                    Canvas.SetLeft(more, ((MaxOverlapColumns - 1) * _columnWidth / columnCount) + 6);
-                    Canvas.SetTop(more, Math.Max(0, (dayEnd - dayStart).TotalHours * HourHeight - 22));
-                    _dayCanvases[dayIndex].Children.Add(more);
-                }
+                continue;
             }
 
-            foreach (var reminder in reminders.Where(item => item.StartUtc >= dayStart && item.StartUtc < dayEnd))
+            var canvas = _dayCanvases[dayIndex];
+            var dayStart = day.Date.ToDateTime(TimeOnly.MinValue);
+
+            foreach (var placement in day.Items)
             {
-                var chip = CreateChip(reminder, days[dayIndex]);
+                var item = ResolveItem(placement.Occurrence);
 
-                var y = (reminder.StartUtc - dayStart).TotalHours * HourHeight;
+                if (item is null)
+                {
+                    continue;
+                }
 
-                Canvas.SetTop(chip, y);
-                Canvas.SetLeft(chip, 4);
-                chip.Width = Math.Max(24, _columnWidth - 8);
-                chip.Height = 22;
+                var chip = CreateChip(item, days[dayIndex]);
 
-                _dayCanvases[dayIndex].Children.Add(chip);
+                var top = (placement.VisualStart - dayStart).TotalHours * HourHeight;
+                var height = Math.Max(
+                    MinChipHeight,
+                    (placement.VisualEnd - placement.VisualStart).TotalHours * HourHeight - 2);
+                var columnCount = Math.Max(1, placement.ColumnCount);
+                var sliceWidth = _columnWidth / columnCount;
+
+                Canvas.SetTop(chip, top);
+                Canvas.SetLeft(chip, (placement.Column * sliceWidth) + 1);
+                chip.Width = Math.Max(24, sliceWidth - 2);
+                chip.Height = height;
+                canvas.Children.Add(chip);
+            }
+
+            if (day.OverflowCount > 0)
+            {
+                var more = CreateOverflowButton(
+                    $"+{day.OverflowCount}",
+                    BuildTimedFlyoutRows(day.Hidden),
+                    $"Show {day.OverflowCount} more items");
+
+                Canvas.SetLeft(more, Math.Max(2, _columnWidth - 46));
+                Canvas.SetTop(more, Math.Max(0, (HoursPerDay * HourHeight) - MinChipHeight - 2));
+                canvas.Children.Add(more);
             }
         }
 
         RenderLines();
         RenderNowLine();
+    }
+
+    private CalendarItem? ResolveItem(LayoutOccurrence occurrence) =>
+        _itemsById.TryGetValue(occurrence.Id, out var item) ? item : null;
+
+    private List<HiddenItemRow> BuildBannerFlyoutRows(IEnumerable<BannerPlacement> hidden) =>
+        hidden
+            .Select(placement => ResolveItem(placement.Occurrence))
+            .Where(item => item is not null)
+            .Select(item => new HiddenItemRow($"{item!.Title} · All day"))
+            .ToList();
+
+    private List<HiddenItemRow> BuildTimedFlyoutRows(IEnumerable<TimedPlacement> hidden) =>
+        hidden
+            .Select(placement => ResolveItem(placement.Occurrence))
+            .Where(item => item is not null)
+            .Select(item => new HiddenItemRow($"{FormatTime(item!.StartUtc)}  {item.Title}"))
+            .ToList();
+
+    /// <summary>
+    /// The "+N" chip for lanes/columns that did not fit. It opens the same kind
+    /// of list the month cell uses, so hidden items are still reachable.
+    /// </summary>
+    private Button CreateOverflowButton(
+        string text,
+        IReadOnlyList<HiddenItemRow> rows,
+        string automationName)
+    {
+        var button = new Button
+        {
+            Content = text,
+            FontSize = Tokens.Double("FontSizeSectionHeader", 11d),
+            Padding = new Thickness(8, 0, 8, 0),
+            MinHeight = MinChipHeight,
+            Height = MinChipHeight,
+            Background = ThemeBrushes.Get(this, "App.CardElevatedBrush"),
+            BorderBrush = ThemeBrushes.Get(this, "App.DividerBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(MinChipHeight / 2),
+            Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(2, 1, 2, 1),
+        };
+
+        button.Click += (_, _) =>
+        {
+            var flyout = new Flyout
+            {
+                Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
+                Content = new ListView
+                {
+                    ItemsSource = rows,
+                    SelectionMode = ListViewSelectionMode.None,
+                    MaxHeight = 320,
+                    DisplayMemberPath = nameof(HiddenItemRow.Label),
+                },
+            };
+
+            OverlayFocus.ShowAt(flyout, button);
+        };
+
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, automationName);
+
+        return button;
     }
 
     private void RenderLines()
@@ -1128,15 +1229,14 @@ public sealed partial class TimeGrid : UserControl
     {
         var days = Days ?? Array.Empty<TimeGridDay>();
 
-        if (days.Count == 0)
+        if (days.Count == 0 || _layout is null)
         {
             EmptyHint.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var visible = VisibleRange();
-        var hasContent = (Items ?? Array.Empty<CalendarItem>())
-            .Any(item => item.StartUtc < visible.End && item.EndUtc > visible.Start);
+        var hasContent = _layout.Weeks.Any(week => week.Banners.Count > 0)
+            || _layout.Days.Any(day => day.Items.Count > 0);
 
         EmptyHint.Visibility = hasContent ? Visibility.Collapsed : Visibility.Visible;
         PositionEmptyHint();
@@ -1390,6 +1490,45 @@ public sealed partial class TimeGrid : UserControl
         OverlayFocus.ShowAt(flyout, canvas, new FlyoutShowOptions { Position = e.GetPosition(canvas) });
     }
 
+    private void OnDayCanvasDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (sender is not Canvas canvas)
+        {
+            return;
+        }
+
+        var dayIndex = _dayCanvases.IndexOf(canvas);
+        var days = Days ?? Array.Empty<TimeGridDay>();
+
+        if (dayIndex < 0 || dayIndex >= days.Count)
+        {
+            return;
+        }
+
+        // A drag-create on this spot already opened the editor.
+        if (Environment.TickCount64 - _lastCreateTick < 400)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var position = e.GetPosition(canvas);
+
+        if (e.OriginalSource is DependencyObject source && FindAncestor<Button>(source) is not null)
+        {
+            return;
+        }
+
+        if (HitTest(canvas, position) is not null)
+        {
+            return;
+        }
+
+        var start = TimeAt(dayIndex, position.Y);
+        SlotCreated?.Invoke(this, new TimeGridSlotEventArgs(start, start.AddHours(1)));
+        e.Handled = true;
+    }
+
     private void OnChipPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         if (sender is not EventChipView chip || chip.Tag is not CalendarItem item)
@@ -1407,7 +1546,8 @@ public sealed partial class TimeGrid : UserControl
 
     private void OnDayCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (_dayCanvases.Count == 0)
+        if (_dayCanvases.Count == 0 ||
+            e.OriginalSource is DependencyObject source && FindAncestor<Button>(source) is not null)
         {
             return;
         }
@@ -1431,12 +1571,15 @@ public sealed partial class TimeGrid : UserControl
         }
         else
         {
+            // A plain click only focuses the grid; creation happens on a drag or
+            // a double-click, both anchored to the snapped slot under the pointer.
             var time = TimeAt(dayIndex, position.Y);
 
             _drag = new DragState
             {
                 Mode = DragMode.Create,
                 DayIndex = dayIndex,
+                AnchorUtc = time,
                 StartUtc = time,
                 EndUtc = time.AddMinutes(SnapMinutes),
             };
@@ -1500,8 +1643,15 @@ public sealed partial class TimeGrid : UserControl
         switch (_drag.Mode)
         {
             case DragMode.Create:
-                _drag.StartUtc = time < _drag.EndUtc ? time : _drag.EndUtc;
-                _drag.EndUtc = time < _drag.StartUtc ? _drag.StartUtc : time;
+                var anchor = _drag.AnchorUtc;
+                _drag.StartUtc = time < anchor ? time : anchor;
+                _drag.EndUtc = time < anchor ? anchor : time;
+
+                if (_drag.EndUtc <= _drag.StartUtc)
+                {
+                    _drag.EndUtc = _drag.StartUtc.AddMinutes(SnapMinutes);
+                }
+
                 break;
 
             case DragMode.Move:
@@ -1533,7 +1683,12 @@ public sealed partial class TimeGrid : UserControl
         switch (drag.Mode)
         {
             case DragMode.Create:
-                SlotCreated?.Invoke(this, new TimeGridSlotEventArgs(drag.StartUtc, drag.EndUtc));
+                if (drag.HasMoved)
+                {
+                    _lastCreateTick = Environment.TickCount64;
+                    SlotCreated?.Invoke(this, new TimeGridSlotEventArgs(drag.StartUtc, drag.EndUtc));
+                }
+
                 break;
 
             case DragMode.Move:
@@ -1595,12 +1750,12 @@ public sealed partial class TimeGrid : UserControl
         _ghost.Width = Math.Max(24, _columnWidth - 4);
         _ghost.Height = height;
         Canvas.SetTop(_ghost, top);
-        Canvas.SetLeft(_ghost, GutterWidth + (_drag.DayIndex * _columnWidth) + 2);
+        Canvas.SetLeft(_ghost, (_drag.DayIndex * _columnWidth) + 2);
 
         _ghostLabel.Visibility = Visibility.Visible;
         _ghostLabel.Text = $"{FormatTime(_drag.StartUtc)} – {FormatTime(_drag.EndUtc)}";
         Canvas.SetTop(_ghostLabel, top - 16);
-        Canvas.SetLeft(_ghostLabel, GutterWidth + (_drag.DayIndex * _columnWidth) + 4);
+        Canvas.SetLeft(_ghostLabel, (_drag.DayIndex * _columnWidth) + 4);
     }
 
     private void HidePreview()
@@ -1655,34 +1810,9 @@ public sealed partial class TimeGrid : UserControl
         return dayStart.AddMinutes(snapped);
     }
 
-    private (DateTimeOffset Start, DateTimeOffset End) VisibleRange()
-    {
-        var offset = BodyScroll.VerticalOffset;
-        var viewport = BodyScroll.ViewportHeight > 0 ? BodyScroll.ViewportHeight : ActualHeight;
-        var firstDay = Days is { Count: > 0 } ? DayStartUtc(Days[0].Date) : DateTimeOffset.UnixEpoch;
-        var start = firstDay.AddMinutes(offset / HourHeight * 60);
-
-        return (start, start.AddMinutes(viewport / HourHeight * 60));
-    }
-
     private DateTimeOffset DayStartUtc(DateOnly date)
     {
         return LocalTimeZone.ToUtc(date.ToDateTime(TimeOnly.MinValue));
-    }
-
-    private int DayIndexFor(DateTimeOffset utc, IReadOnlyList<TimeGridDay> days)
-    {
-        var local = DateOnly.FromDateTime(LocalTimeZone.ToLocal(utc));
-
-        for (var index = 0; index < days.Count; index++)
-        {
-            if (days[index].Date == local)
-            {
-                return index;
-            }
-        }
-
-        return -1;
     }
 
     private string FormatTime(DateTimeOffset value)
@@ -1766,6 +1896,8 @@ public sealed partial class TimeGrid : UserControl
 
         public int DayIndex { get; init; }
 
+        public DateTimeOffset AnchorUtc { get; init; }
+
         public DateTimeOffset StartUtc { get; set; }
 
         public DateTimeOffset EndUtc { get; set; }
@@ -1778,4 +1910,6 @@ public sealed partial class TimeGrid : UserControl
 
         public bool HasMoved { get; set; }
     }
+
+    private sealed record HiddenItemRow(string Label);
 }

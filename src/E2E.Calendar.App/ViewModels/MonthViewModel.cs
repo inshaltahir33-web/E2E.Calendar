@@ -11,6 +11,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
 {
     private readonly EventService _events;
     private readonly IEventRepository _repository;
+    private readonly CalendarItemQueryService _items;
     private readonly IClock _clock;
 
     [ObservableProperty]
@@ -23,6 +24,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         CalendarStateViewModel state,
         EventQueryService query,
         IEventQueryCache cache,
+        CalendarItemQueryService items,
         EventService events,
         IEventRepository repository,
         IClock clock)
@@ -30,6 +32,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
     {
         _events = events;
         _repository = repository;
+        _items = items;
         _clock = clock;
     }
 
@@ -46,13 +49,14 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
             // 42-day grid — otherwise the leading/trailing adjacent-month cells
             // never receive their events.
             var gridEnd = gridStart.AddDays(42);
-            var items = await Query.GetItemsAsync(
+            var items = await _items.GetItemsAsync(
                 timeZone.ToUtc(gridStart.ToDateTime(TimeOnly.MinValue)),
                 timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)));
 
-            var byDay = items
-                .GroupBy(item => DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc)))
-                .ToDictionary(group => group.Key, group => group.OrderBy(item => item.StartUtc).ToList());
+            // Project items with the same layout the Day and Week grids use, so a
+            // multi-day banner appears on every date it touches, exactly as it does
+            // there, and the same date lists the same items in every view.
+            var byDay = BuildItemsByDay(items, gridStart, gridEnd.AddDays(-1), State.WeekStart, timeZone);
 
             var today = DateOnly.FromDateTime(timeZone.ToLocal(State.CurrentDate));
 
@@ -122,6 +126,91 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         await _events.UpdateAsync(calendarEvent with { StartUtc = newStartUtc, EndUtc = newStartUtc + duration });
 
         return true;
+    }
+
+    private static Dictionary<DateOnly, List<CalendarItem>> BuildItemsByDay(
+        IReadOnlyList<CalendarItem> items,
+        DateOnly rangeStart,
+        DateOnly rangeEnd,
+        WeekStartDay weekStart,
+        TimeZoneInfo timeZone)
+    {
+        var byDay = new Dictionary<DateOnly, List<CalendarItem>>();
+
+        if (items.Count == 0)
+        {
+            return byDay;
+        }
+
+        var byId = items.ToDictionary(item => item.Id, StringComparer.Ordinal);
+        var seen = new Dictionary<DateOnly, HashSet<string>>();
+
+        void Add(DateOnly date, string id)
+        {
+            if (date < rangeStart || date > rangeEnd || !byId.TryGetValue(id, out var item))
+            {
+                return;
+            }
+
+            if (!seen.TryGetValue(date, out var ids))
+            {
+                ids = new HashSet<string>(StringComparer.Ordinal);
+                seen[date] = ids;
+            }
+
+            if (!ids.Add(id))
+            {
+                return;
+            }
+
+            if (!byDay.TryGetValue(date, out var list))
+            {
+                list = new List<CalendarItem>();
+                byDay[date] = list;
+            }
+
+            list.Add(item);
+        }
+
+        var occurrences = items.Select(item => CalendarLayout.ToOccurrence(item, timeZone)).ToList();
+        var layout = CalendarLayout.Build(
+            occurrences,
+            rangeStart,
+            rangeEnd,
+            weekStart,
+            maxBannerLanes: items.Count,
+            maxColumns: items.Count);
+
+        foreach (var week in layout.Weeks)
+        {
+            foreach (var banner in week.Banners.Concat(week.HiddenPlacements))
+            {
+                for (var day = banner.StartDay; day <= banner.EndDay; day = day.AddDays(1))
+                {
+                    Add(day, banner.Occurrence.Id);
+                }
+            }
+        }
+
+        foreach (var day in layout.Days)
+        {
+            foreach (var placement in day.Items.Concat(day.Hidden))
+            {
+                Add(day.Date, placement.Occurrence.Id);
+            }
+        }
+
+        foreach (var list in byDay.Values)
+        {
+            list.Sort(static (left, right) =>
+            {
+                var byStart = left.StartUtc.CompareTo(right.StartUtc);
+
+                return byStart != 0 ? byStart : string.CompareOrdinal(left.Title, right.Title);
+            });
+        }
+
+        return byDay;
     }
 
     private static MonthChip ToChip(CalendarItem item) => new()

@@ -14,6 +14,7 @@
             Days="{x:Bind ViewModel.Days, Mode=OneWay}"
             Items="{x:Bind ViewModel.Items, Mode=OneWay}"
             Now="{x:Bind ViewModel.Now, Mode=OneWay}"
+            WeekStart="{x:Bind ViewModel.WeekStart, Mode=OneWay}"
             ClockFormat="{x:Bind ViewModel.ClockFormat, Mode=OneWay}"
             HourHeight="{x:Bind ViewModel.HourHeight, Mode=OneWay}"
             SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}"

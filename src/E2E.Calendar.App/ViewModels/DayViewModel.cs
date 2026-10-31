@@ -9,11 +9,12 @@ public sealed class DayViewModel : TimeGridViewModel
         CalendarStateViewModel state,
         EventQueryService query,
         IEventQueryCache cache,
+        CalendarItemQueryService items,
         SettingsService settings,
         Services.WeatherService weather,
         IReminderRepository reminders,
         ITaskRepository tasks)
-        : base(state, query, cache, settings, weather, reminders, tasks)
+        : base(state, query, cache, items, settings, weather, reminders, tasks)
     {
     }
 

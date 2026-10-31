@@ -376,6 +376,7 @@ public partial class App : Application
 
                 services.AddSingleton<IRecurrenceExpander, RecurrenceExpander>();
                 services.AddSingleton<EventQueryService>();
+                services.AddSingleton<CalendarItemQueryService>();
                 // ProductivityAnalyticsService has no consumer yet (v1.1 metrics), so it is not registered.
                 services.AddSingleton<IEventQueryCache>(serviceProvider => serviceProvider.GetRequiredService<EventQueryService>());
                 services.AddSingleton<EventService>(serviceProvider => new EventService(
