@@ -38,6 +38,7 @@ public static partial class QuickAddParser
 
         var timeZone = clock.LocalTimeZone;
         var nowLocal = timeZone.ToLocal(clock.UtcNow);
+        var today = DateOnly.FromDateTime(nowLocal);
         var working = $" {(input ?? string.Empty).Trim()} ";
 
         var kind = ParsedItemKind.Event;
@@ -45,6 +46,8 @@ public static partial class QuickAddParser
         var priority = Priority.Normal;
         int? leadMinutes = null;
         int? relativeMinutes = null;
+        int? relativeDays = null;
+        int? relativeMonths = null;
         var durationMinutes = (int?)null;
         DateOnly? explicitDate = null;
         var explicitTime = (TimeOnly?)null;
@@ -120,6 +123,28 @@ public static partial class QuickAddParser
 
             return true;
         }, RegexOptions.IgnoreCase);
+
+        // "in 3 days" / "in 2 weeks" / "in 1 month": a calendar date N days from now.
+        Extract(@"\bin\s+(\d+)\s*(days?|weeks?|months?)\b", match =>
+        {
+            if (int.TryParse(match.Groups[1].Value, CultureInfo.InvariantCulture, out var amount) && amount > 0)
+            {
+                var unit = match.Groups[2].Value;
+
+                if (unit.StartsWith('m'))
+                {
+                    relativeMonths = amount;
+                }
+                else
+                {
+                    relativeDays = unit.StartsWith('w') ? amount * 7 : amount;
+                }
+
+                kind = ParsedItemKind.Reminder;
+            }
+
+            return true;
+        });
 
         // Recurrence: "every day", "every 2 weeks", "every monday",
         // "every week on mon, wed", "every weekday".
@@ -207,28 +232,30 @@ public static partial class QuickAddParser
             return true;
         });
 
-        Extract(@"\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b", match =>
+        Extract(@"\b(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b", match =>
         {
             var month = MonthIndex(match.Groups[1].Value);
             var day = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
-            var year = match.Groups[3].Success
+            var hasYear = match.Groups[3].Success;
+            var year = hasYear
                 ? int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture)
                 : nowLocal.Year;
 
-            AddDate(ref explicitDate, year, month, day);
+            AddDate(ref explicitDate, year, month, day, hasYear ? null : today);
 
             return true;
         });
 
-        Extract(@"\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b(?:,?\s*(\d{4}))?", match =>
+        Extract(@"\b(?:on\s+)?(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b(?:,?\s*(\d{4}))?", match =>
         {
             var month = MonthIndex(match.Groups[2].Value);
             var day = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-            var year = match.Groups[3].Success
+            var hasYear = match.Groups[3].Success;
+            var year = hasYear
                 ? int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture)
                 : nowLocal.Year;
 
-            AddDate(ref explicitDate, year, month, day);
+            AddDate(ref explicitDate, year, month, day, hasYear ? null : today);
 
             return true;
         });
@@ -319,7 +346,11 @@ public static partial class QuickAddParser
         {
             title = kind == ParsedItemKind.Reminder && relativeMinutes is { } countdown
                 ? $"Reminder in {countdown} min"
-                : calendarHint is null ? "Untitled" : $"New {calendarHint}";
+                : relativeDays is { } dayCount
+                    ? $"Reminder in {dayCount} {(dayCount == 1 ? "day" : "days")}"
+                    : relativeMonths is { } monthCount
+                        ? $"Reminder in {monthCount} {(monthCount == 1 ? "month" : "months")}"
+                        : calendarHint is null ? "Untitled" : $"New {calendarHint}";
         }
 
         if (title.Equals("new event", StringComparison.OrdinalIgnoreCase))
@@ -328,7 +359,6 @@ public static partial class QuickAddParser
         }
 
         // Resolve the date.
-        var today = DateOnly.FromDateTime(nowLocal);
         var nowTime = TimeOnly.FromDateTime(nowLocal);
 
         DateOnly date;
@@ -363,6 +393,14 @@ public static partial class QuickAddParser
             explicitTime = TimeOnly.FromDateTime(nowLocal.AddMinutes(relative));
             date = DateOnly.FromDateTime(nowLocal.AddMinutes(relative));
         }
+        else if (relativeDays is { } daysAway)
+        {
+            date = DateOnly.FromDateTime(nowLocal.AddDays(daysAway));
+        }
+        else if (relativeMonths is { } monthsAway)
+        {
+            date = DateOnly.FromDateTime(nowLocal.AddMonths(monthsAway));
+        }
 
         var alertOffsets = new List<int>();
 
@@ -396,6 +434,8 @@ public static partial class QuickAddParser
             StartUtc = resolved.StartUtc,
             EndUtc = resolved.EndUtc,
             AllDay = resolved.AllDay,
+            HasDate = explicitDate is not null || weekday is not null
+                || relativeMinutes is not null || relativeDays is not null || relativeMonths is not null,
             Location = location,
             CalendarHint = calendarHint,
             AlertOffsetsMinutes = alertOffsets,
@@ -477,11 +517,12 @@ public static partial class QuickAddParser
         return new TimeOnly(hour, minute);
     }
 
-    private static void AddDate(ref DateOnly? date, int year, int month, int day)
+    private static void AddDate(ref DateOnly? date, int year, int month, int day, DateOnly? rollFrom = null)
     {
         try
         {
-            date = new DateOnly(year, month, day);
+            var candidate = new DateOnly(year, month, day);
+            date = rollFrom is { } today && candidate < today ? candidate.AddYears(1) : candidate;
         }
         catch (ArgumentOutOfRangeException)
         {

@@ -5,6 +5,10 @@ using System.Threading.Tasks;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.QuickAdd;
+using E2E.Calendar.Core.Services;
+using E2E.Calendar.Platform;
+using Microsoft.Extensions.Logging;
 
 namespace E2E.Calendar.App.Services;
 
@@ -46,16 +50,31 @@ public sealed class TodoService
     private readonly IReminderRepository _reminders;
     private readonly ITaskRepository _tasks;
     private readonly IClock _clock;
+    private readonly ReminderEngine _engine;
+    private readonly ReminderNotificationService _scheduler;
+    private readonly ILogger<TodoService> _logger;
 
-    public TodoService(IReminderRepository reminders, ITaskRepository tasks, IClock clock)
+    public TodoService(
+        IReminderRepository reminders,
+        ITaskRepository tasks,
+        IClock clock,
+        ReminderEngine engine,
+        ReminderNotificationService scheduler,
+        ILogger<TodoService> logger)
     {
         ArgumentNullException.ThrowIfNull(reminders);
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(engine);
+        ArgumentNullException.ThrowIfNull(scheduler);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _reminders = reminders;
         _tasks = tasks;
         _clock = clock;
+        _engine = engine;
+        _scheduler = scheduler;
+        _logger = logger;
     }
 
     /// <summary>Raised after any add / complete / flag / delete so the page and sidebar counts refresh.</summary>
@@ -92,7 +111,7 @@ public sealed class TodoService
         return counts;
     }
 
-    /// <summary>Adds a task (Inbox / Work) or a reminder (smart views). Returns false when the target list does not exist.</summary>
+    /// <summary>Adds a task to the open task list (Inbox or a named list) or a reminder (smart views).</summary>
     public async Task<bool> AddAsync(string title, string? filter)
     {
         title = (title ?? string.Empty).Trim();
@@ -111,16 +130,9 @@ public sealed class TodoService
 
             if (!string.Equals(name, Inbox, StringComparison.OrdinalIgnoreCase))
             {
-                var lists = await _tasks.GetListsAsync();
-                var list = lists.FirstOrDefault(entry =>
-                    string.Equals(entry.Name, name, StringComparison.OrdinalIgnoreCase));
-
-                if (list is null)
-                {
-                    return false;
-                }
-
-                listId = list.Id;
+                // The sidebar lists are not seeded into task_list, so create the row
+                // on first use; otherwise adding to "Work" would find no list and fail.
+                listId = (await _tasks.GetOrCreateListAsync(name)).Id;
             }
 
             await _tasks.UpsertAsync(new TaskItem
@@ -132,16 +144,35 @@ public sealed class TodoService
         }
         else
         {
-            await _reminders.UpsertAsync(new Reminder
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                Title = title,
-                DueUtc = name == Scheduled ? now.AddDays(1) : now.AddHours(1),
-                TimeZoneId = _clock.LocalTimeZone.ToIanaId(),
-                Flagged = name == Flagged,
-                CreatedUtc = now,
-                UpdatedUtc = now,
-            });
+            // Parse the text the same way the quick add preview does, so "in 2 minutes"
+            // or "at 5pm" keeps its due time instead of a fixed +1 hour.
+            var parsed = QuickAddParser.Parse(title, _clock);
+
+            // Keep the parsed day: "in 3 days" / "4 Nov" / "tomorrow" must not collapse to
+            // "tomorrow at the current clock time". A day without a time lands at 09:00 local.
+            var dueUtc = parsed.HasTime
+                ? parsed.StartUtc
+                : parsed.HasDate
+                    ? _clock.LocalTimeZone.ToUtc(parsed.Date.ToDateTime(new TimeOnly(9, 0)))
+                    : name == Scheduled ? now.AddDays(1) : now.AddHours(1);
+
+            await _engine.CreateStandaloneAsync(
+                new Reminder
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    Title = parsed.Title,
+                    DueUtc = dueUtc,
+                    TimeZoneId = _clock.LocalTimeZone.ToIanaId(),
+                    Flagged = name == Flagged,
+                    CreatedUtc = now,
+                    UpdatedUtc = now,
+                },
+                alertOffsetMinutes: parsed.AlertOffsetsMinutes.Count > 0
+                    ? parsed.AlertOffsetsMinutes[0]
+                    : 0);
+
+            _logger.LogInformation("Reminder created: {Title} due {DueUtc}.", title, dueUtc);
+            _scheduler.Wake();
         }
 
         Changed?.Invoke(this, EventArgs.Empty);
@@ -291,7 +322,8 @@ public sealed class TodoService
             Flagged => !row.IsDone && row.IsFlagged,
             Today => !row.IsDone && row.DueUtc is { } due
                 && DateOnly.FromDateTime(timeZone.ToLocal(due)) == today,
-            Scheduled => !row.IsDone && row.DueUtc is { } due && due > now,
+            Scheduled => !row.IsDone && row.DueUtc is { } due
+                && DateOnly.FromDateTime(timeZone.ToLocal(due)) > today,
             Overdue => !row.IsDone && row.DueUtc is { } due && due < now,
             Inbox or Work => !row.IsDone && row.Kind == TodoKind.Task
                 && string.Equals(row.ListName, filter, StringComparison.OrdinalIgnoreCase),
@@ -317,7 +349,17 @@ public sealed class TodoService
             }
 
             var local = timeZone.ToLocal(due.Value);
-            return $"{local:ddd d MMM}, {local:t}";
+            var today = DateOnly.FromDateTime(timeZone.ToLocal(now));
+            var daysAway = DateOnly.FromDateTime(local).DayNumber - today.DayNumber;
+
+            var day = daysAway switch
+            {
+                0 => "Today",
+                1 => "Tomorrow",
+                _ => local.ToString("ddd d MMM"),
+            };
+
+            return $"{day}, {local:t}";
         }
 
         var rows = new List<TodoRow>();

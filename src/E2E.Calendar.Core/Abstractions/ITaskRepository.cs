@@ -12,5 +12,8 @@ public interface ITaskRepository
 
     Task<IReadOnlyList<TaskList>> GetListsAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the list with this name, creating it when it does not exist yet.</summary>
+    Task<TaskList> GetOrCreateListAsync(string name, CancellationToken cancellationToken = default);
+
     Task UpsertAsync(TaskItem task, CancellationToken cancellationToken = default);
 }

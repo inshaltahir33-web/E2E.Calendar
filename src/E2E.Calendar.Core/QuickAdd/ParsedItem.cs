@@ -31,6 +31,9 @@ public sealed record ParsedItem
 
     public bool AllDay { get; init; }
 
+    /// <summary>True when the phrase named a day (explicit date, relative offset or weekday).</summary>
+    public bool HasDate { get; init; }
+
     public string? Location { get; init; }
 
     public string? CalendarHint { get; init; }

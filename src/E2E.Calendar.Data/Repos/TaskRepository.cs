@@ -95,6 +95,38 @@ public sealed class TaskRepository : ITaskRepository
         return rows.AsList();
     }
 
+    public async Task<TaskList> GetOrCreateListAsync(string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        await using var connection = await _db.OpenAsync(cancellationToken);
+
+        var existing = await connection.QueryFirstOrDefaultAsync<TaskList>(
+            new CommandDefinition(
+                "SELECT id AS Id, name AS Name, color AS Color, remote_id AS RemoteId FROM task_list WHERE name = @Name COLLATE NOCASE LIMIT 1;",
+                new { Name = name },
+                cancellationToken: cancellationToken));
+
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var created = new TaskList
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Name = name,
+        };
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                "INSERT INTO task_list (id, name, color, remote_id) VALUES (@Id, @Name, @Color, @RemoteId);",
+                new { created.Id, created.Name, created.Color, created.RemoteId },
+                cancellationToken: cancellationToken));
+
+        return created;
+    }
+
     public async Task UpsertAsync(TaskItem task, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(task);

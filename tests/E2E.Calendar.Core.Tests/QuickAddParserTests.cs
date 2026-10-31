@@ -12,6 +12,9 @@ public sealed class QuickAddParserTests
 
     private static readonly IClock Clock = new FixedClock(Now, TimeZoneInfo.Utc);
 
+    private static readonly IClock AfternoonClock =
+        new FixedClock(new DateTimeOffset(2026, 10, 23, 14, 35, 0, TimeSpan.Zero), TimeZoneInfo.Utc);
+
     [Fact]
     public void A_full_event_phrase_extracts_title_date_time_and_place()
     {
@@ -69,6 +72,106 @@ public sealed class QuickAddParserTests
         item.StartUtc.Should().Be(Now.AddMinutes(25));
         item.RRule.Should().BeNull();
         item.AlertOffsetsMinutes.Should().ContainSingle().Which.Should().Be(0);
+    }
+
+    [Fact]
+    public void In_days_moves_the_date_and_strips_the_phrase()
+    {
+        var item = QuickAddParser.Parse("dentist in 3 days", Clock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.Title.Should().Be("dentist");
+        item.Date.Should().Be(new DateOnly(2026, 10, 26));
+        item.StartTime.Should().Be(new TimeOnly(9, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 10, 26, 9, 0, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void In_days_without_a_time_uses_nine_am()
+    {
+        var item = QuickAddParser.Parse("paint compete in 5 days", AfternoonClock);
+
+        item.Title.Should().Be("paint compete");
+        item.Date.Should().Be(new DateOnly(2026, 10, 28));
+        item.StartTime.Should().Be(new TimeOnly(9, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 10, 28, 9, 0, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void In_one_month_moves_the_date_and_strips_the_phrase()
+    {
+        var item = QuickAddParser.Parse("party in 1 month", Clock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.Title.Should().Be("party");
+        item.Date.Should().Be(new DateOnly(2026, 11, 23));
+        item.StartTime.Should().Be(new TimeOnly(9, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 11, 23, 9, 0, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void A_month_name_date_with_a_clock_time_keeps_both()
+    {
+        var item = QuickAddParser.Parse("exam 4 nov at 9am", Clock);
+
+        item.Title.Should().Be("exam");
+        item.Date.Should().Be(new DateOnly(2026, 11, 4));
+        item.StartTime.Should().Be(new TimeOnly(9, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 11, 4, 9, 0, 0, TimeSpan.Zero));
+        item.HasDate.Should().BeTrue();
+    }
+
+    [Fact]
+    public void In_weeks_adds_seven_days_per_week()
+    {
+        var item = QuickAddParser.Parse("competition in 2 weeks", Clock);
+
+        item.Title.Should().Be("competition");
+        item.Date.Should().Be(new DateOnly(2026, 11, 6));
+        item.StartTime.Should().Be(new TimeOnly(9, 0));
+    }
+
+    [Theory]
+    [InlineData("competition on 4 nov")]
+    [InlineData("competition 4 nov")]
+    [InlineData("competition nov 4")]
+    public void A_month_name_date_sets_that_day(string input)
+    {
+        var item = QuickAddParser.Parse(input, Clock);
+
+        item.Title.Should().Be("competition");
+        item.Date.Should().Be(new DateOnly(2026, 11, 4));
+        item.HasDate.Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_month_name_date_in_the_past_rolls_to_next_year()
+    {
+        var item = QuickAddParser.Parse("insurance on 2 jan", Clock);
+
+        item.Title.Should().Be("insurance");
+        item.Date.Should().Be(new DateOnly(2027, 1, 2));
+    }
+
+    [Fact]
+    public void A_reminder_with_only_a_date_defaults_to_nine_am()
+    {
+        var item = QuickAddParser.Parse("Remind me dentist 4 nov", Clock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.Title.Should().Be("dentist");
+        item.Date.Should().Be(new DateOnly(2026, 11, 4));
+        item.StartTime.Should().Be(new TimeOnly(9, 0));
+    }
+
+    [Fact]
+    public void A_bare_in_days_phrase_gets_a_reminder_title()
+    {
+        var item = QuickAddParser.Parse("in 3 days", Clock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.Title.Should().Be("Reminder in 3 days");
+        item.Date.Should().Be(new DateOnly(2026, 10, 26));
     }
 
     [Fact]
