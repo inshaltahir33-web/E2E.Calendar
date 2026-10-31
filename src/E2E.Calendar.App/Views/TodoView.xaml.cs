@@ -216,6 +216,7 @@ public sealed partial class TodoView : Page
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
+            RequestedTheme = ActualTheme,
             Title = "Add sub-task",
             Content = box,
             PrimaryButtonText = "Add",

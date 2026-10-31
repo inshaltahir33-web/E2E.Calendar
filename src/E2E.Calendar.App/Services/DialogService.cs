@@ -48,6 +48,13 @@ public sealed class DialogService : IDialogService
             return ContentDialogResult.None;
         }
 
+        // Dialogs are hosted outside the window content tree, so they do not inherit the
+        // per-window RequestedTheme that AppearanceService applies to the root element.
+        if (dialog.XamlRoot.Content is FrameworkElement root)
+        {
+            dialog.RequestedTheme = root.ActualTheme;
+        }
+
         if (Interlocked.CompareExchange(ref _isOpen, 1, 0) != 0)
         {
             _logger.LogWarning("Dialog '{Title}' was not shown: another dialog is already open.", dialog.Title);

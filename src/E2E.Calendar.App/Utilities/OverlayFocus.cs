@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 
@@ -52,6 +53,8 @@ internal static class OverlayFocus
         ArgumentNullException.ThrowIfNull(flyout);
         ArgumentNullException.ThrowIfNull(target);
 
+        ApplyTheme(flyout, target.ActualTheme);
+
         var returnTo = opener ?? Capture(target.XamlRoot) ?? target;
 
         void OnClosed(object? sender, object args)
@@ -69,6 +72,26 @@ internal static class OverlayFocus
         else
         {
             flyout.ShowAt(target, options);
+        }
+    }
+
+    /// <summary>
+    /// Flyouts open in their own popup root and do not inherit the window's RequestedTheme,
+    /// so mirror the opener's theme onto the presenter before the flyout is shown.
+    /// </summary>
+    private static void ApplyTheme(FlyoutBase flyout, ElementTheme theme)
+    {
+        var style = new Style(flyout is MenuFlyout ? typeof(MenuFlyoutPresenter) : typeof(FlyoutPresenter));
+        style.Setters.Add(new Setter(FrameworkElement.RequestedThemeProperty, theme));
+
+        switch (flyout)
+        {
+            case MenuFlyout menu:
+                menu.MenuFlyoutPresenterStyle = style;
+                break;
+            case Flyout content:
+                content.FlyoutPresenterStyle = style;
+                break;
         }
     }
 }
