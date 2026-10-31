@@ -4,6 +4,7 @@ using System.ComponentModel;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.Core.Abstractions;
+using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -20,20 +21,26 @@ public sealed partial class TodoView : Page
 {
     private readonly TodoService _todo;
     private readonly IShellState _shell;
+    private readonly ISettingsService _settings;
     private int _loadVersion;
     private string? _configuredFilter;
 
-    public TodoView(TodoService todo, IShellState shell)
+    public TodoView(TodoService todo, IShellState shell, ISettingsService settings)
     {
         ArgumentNullException.ThrowIfNull(todo);
         ArgumentNullException.ThrowIfNull(shell);
+        ArgumentNullException.ThrowIfNull(settings);
 
         _todo = todo;
         _shell = shell;
+        _settings = settings;
 
         InitializeComponent();
 
+        ApplyClockFormat();
+
         _shell.PropertyChanged += OnShellPropertyChanged;
+        _settings.PropertyChanged += OnSettingsPropertyChanged;
         _todo.Changed += OnTodoChanged;
     }
 
@@ -67,6 +74,22 @@ public sealed partial class TodoView : Page
         }
     }
 
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ISettingsService.Clock))
+        {
+            ApplyClockFormat();
+            _ = ReloadAsync();
+        }
+    }
+
+    private void ApplyClockFormat()
+    {
+        DueTimeChip.ClockIdentifier = _settings.Clock == ClockFormat.TwentyFourHour
+            ? "24HourClock"
+            : "12HourClock";
+    }
+
     private void OnTodoChanged(object? sender, EventArgs e) => _ = ReloadAsync();
 
     private async System.Threading.Tasks.Task ReloadAsync()
@@ -84,9 +107,15 @@ public sealed partial class TodoView : Page
 
         HeadingText.Text = filter;
         HintText.Visibility = canAdd ? Visibility.Visible : Visibility.Collapsed;
-        HintText.Text = TodoService.IsTaskList(filter)
-            ? "Tasks in this list. New items are added here."
-            : "Reminders and tasks that match. New items are added as reminders.";
+        HintText.Text = filter switch
+        {
+            TodoService.Today => "Reminders due today",
+            TodoService.Scheduled => "Upcoming reminders",
+            TodoService.Inbox => "Quick capture. Add anything here and sort it later.",
+            _ => TodoService.IsTaskList(filter)
+                ? "Tasks in this list. New items are added here."
+                : "Reminders and tasks that match. New items are added as reminders.",
+        };
         EmptyText.Text = filter switch
         {
             TodoService.Today => "Nothing left for today.",
@@ -154,11 +183,13 @@ public sealed partial class TodoView : Page
         }
 
         var isTaskList = TodoService.IsTaskList(filter);
+        var isToday = string.Equals(filter, TodoService.Today, StringComparison.OrdinalIgnoreCase);
 
         AddBox.PlaceholderText = isTaskList ? "Add a task…" : "Add a reminder…";
         AutomationProperties.SetName(AddBox, isTaskList ? "New task title" : "New reminder title");
 
-        DueDateChip.Visibility = Visibility.Visible;
+        // Task lists only need a title; Today is always today; Scheduled picks both.
+        DueDateChip.Visibility = isTaskList || isToday ? Visibility.Collapsed : Visibility.Visible;
         DueTimeChip.Visibility = isTaskList ? Visibility.Collapsed : Visibility.Visible;
 
         ResetChips();
@@ -191,24 +222,24 @@ public sealed partial class TodoView : Page
     /// <summary>
     /// Typed date/time words only fill the chips; the words are removed from the title
     /// when the item is added. Unrecognised text leaves the chips untouched.
+    /// Task lists have no chips, and Today is always today, so only the time applies there.
     /// </summary>
     private void OnAddTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!TodoService.CanAdd(Filter))
+        if (!TodoService.CanAdd(Filter) || TodoService.IsTaskList(Filter))
         {
             return;
         }
 
         var preview = _todo.Preview(AddBox.Text);
+        var isToday = string.Equals(Filter, TodoService.Today, StringComparison.OrdinalIgnoreCase);
 
-        if (preview.Date is not { } date)
+        if (!isToday && preview.Date is { } date)
         {
-            return;
+            DueDateChip.Date = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue));
         }
 
-        DueDateChip.Date = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue));
-
-        if (!TodoService.IsTaskList(Filter) && preview.Time is { } time)
+        if (preview.Time is { } time)
         {
             DueTimeChip.Time = time.ToTimeSpan();
         }
@@ -323,6 +354,16 @@ public sealed partial class TodoView : Page
         };
         right.Children.Add(actions);
 
+        if (row.Kind == TodoKind.Task)
+        {
+            actions.Children.Add(CreateRowButton(
+                "\uE787",
+                row.DueUtc is null ? "Set due date" : "Change due date",
+                "Set due date for " + row.Title,
+                "App.TextTertiaryBrush",
+                () => PickDueDateAsync(row)));
+        }
+
         actions.Children.Add(CreateRowButton(
             "\uE734",
             row.Kind == TodoKind.Reminder ? "Flag" : "High priority",
@@ -396,6 +437,42 @@ public sealed partial class TodoView : Page
         return button;
     }
 
+    private async Task PickDueDateAsync(TodoRow row)
+    {
+        var picker = new CalendarDatePicker
+        {
+            Header = "Due date",
+            PlaceholderText = "No date",
+            MinWidth = 240,
+            Date = _todo.GetLocalDueDate(row) is { } date
+                ? new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue))
+                : null,
+        };
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            RequestedTheme = ActualTheme,
+            Title = row.Title,
+            Content = picker,
+            PrimaryButtonText = "Set",
+            SecondaryButtonText = "Clear date",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        var result = await dialog.ShowAsync();
+
+        if (result == ContentDialogResult.Primary && picker.Date is { } chosen)
+        {
+            await _todo.SetDueAsync(row, DateOnly.FromDateTime(chosen.Date));
+        }
+        else if (result == ContentDialogResult.Secondary)
+        {
+            await _todo.SetDueAsync(row, null);
+        }
+    }
+
     private async Task AddSubtaskAsync(TodoRow parent)
     {
         var box = new TextBox { PlaceholderText = "Sub-task title" };
@@ -445,10 +522,24 @@ public sealed partial class TodoView : Page
 
         var preview = _todo.Preview(text);
         var isTaskList = TodoService.IsTaskList(Filter);
-        DateOnly? dueDate = DueDateChip.Date is { } picked
-            ? DateOnly.FromDateTime(picked.Date)
-            : null;
-        TimeOnly? dueTime = isTaskList ? null : TimeOnly.FromTimeSpan(DueTimeChip.Time);
+        var isToday = string.Equals(Filter, TodoService.Today, StringComparison.OrdinalIgnoreCase);
+        DateOnly? dueDate;
+        TimeOnly? dueTime;
+
+        if (isTaskList)
+        {
+            // No date box: a typed date is still honoured as a shortcut, otherwise the task has none.
+            // Tasks are day-based, so no time is kept.
+            dueDate = preview.Date;
+            dueTime = null;
+        }
+        else
+        {
+            dueDate = DueDateChip.Date is { } picked
+                ? DateOnly.FromDateTime(picked.Date)
+                : isToday ? _todo.GetAddDefault(Filter).Date : null;
+            dueTime = TimeOnly.FromTimeSpan(DueTimeChip.Time);
+        }
 
         try
         {

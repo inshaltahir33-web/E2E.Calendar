@@ -58,7 +58,8 @@ public sealed class NavigationRegistrationService : IHostedService
         {
             todoPage ??= new TodoView(
                 _services.GetRequiredService<TodoService>(),
-                _services.GetRequiredService<IShellState>());
+                _services.GetRequiredService<IShellState>(),
+                _services.GetRequiredService<ISettingsService>());
             return todoPage;
         }
 

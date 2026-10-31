@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using E2E.Calendar.Core;
@@ -55,6 +56,7 @@ public sealed class TodoService
     private readonly IReminderRepository _reminders;
     private readonly ITaskRepository _tasks;
     private readonly IClock _clock;
+    private readonly ISettingsService _settings;
     private readonly ReminderEngine _engine;
     private readonly ReminderNotificationService _scheduler;
     private readonly ILogger<TodoService> _logger;
@@ -63,6 +65,7 @@ public sealed class TodoService
         IReminderRepository reminders,
         ITaskRepository tasks,
         IClock clock,
+        ISettingsService settings,
         ReminderEngine engine,
         ReminderNotificationService scheduler,
         ILogger<TodoService> logger)
@@ -70,6 +73,7 @@ public sealed class TodoService
         ArgumentNullException.ThrowIfNull(reminders);
         ArgumentNullException.ThrowIfNull(tasks);
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(engine);
         ArgumentNullException.ThrowIfNull(scheduler);
         ArgumentNullException.ThrowIfNull(logger);
@@ -77,6 +81,7 @@ public sealed class TodoService
         _reminders = reminders;
         _tasks = tasks;
         _clock = clock;
+        _settings = settings;
         _engine = engine;
         _scheduler = scheduler;
         _logger = logger;
@@ -102,19 +107,23 @@ public sealed class TodoService
         _ => true,
     };
 
-    /// <summary>Default chips for a reminder list: Today = next full hour, Scheduled = tomorrow 09:00.</summary>
+    /// <summary>Default values for the add row: Today = next full hour (today), Scheduled = tomorrow 09:00.</summary>
     public (DateOnly Date, TimeOnly Time) GetAddDefault(string? filter)
     {
         var local = _clock.LocalTimeZone.ToLocal(_clock.UtcNow);
+        var today = DateOnly.FromDateTime(local);
 
         if (Normalize(filter) == Scheduled)
         {
-            return (DateOnly.FromDateTime(local).AddDays(1), new TimeOnly(9, 0));
+            return (today.AddDays(1), new TimeOnly(9, 0));
         }
 
         var nextHour = new DateTime(local.Year, local.Month, local.Day, local.Hour, 0, 0).AddHours(1);
 
-        return (DateOnly.FromDateTime(nextHour), TimeOnly.FromDateTime(nextHour));
+        // Today never moves to tomorrow: near midnight the next full hour would.
+        return DateOnly.FromDateTime(nextHour) == today
+            ? (today, TimeOnly.FromDateTime(nextHour))
+            : (today, new TimeOnly(23, 59));
     }
 
     /// <summary>
@@ -402,6 +411,44 @@ public sealed class TodoService
         return true;
     }
 
+    /// <summary>The row's due day in the user's time zone, for the row's date picker.</summary>
+    public DateOnly? GetLocalDueDate(TodoRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return row.DueUtc is { } due
+            ? DateOnly.FromDateTime(_clock.LocalTimeZone.ToLocal(due))
+            : null;
+    }
+
+    /// <summary>Sets or clears a task's due day; task lists set dates from the row, not the add box.</summary>
+    public async Task SetDueAsync(TodoRow row, DateOnly? date)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (row.Kind != TodoKind.Task)
+        {
+            return;
+        }
+
+        var task = await _tasks.GetByIdAsync(row.Id);
+
+        if (task is null)
+        {
+            return;
+        }
+
+        await _tasks.UpsertAsync(task with
+        {
+            DueUtc = date is { } day
+                ? _clock.LocalTimeZone.ToUtc(day.ToDateTime(new TimeOnly(9, 0)))
+                : null,
+            HasTime = false,
+        });
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public async Task SetDoneAsync(TodoRow row, bool done)
     {
         ArgumentNullException.ThrowIfNull(row);
@@ -574,7 +621,11 @@ public sealed class TodoService
                 _ => local.ToString("ddd d MMM"),
             };
 
-            return hasTime ? $"{day}, {local:t}" : day;
+            var time = _settings.Clock == ClockFormat.TwentyFourHour
+                ? local.ToString("HH:mm", CultureInfo.CurrentCulture)
+                : local.ToString("h:mm tt", CultureInfo.CurrentCulture);
+
+            return hasTime ? $"{day}, {time}" : day;
         }
 
         var rows = new List<TodoRow>();
