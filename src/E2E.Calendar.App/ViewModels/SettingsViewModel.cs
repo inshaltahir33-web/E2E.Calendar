@@ -34,6 +34,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly Db _db;
     private readonly ISecretStore _secrets;
     private readonly StartupTaskService _startupTasks;
+    private readonly IEventTemplateStore _templateStore;
 
     private static readonly int[] SnoozeMinuteOptions = [5, 10, 15, 30, 60];
     private static readonly int[] RepeatMinuteOptions = [5, 10, 15, 30, 60];
@@ -52,7 +53,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         SyncCoordinator sync,
         Db db,
         ISecretStore secrets,
-        StartupTaskService startupTasks)
+        StartupTaskService startupTasks,
+        IEventTemplateStore templateStore)
     {
         _settings = settings;
         _calendars = calendars;
@@ -66,6 +68,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _db = db;
         _secrets = secrets;
         _startupTasks = startupTasks;
+        _templateStore = templateStore;
 
         _calendars.Changed += OnCalendarsChanged;
 
@@ -76,6 +79,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         };
 
         sections.Add(new SettingsSection("Calendars", "\uE787"));
+        sections.Add(new SettingsSection("Templates", "\uE8EF"));
         sections.Add(new SettingsSection("Notifications", "\uEA8F"));
         sections.Add(new SettingsSection("Appearance", "\uE790"));
         sections.Add(new SettingsSection("Shortcuts", "\uE765"));
@@ -123,6 +127,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<SettingsAccountItem> Accounts { get; } = new();
 
+    public ObservableCollection<SettingsTemplateItem> Templates { get; } = new();
+
+    public bool HasTemplates => Templates.Count > 0;
+
+    public bool HasNoTemplates => !HasTemplates;
+
     public ObservableCollection<SettingsPremiumPlan> PremiumPlans { get; } = new()
     {
         new SettingsPremiumPlan
@@ -160,7 +170,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         new("Connected accounts (Google / Microsoft / iCloud)", "Coming soon", "Coming soon", true),
         new("Year view and custom multi-day view", "Coming soon", "Coming soon", true),
         new("Calendar sets and profiles", "Coming soon", "Coming soon", true),
-        new("Event templates", "Coming soon", "Coming soon", true),
+        new("Event templates", "Included", "Included", false),
         new("Compact always-on-top agenda strip", "Coming soon", "Coming soon", true),
         new("Habit tracker, weather and daily digest", "Coming soon", "Coming soon", true),
         new("Find a free slot and share availability", "Coming soon", "Coming soon", true),
@@ -329,6 +339,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             .ToDictionary(subscription => subscription.CalendarId);
 
         ApplyCalendars(calendars, subscriptions);
+        await LoadTemplatesAsync();
 
         Accounts.Clear();
         Accounts.Add(new SettingsAccountItem
@@ -362,6 +373,44 @@ public sealed partial class SettingsViewModel : ObservableObject
             .ToDictionary(subscription => subscription.CalendarId);
 
         ApplyCalendars(calendars, subscriptions);
+    }
+
+    private async Task LoadTemplatesAsync(CancellationToken cancellationToken = default)
+    {
+        var templates = await _templateStore.GetAllAsync(cancellationToken);
+
+        Templates.Clear();
+
+        foreach (var template in templates)
+        {
+            Templates.Add(new SettingsTemplateItem(
+                template.Id,
+                template.Name,
+                DescribeTemplate(template)));
+        }
+
+        OnPropertyChanged(nameof(HasTemplates));
+        OnPropertyChanged(nameof(HasNoTemplates));
+    }
+
+    public async Task DeleteTemplateAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await _templateStore.DeleteAsync(id, cancellationToken);
+        await LoadTemplatesAsync(cancellationToken);
+    }
+
+    private static string DescribeTemplate(EventTemplate template)
+    {
+        var alerts = template.AlertOffsetsMinutes.Count switch
+        {
+            0 => "no alerts",
+            1 => "1 alert",
+            var count => $"{count} alerts",
+        };
+
+        return string.IsNullOrWhiteSpace(template.Location)
+            ? $"{template.DurationMinutes} min · {alerts}"
+            : $"{template.DurationMinutes} min · {template.Location} · {alerts}";
     }
 
     private void ApplyCalendars(
@@ -763,6 +812,8 @@ public sealed partial class SettingsCalendarItem : ObservableObject
 
     public bool HasDetail => !string.IsNullOrWhiteSpace(Detail);
 }
+
+public sealed record SettingsTemplateItem(string Id, string Name, string Detail);
 
 public sealed record SettingsAccountItem
 {

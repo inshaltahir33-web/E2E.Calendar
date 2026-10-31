@@ -35,6 +35,7 @@ public sealed class MigrationTests : IAsyncLifetime
             "calendar",
             "event",
             "event_fts",
+            "event_template",
             "outbox",
             "reminder",
             "settings",

@@ -10,7 +10,13 @@ public sealed record EventTemplate
 
     public int DurationMinutes { get; init; } = 60;
 
-    public int LeadTimeMinutes { get; init; } = 15;
+    public string? CalendarId { get; init; }
 
-    public string? Color { get; init; }
+    public string? Location { get; init; }
+
+    public string? Notes { get; init; }
+
+    public IReadOnlyList<int> AlertOffsetsMinutes { get; init; } = [];
+
+    public DateTimeOffset CreatedUtc { get; init; }
 }

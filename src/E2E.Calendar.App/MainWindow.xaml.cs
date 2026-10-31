@@ -207,7 +207,7 @@ public sealed partial class MainWindow : Window
 
             StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
-            _editorView = new Views.EventEditorView(editor);
+            _editorView = new Views.EventEditorView(editor, dialogs);
             EditorHost.Children.Add(_editorView);
             MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar, dialogs));
 

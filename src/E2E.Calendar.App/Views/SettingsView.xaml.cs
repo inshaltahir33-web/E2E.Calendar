@@ -40,6 +40,7 @@ public sealed partial class SettingsView : UserControl
         };
 
         sections.Add(("Calendars", SectionCalendars));
+        sections.Add(("Templates", SectionTemplates));
         sections.Add(("Notifications", SectionNotifications));
         sections.Add(("Appearance", SectionAppearance));
         sections.Add(("Shortcuts", SectionShortcuts));
@@ -248,6 +249,14 @@ public sealed partial class SettingsView : UserControl
                 Content = ex.Message,
                 CloseButtonText = "Close",
             });
+        }
+    }
+
+    private async void OnDeleteTemplateClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string id })
+        {
+            await ViewModel.DeleteTemplateAsync(id);
         }
     }
 

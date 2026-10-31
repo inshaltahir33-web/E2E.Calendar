@@ -107,6 +107,33 @@
                             SelectedItem="{x:Bind ViewModel.SelectedCalendar, Mode=TwoWay}" />
                     </Grid>
 
+                    <!-- Templates fill the form; saving captures the current title, duration,
+                         calendar, alerts, location and notes. -->
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="TEMPLATE" />
+                            <ComboBox
+                                HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="Event template"
+                                DisplayMemberPath="Name"
+                                ItemsSource="{x:Bind ViewModel.Templates, Mode=OneWay}"
+                                PlaceholderText="Choose a template"
+                                SelectedItem="{x:Bind ViewModel.SelectedTemplate, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.HasTemplates, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock
+                                FontSize="{StaticResource FontSizeCaption}"
+                                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                                Text="No templates yet"
+                                Visibility="{x:Bind ViewModel.HasNoTemplates, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            <Button
+                                HorizontalAlignment="Left"
+                                Click="OnSaveTemplateClick"
+                                Content="Save as template"
+                                IsEnabled="{x:Bind ViewModel.CanSaveTemplate, Mode=OneWay}"
+                                AutomationProperties.Name="Save this event as a template" />
+                        </StackPanel>
+                    </Border>
+
                     <Border Style="{StaticResource EditorCardStyle}">
                         <StackPanel Spacing="{StaticResource SpaceSM}">
                             <Grid ColumnDefinitions="*,Auto">

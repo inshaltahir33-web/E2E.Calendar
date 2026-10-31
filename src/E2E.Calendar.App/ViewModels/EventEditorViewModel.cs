@@ -18,6 +18,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     private readonly CalendarService _calendars;
     private readonly IEventQueryCache _queryCache;
     private readonly IClock _clock;
+    private readonly IEventTemplateStore _templateStore;
 
     private CalendarEvent? _master;
 
@@ -111,6 +112,12 @@ public sealed partial class EventEditorViewModel : ObservableObject
     private ObservableCollection<AlertRow> _alertRows = new();
 
     [ObservableProperty]
+    private ObservableCollection<EventTemplate> _templates = new();
+
+    [ObservableProperty]
+    private EventTemplate? _selectedTemplate;
+
+    [ObservableProperty]
     private MeetingLink? _detectedMeeting;
 
     [ObservableProperty]
@@ -135,7 +142,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
         IAlertRepository alerts,
         CalendarService calendars,
         IEventQueryCache queryCache,
-        IClock clock)
+        IClock clock,
+        IEventTemplateStore templateStore)
     {
         _events = events;
         _recurrenceEdit = recurrenceEdit;
@@ -144,6 +152,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         _calendars = calendars;
         _queryCache = queryCache;
         _clock = clock;
+        _templateStore = templateStore;
 
         _startUtc = clock.UtcNow;
         _endUtc = clock.UtcNow.AddHours(1);
@@ -180,6 +189,12 @@ public sealed partial class EventEditorViewModel : ObservableObject
     public string AlertSummary => AlertRows.Count == 0
         ? "No alerts"
         : string.Join(" · ", AlertRows.Select(row => row.Option.Label));
+
+    public bool HasTemplates => Templates.Count > 0;
+
+    public bool HasNoTemplates => !HasTemplates;
+
+    public bool CanSaveTemplate => !string.IsNullOrWhiteSpace(Title);
 
     private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -319,6 +334,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     public async Task OpenAsync(string eventId)
     {
         await LoadByIdAsync(eventId);
+        await LoadTemplatesAsync();
 
         IsOpen = true;
         Opened?.Invoke(this, EventArgs.Empty);
@@ -327,6 +343,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     public async Task OpenNewAsync(DateTimeOffset startUtc, DateTimeOffset endUtc)
     {
         await LoadNewAsync(startUtc, endUtc);
+        await LoadTemplatesAsync();
 
         IsOpen = true;
         Opened?.Invoke(this, EventArgs.Empty);
@@ -773,6 +790,88 @@ public sealed partial class EventEditorViewModel : ObservableObject
         }
     }
 
+    public async Task SaveAsTemplateAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(Title))
+        {
+            return;
+        }
+
+        var template = new EventTemplate
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Name = name.Trim(),
+            Title = Title.Trim(),
+            DurationMinutes = Math.Max(1, (int)Math.Round((EndUtc - StartUtc).TotalMinutes)),
+            CalendarId = CalendarId,
+            Location = string.IsNullOrWhiteSpace(Location) ? null : Location.Trim(),
+            Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes,
+            AlertOffsetsMinutes = AlertRows
+                .Select(row => row.OffsetMinutes)
+                .Distinct()
+                .OrderBy(minutes => minutes)
+                .ToList(),
+            CreatedUtc = _clock.UtcNow,
+        };
+
+        await _templateStore.SaveAsync(template);
+        await LoadTemplatesAsync();
+    }
+
+    /// <summary>Fills the form from a template, keeping the current start time.</summary>
+    public void ApplyTemplate(EventTemplate template)
+    {
+        Title = template.Title;
+        Location = template.Location;
+        Notes = template.Notes;
+
+        if (!string.IsNullOrWhiteSpace(template.CalendarId) &&
+            CalendarOptions.Any(option => option.Id == template.CalendarId))
+        {
+            CalendarId = template.CalendarId;
+        }
+
+        if (template.DurationMinutes > 0)
+        {
+            EndUtc = StartUtc.AddMinutes(template.DurationMinutes);
+        }
+
+        foreach (var row in AlertRows)
+        {
+            row.PropertyChanged -= OnAlertChanged;
+        }
+
+        AlertRows.Clear();
+
+        foreach (var minutes in template.AlertOffsetsMinutes)
+        {
+            var row = new AlertRow
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                OwnerType = OwnerType.Event,
+                OwnerId = EventId,
+                Option = AlertOption.All.FirstOrDefault(option => option.Minutes == minutes)
+                    ?? new AlertOption($"{minutes} minutes before", minutes),
+            };
+
+            AttachAlert(row);
+            AlertRows.Add(row);
+        }
+
+        OnPropertyChanged(nameof(AlertSummary));
+        UpdateDirty();
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        SelectedTemplate = null;
+
+        var templates = await _templateStore.GetAllAsync();
+        Templates = new ObservableCollection<EventTemplate>(templates);
+        OnPropertyChanged(nameof(HasTemplates));
+        OnPropertyChanged(nameof(HasNoTemplates));
+    }
+
     [RelayCommand]
     public void DetectMeetingLink()
     {
@@ -953,6 +1052,21 @@ public sealed partial class EventEditorViewModel : ObservableObject
         {
             TitleError = null;
         }
+
+        OnPropertyChanged(nameof(CanSaveTemplate));
+    }
+
+    partial void OnSelectedTemplateChanged(EventTemplate? value)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        ApplyTemplate(value);
+
+        // Clearing the picker makes the same template selectable again.
+        SelectedTemplate = null;
     }
 
     partial void OnStartUtcChanged(DateTimeOffset value)

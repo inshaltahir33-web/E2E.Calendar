@@ -401,7 +401,7 @@ public partial class App : Application
                 services.AddSingleton<CalendarService>();
                 services.AddSingleton<AgendaService>();
                 services.AddSingleton<RecurrenceEditService>();
-                services.AddSingleton<EventTemplateService>();
+                services.AddSingleton<IEventTemplateStore, EventTemplateRepository>();
                 services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<TodoService>();
                 services.AddSingleton<ReminderPlanner>();

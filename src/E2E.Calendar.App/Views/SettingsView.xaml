@@ -338,6 +338,47 @@
                     </ItemsControl>
                 </StackPanel>
 
+                <!--  Templates  -->
+                <StackPanel x:Name="SectionTemplates" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Templates" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceXS}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Event templates" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="Save a template from the event editor, then pick it to fill the form in one click."
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="No templates yet"
+                                Visibility="{x:Bind ViewModel.HasNoTemplates, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Templates, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SettingsTemplateItem">
+                                <Border Margin="0,0,0,8" Style="{StaticResource SettingsCardStyle}">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{x:Bind Name, Mode=OneTime}" />
+                                            <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind Detail, Mode=OneTime}" />
+                                        </StackPanel>
+                                        <Button
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Content="Delete"
+                                            Tag="{x:Bind Id, Mode=OneTime}"
+                                            Click="OnDeleteTemplateClick"
+                                            AutomationProperties.Name="Delete template" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
                 <!--  Notifications  -->
                 <StackPanel x:Name="SectionNotifications" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Notifications" />

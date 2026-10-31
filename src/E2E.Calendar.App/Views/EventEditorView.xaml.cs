@@ -1,3 +1,4 @@
+using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
@@ -18,12 +19,16 @@ public partial class EventEditorView : UserControl
         "{dayofweek.abbreviated(3)}, {day.integer} {month.abbreviated} {year.full}";
 
     private readonly ThemeShadow _drawerShadow = new();
+    private readonly IDialogService _dialogs;
     private string? _notesSnapshot;
     private bool _syncingNotes = true;
 
-    public EventEditorView(EventEditorViewModel viewModel)
+    public EventEditorView(EventEditorViewModel viewModel, IDialogService dialogs)
     {
+        ArgumentNullException.ThrowIfNull(dialogs);
+
         ViewModel = viewModel;
+        _dialogs = dialogs;
 
         InitializeComponent();
 
@@ -166,6 +171,33 @@ public partial class EventEditorView : UserControl
     private void OnSaveClick(object sender, RoutedEventArgs e) => ViewModel.RequestSaveCommand.Execute(null);
 
     private void OnDeleteClick(object sender, RoutedEventArgs e) => ViewModel.RequestDeleteCommand.Execute(null);
+
+    private async void OnSaveTemplateClick(object sender, RoutedEventArgs e)
+    {
+        var nameBox = new TextBox
+        {
+            Header = "Template name",
+            PlaceholderText = "Gym 1h",
+            Text = ViewModel.Title,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Save as template",
+            Content = nameBox,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary ||
+            string.IsNullOrWhiteSpace(nameBox.Text))
+        {
+            return;
+        }
+
+        await ViewModel.SaveAsTemplateAsync(nameBox.Text);
+    }
 
     private void OnAddAlertClick(object sender, RoutedEventArgs e) => ViewModel.AddAlertCommand.Execute(null);
 
