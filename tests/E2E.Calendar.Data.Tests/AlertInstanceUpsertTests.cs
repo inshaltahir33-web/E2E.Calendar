@@ -21,16 +21,19 @@ public sealed class AlertInstanceUpsertTests : IAsyncLifetime
         string id,
         DateTimeOffset fireAt,
         AlertState state = AlertState.Pending,
-        DateTimeOffset? snoozedUntilUtc = null) => new()
+        DateTimeOffset? snoozedUntilUtc = null,
+        DateTimeOffset? occurrenceUtc = null,
+        int repeatCount = 0) => new()
     {
         Id = id,
         AlertId = "alert-1",
         OwnerType = OwnerType.Reminder,
         OwnerId = "reminder-1",
-        OccurrenceUtc = fireAt,
+        OccurrenceUtc = occurrenceUtc ?? fireAt,
         FireAtUtc = fireAt,
         State = state,
         SnoozedUntilUtc = snoozedUntilUtc,
+        RepeatCount = repeatCount,
     };
 
     [Fact]
@@ -92,5 +95,48 @@ public sealed class AlertInstanceUpsertTests : IAsyncLifetime
         var snoozedCopy = await repo.GetInstanceByIdAsync("alert-1:2:snooze:99");
         snoozedCopy.Should().NotBeNull();
         snoozedCopy!.State.Should().Be(AlertState.Pending);
+    }
+
+    [Fact]
+    public async Task DeleteStalePendingInstances_keeps_queued_repeats()
+    {
+        var repo = new AlertRepository(_database.Database);
+
+        await repo.UpsertInstanceAsync(Instance("alert-1:1", FireAt));
+        await repo.UpsertInstanceAsync(Instance(
+            "alert-1:1:repeat:1",
+            FireAt.AddMinutes(5),
+            occurrenceUtc: FireAt,
+            repeatCount: 1));
+
+        await repo.DeleteStalePendingInstancesAsync("alert-1", ["alert-1:1"]);
+
+        var repeat = await repo.GetInstanceByIdAsync("alert-1:1:repeat:1");
+        repeat.Should().NotBeNull();
+        repeat!.RepeatCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CancelPendingRepeats_removes_the_queued_chain_but_not_other_occurrences()
+    {
+        var repo = new AlertRepository(_database.Database);
+
+        await repo.UpsertInstanceAsync(Instance("alert-1:1", FireAt));
+        await repo.UpsertInstanceAsync(Instance(
+            "alert-1:1:repeat:1",
+            FireAt.AddMinutes(5),
+            occurrenceUtc: FireAt,
+            repeatCount: 1));
+        await repo.UpsertInstanceAsync(Instance(
+            "alert-1:2:repeat:1",
+            FireAt.AddHours(1).AddMinutes(5),
+            occurrenceUtc: FireAt.AddHours(1),
+            repeatCount: 1));
+
+        await repo.CancelPendingRepeatsAsync("alert-1", FireAt);
+
+        (await repo.GetInstanceByIdAsync("alert-1:1")).Should().NotBeNull();
+        (await repo.GetInstanceByIdAsync("alert-1:1:repeat:1")).Should().BeNull();
+        (await repo.GetInstanceByIdAsync("alert-1:2:repeat:1")).Should().NotBeNull();
     }
 }

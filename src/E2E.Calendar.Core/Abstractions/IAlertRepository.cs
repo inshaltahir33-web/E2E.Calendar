@@ -54,5 +54,10 @@ public interface IAlertRepository
         IReadOnlyList<string> keepInstanceIds,
         CancellationToken cancellationToken = default);
 
+    Task CancelPendingRepeatsAsync(
+        string alertId,
+        DateTimeOffset occurrenceUtc,
+        CancellationToken cancellationToken = default);
+
     Task<AlertInstance?> PeekNextPendingInstanceAsync(CancellationToken cancellationToken = default);
 }

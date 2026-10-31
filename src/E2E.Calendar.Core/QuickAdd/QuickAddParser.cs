@@ -107,10 +107,17 @@ public static partial class QuickAddParser
             return true;
         });
 
-        // "remind me in 10 minutes" and the generic "in 10 minutes".
+        // "remind me in 10 minutes" and the generic "in 10 minutes". A bare relative
+        // time is a countdown reminder: it only has to fire once, N minutes from now.
         Extract(@"\bin\s+(\d+)\s*(minutes?|mins?|m|hours?|hrs?|h)\b", match =>
         {
             relativeMinutes = NormaliseMinutes(match.Groups[1].Value, match.Groups[2].Value);
+
+            if (relativeMinutes is not null)
+            {
+                kind = ParsedItemKind.Reminder;
+            }
+
             return true;
         }, RegexOptions.IgnoreCase);
 
@@ -310,7 +317,9 @@ public static partial class QuickAddParser
 
         if (string.IsNullOrWhiteSpace(title))
         {
-            title = calendarHint is null ? "Untitled" : $"New {calendarHint}";
+            title = kind == ParsedItemKind.Reminder && relativeMinutes is { } countdown
+                ? $"Reminder in {countdown} min"
+                : calendarHint is null ? "Untitled" : $"New {calendarHint}";
         }
 
         if (title.Equals("new event", StringComparison.OrdinalIgnoreCase))

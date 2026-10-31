@@ -60,6 +60,18 @@ public sealed class QuickAddParserTests
     }
 
     [Fact]
+    public void A_bare_in_phrase_becomes_a_one_shot_countdown_reminder()
+    {
+        var item = QuickAddParser.Parse("in 25 minutes", Clock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.Title.Should().Be("Reminder in 25 min");
+        item.StartUtc.Should().Be(Now.AddMinutes(25));
+        item.RRule.Should().BeNull();
+        item.AlertOffsetsMinutes.Should().ContainSingle().Which.Should().Be(0);
+    }
+
+    [Fact]
     public void Tonight_anchors_to_the_evening_of_today()
     {
         var item = QuickAddParser.Parse("Dinner tonight at 8pm", Clock);

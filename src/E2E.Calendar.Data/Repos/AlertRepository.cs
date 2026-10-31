@@ -315,14 +315,16 @@ public sealed class AlertRepository : IAlertRepository
         await using var connection = await _db.OpenAsync(cancellationToken);
 
         // Snoozed copies carry snoozed_until_utc and are managed by the snooze flow,
-        // never by the planner, so they are never treated as stale.
+        // never by the planner, so they are never treated as stale. Repeat instances
+        // carry repeat_count > 0 and belong to the persistent chain, not the planner.
         if (keepInstanceIds.Count == 0)
         {
             await connection.ExecuteAsync(
                 new CommandDefinition(
                     """
                     DELETE FROM alert_instance
-                    WHERE alert_id = @AlertId AND state = @Pending AND snoozed_until_utc IS NULL;
+                    WHERE alert_id = @AlertId AND state = @Pending AND snoozed_until_utc IS NULL
+                      AND repeat_count = 0;
                     """,
                     new { AlertId = alertId, Pending = EnumText.ToText(AlertState.Pending) },
                     cancellationToken: cancellationToken));
@@ -334,13 +336,36 @@ public sealed class AlertRepository : IAlertRepository
                 """
                 DELETE FROM alert_instance
                 WHERE alert_id = @AlertId AND state = @Pending AND snoozed_until_utc IS NULL
-                  AND id NOT IN @Ids;
+                  AND repeat_count = 0 AND id NOT IN @Ids;
                 """,
                 new
                 {
                     AlertId = alertId,
                     Pending = EnumText.ToText(AlertState.Pending),
                     Ids = keepInstanceIds,
+                },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task CancelPendingRepeatsAsync(
+        string alertId,
+        DateTimeOffset occurrenceUtc,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _db.OpenAsync(cancellationToken);
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                DELETE FROM alert_instance
+                WHERE alert_id = @AlertId AND occurrence_utc = @Occurrence
+                  AND state = @Pending AND repeat_count > 0;
+                """,
+                new
+                {
+                    AlertId = alertId,
+                    Occurrence = SqliteTime.ToUtcText(occurrenceUtc),
+                    Pending = EnumText.ToText(AlertState.Pending),
                 },
                 cancellationToken: cancellationToken));
     }
