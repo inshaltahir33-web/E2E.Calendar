@@ -442,6 +442,7 @@ public partial class App : Application
                 services.AddSingleton<AgendaViewModel>();
                 services.AddSingleton<MiniCalendarViewModel>();
                 services.AddSingleton<EventEditorViewModel>();
+                services.AddSingleton<Services.EventDetailsPresenter>();
                 services.AddSingleton<MainWindow>();
 
                 services.AddHostedService<AppStartupService>();

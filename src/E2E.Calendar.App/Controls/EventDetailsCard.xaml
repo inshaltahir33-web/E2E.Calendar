@@ -1,0 +1,121 @@
+<UserControl
+    x:Class="E2E.Calendar.App.Controls.EventDetailsCard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StackPanel
+        Width="320"
+        Spacing="{StaticResource SpaceMD}">
+
+        <StackPanel Spacing="{StaticResource SpaceXS}">
+            <TextBlock
+                x:Name="TitleText"
+                AutomationProperties.Name="Event title"
+                FontSize="{StaticResource FontSizeSubtitle}"
+                FontWeight="SemiBold"
+                Foreground="{ThemeResource App.TextPrimaryBrush}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                x:Name="TimeText"
+                FontSize="{StaticResource FontSizeBody}"
+                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel
+            x:Name="CalendarRow"
+            Orientation="Horizontal"
+            Spacing="{StaticResource SpaceSM}">
+            <Border
+                x:Name="ColorDot"
+                Width="10"
+                Height="10"
+                VerticalAlignment="Center"
+                CornerRadius="{StaticResource RadiusPill}" />
+            <TextBlock
+                x:Name="CalendarText"
+                VerticalAlignment="Center"
+                FontSize="{StaticResource FontSizeCaption}"
+                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid
+            x:Name="LocationRow"
+            ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="{StaticResource SpaceSM}">
+            <FontIcon
+                VerticalAlignment="Top"
+                FontSize="{StaticResource IconSizeMedium}"
+                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                Glyph="&#xE707;" />
+            <TextBlock
+                x:Name="LocationText"
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                FontSize="{StaticResource FontSizeBody}"
+                Foreground="{ThemeResource App.TextPrimaryBrush}"
+                TextWrapping="Wrap" />
+            <HyperlinkButton
+                x:Name="MapLink"
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Open the location in a map"
+                Content="Map" />
+        </Grid>
+
+        <Grid
+            x:Name="MeetingRow"
+            ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="{StaticResource SpaceSM}">
+            <FontIcon
+                VerticalAlignment="Center"
+                FontSize="{StaticResource IconSizeMedium}"
+                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                Glyph="&#xE71B;" />
+            <TextBlock
+                x:Name="MeetingText"
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                FontSize="{StaticResource FontSizeBody}"
+                Foreground="{ThemeResource App.TextPrimaryBrush}"
+                TextTrimming="CharacterEllipsis" />
+            <Button
+                x:Name="JoinButton"
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Join the meeting"
+                Click="OnJoinClick"
+                Content="Join" />
+        </Grid>
+
+        <ScrollViewer
+            x:Name="NotesHost"
+            HorizontalScrollBarVisibility="Disabled"
+            MaxHeight="120"
+            VerticalScrollBarVisibility="Auto">
+            <TextBlock
+                x:Name="NotesText"
+                FontSize="{StaticResource FontSizeBody}"
+                Foreground="{ThemeResource App.TextSecondaryBrush}"
+                TextWrapping="Wrap" />
+        </ScrollViewer>
+
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
+            <Button
+                x:Name="DeleteButton"
+                AutomationProperties.Name="Delete the event"
+                Click="OnDeleteClick"
+                Content="Delete"
+                Foreground="{ThemeResource App.DangerBrush}"
+                Style="{StaticResource ToolbarButtonStyle}" />
+            <Button
+                x:Name="EditButton"
+                Grid.Column="2"
+                AutomationProperties.Name="Edit the event"
+                Click="OnEditClick"
+                Content="Edit"
+                Style="{StaticResource AccentButtonStyle}" />
+        </Grid>
+    </StackPanel>
+</UserControl>

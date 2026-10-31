@@ -935,18 +935,18 @@ public sealed partial class TimeGrid : UserControl
 
     private void OnAllDayBarTapped(object sender, TappedRoutedEventArgs e)
     {
-        if (sender is Border { Tag: CalendarItem item })
+        if (sender is Border { Tag: CalendarItem item } bar)
         {
-            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item));
+            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item, bar));
             e.Handled = true;
         }
     }
 
     private void OnAllDayBarKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key is VirtualKey.Enter or VirtualKey.Space && sender is Border { Tag: CalendarItem item })
+        if (e.Key is VirtualKey.Enter or VirtualKey.Space && sender is Border { Tag: CalendarItem item } bar)
         {
-            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item));
+            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item, bar));
             e.Handled = true;
         }
     }
@@ -1652,6 +1652,7 @@ public sealed partial class TimeGrid : UserControl
         {
             Mode = mode,
             Item = item,
+            Anchor = hit,
             DayIndex = dayIndex,
             StartUtc = item.StartUtc,
             EndUtc = item.EndUtc,
@@ -1749,7 +1750,7 @@ public sealed partial class TimeGrid : UserControl
             case DragMode.Move:
                 if (!drag.HasMoved)
                 {
-                    ItemActivated?.Invoke(this, new TimeGridItemEventArgs(drag.Item!));
+                    ItemActivated?.Invoke(this, new TimeGridItemEventArgs(drag.Item!, drag.Anchor));
                     break;
                 }
                 var moved = drag.Item! with { StartUtc = drag.StartUtc, EndUtc = drag.EndUtc };
@@ -1948,6 +1949,8 @@ public sealed partial class TimeGrid : UserControl
         public DragMode Mode { get; init; }
 
         public CalendarItem? Item { get; init; }
+
+        public FrameworkElement? Anchor { get; init; }
 
         public int DayIndex { get; init; }
 

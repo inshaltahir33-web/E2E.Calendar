@@ -222,6 +222,9 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
                         ? name
                         : item.CalendarName,
                     Color = item.Color,
+                    StartUtc = item.StartUtc,
+                    EndUtc = item.EndUtc,
+                    AllDay = item.AllDay,
                     TimeLabel = item.HasTime
                         ? FormatTime(timeZone.ToLocal(item.StartUtc), _clockFormat)
                         : string.Empty,

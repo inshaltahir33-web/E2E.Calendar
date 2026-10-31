@@ -13,6 +13,7 @@ internal static class TimeGridInteractions
         IEventRepository events,
         IEventService eventService,
         ReminderQuickAdd reminders,
+        EventDetailsPresenter details,
         Func<Task> refresh)
     {
         ArgumentNullException.ThrowIfNull(grid);
@@ -20,9 +21,19 @@ internal static class TimeGridInteractions
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(eventService);
         ArgumentNullException.ThrowIfNull(reminders);
+        ArgumentNullException.ThrowIfNull(details);
         ArgumentNullException.ThrowIfNull(refresh);
 
-        grid.ItemActivated += async (_, args) => await editor.OpenAsync(args.Item);
+        grid.ItemActivated += async (_, args) =>
+        {
+            if (args.Anchor is { } anchor)
+            {
+                await details.ShowAsync(anchor, args.Item, refresh);
+                return;
+            }
+
+            await editor.OpenAsync(args.Item);
+        };
         grid.SlotCreated += async (_, args) => await editor.OpenNewAsync(args.StartUtc, args.EndUtc);
 
         grid.SlotActionRequested += async (_, args) =>

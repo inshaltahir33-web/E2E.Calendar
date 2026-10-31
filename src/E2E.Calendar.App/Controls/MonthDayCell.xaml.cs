@@ -204,7 +204,7 @@ public sealed partial class MonthDayCell : UserControl
 
     public event EventHandler<MonthChipDrop>? ChipDropped;
 
-    public event EventHandler<MonthChip>? ChipActivated;
+    public event EventHandler<MonthChipActivation>? ChipActivated;
 
     private static void OnVisualChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
@@ -268,7 +268,7 @@ public sealed partial class MonthDayCell : UserControl
 
             if (!chip.IsReminder && !chip.IsTask)
             {
-                view.Activated += (_, _) => ChipActivated?.Invoke(this, chip);
+                view.Activated += (_, _) => ChipActivated?.Invoke(this, new MonthChipActivation(chip, view));
             }
 
             // MonthChipView already installs its own DragStarting handler and
@@ -367,3 +367,5 @@ public sealed partial class MonthDayCell : UserControl
 }
 
 public sealed record MonthChipDrop(string ItemId, DateOnly TargetDate);
+
+public sealed record MonthChipActivation(MonthChip Chip, FrameworkElement Anchor);

@@ -10,7 +10,17 @@ public sealed class MonthChip
 
     public string? Color { get; init; }
 
+    public string? CalendarName { get; init; }
+
+    public string? Location { get; init; }
+
     public DateTimeOffset StartUtc { get; init; }
+
+    public DateTimeOffset EndUtc { get; init; }
+
+    public bool AllDay { get; init; }
+
+    public bool HasTime { get; init; } = true;
 
     public bool IsReminder { get; init; }
 

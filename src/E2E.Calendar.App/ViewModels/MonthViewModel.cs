@@ -271,7 +271,12 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         Id = item.Id,
         Title = item.Title,
         Color = item.Color,
+        CalendarName = item.CalendarName,
+        Location = item.Location,
         StartUtc = item.StartUtc,
+        EndUtc = item.EndUtc,
+        AllDay = item.AllDay,
+        HasTime = item.HasTime,
         IsReminder = item.Kind == CalendarItemKind.Reminder,
         IsTask = item.Kind == CalendarItemKind.Task,
     };

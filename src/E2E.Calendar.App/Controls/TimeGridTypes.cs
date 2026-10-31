@@ -1,4 +1,5 @@
 using E2E.Calendar.Core.Models;
+using Microsoft.UI.Xaml;
 
 namespace E2E.Calendar.App.Controls;
 
@@ -17,12 +18,16 @@ public sealed record TimeGridDay(
 
 public sealed class TimeGridItemEventArgs : EventArgs
 {
-    public TimeGridItemEventArgs(CalendarItem item)
+    public TimeGridItemEventArgs(CalendarItem item, FrameworkElement? anchor = null)
     {
         Item = item;
+        Anchor = anchor;
     }
 
     public CalendarItem Item { get; }
+
+    /// <summary>The chip or bar that was clicked, used to place the details card.</summary>
+    public FrameworkElement? Anchor { get; }
 }
 
 public sealed class TimeGridSlotEventArgs : EventArgs

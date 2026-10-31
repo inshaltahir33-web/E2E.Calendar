@@ -1,5 +1,7 @@
+using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.Core;
+using E2E.Calendar.Core.Models;
 using E2E.Calendar.App.ViewModels;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
@@ -14,13 +16,15 @@ namespace E2E.Calendar.App.Views;
 public partial class AgendaView : Page
 {
     private readonly EventEditorViewModel _editor;
+    private readonly EventDetailsPresenter _details;
     private readonly List<DayHeaderAnchor> _anchors = new();
     private bool _scrolledToToday;
 
-    public AgendaView(AgendaViewModel viewModel, EventEditorViewModel editor)
+    public AgendaView(AgendaViewModel viewModel, EventEditorViewModel editor, EventDetailsPresenter details)
     {
         ViewModel = viewModel;
         _editor = editor;
+        _details = details;
 
         InitializeComponent();
 
@@ -189,7 +193,8 @@ public partial class AgendaView : Page
     private async void OnAgendaItemKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key is not (Windows.System.VirtualKey.Enter or Windows.System.VirtualKey.Space) ||
-            sender is not FrameworkElement { DataContext: AgendaItemViewModel item })
+            sender is not FrameworkElement row ||
+            row.DataContext is not AgendaItemViewModel item)
         {
             return;
         }
@@ -200,7 +205,7 @@ public partial class AgendaView : Page
         }
         else
         {
-            await _editor.OpenAsync(item.Id);
+            await _details.ShowAsync(row, ToCalendarItem(item), ViewModel.RefreshAsync);
         }
 
         e.Handled = true;
@@ -208,14 +213,32 @@ public partial class AgendaView : Page
 
     private async void OnAgendaItemTapped(object sender, TappedRoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: AgendaItemViewModel item } || item.IsTickable)
+        if (sender is not FrameworkElement row ||
+            row.DataContext is not AgendaItemViewModel item ||
+            item.IsTickable)
         {
             return;
         }
 
         e.Handled = true;
-        await _editor.OpenAsync(item.Id);
+        await _details.ShowAsync(row, ToCalendarItem(item), ViewModel.RefreshAsync);
     }
+
+    private static CalendarItem ToCalendarItem(AgendaItemViewModel item) => new()
+    {
+        Id = item.Id,
+        Title = item.Title,
+        StartUtc = item.StartUtc,
+        EndUtc = item.EndUtc,
+        Kind = item.IsReminder
+            ? CalendarItemKind.Reminder
+            : item.IsTask ? CalendarItemKind.Task : CalendarItemKind.Event,
+        Color = item.Color,
+        CalendarName = item.CalendarName,
+        Location = item.Location,
+        AllDay = item.AllDay,
+        HasTime = item.HasTime,
+    };
 
     private static void AnimateCompletion(AgendaItemViewModel item, UIElement target)
     {

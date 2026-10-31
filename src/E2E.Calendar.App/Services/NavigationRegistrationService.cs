@@ -26,7 +26,8 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<MonthViewModel>(),
                 _services.GetRequiredService<WeekViewModel>(),
                 _services.GetRequiredService<EventEditorViewModel>(),
-                _services.GetRequiredService<ReminderQuickAdd>()));
+                _services.GetRequiredService<ReminderQuickAdd>(),
+                _services.GetRequiredService<EventDetailsPresenter>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Week,
@@ -35,7 +36,8 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<IEventRepository>(),
                 _services.GetRequiredService<IEventService>(),
-                _services.GetRequiredService<ReminderQuickAdd>()));
+                _services.GetRequiredService<ReminderQuickAdd>(),
+                _services.GetRequiredService<EventDetailsPresenter>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Day,
@@ -44,13 +46,15 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<IEventRepository>(),
                 _services.GetRequiredService<IEventService>(),
-                _services.GetRequiredService<ReminderQuickAdd>()));
+                _services.GetRequiredService<ReminderQuickAdd>(),
+                _services.GetRequiredService<EventDetailsPresenter>()));
 
         _navigation.RegisterFactory(
             NavigationKeys.Agenda,
             _ => new AgendaView(
                 _services.GetRequiredService<AgendaViewModel>(),
-                _services.GetRequiredService<EventEditorViewModel>()));
+                _services.GetRequiredService<EventEditorViewModel>(),
+                _services.GetRequiredService<EventDetailsPresenter>()));
 
         // One shared page for Reminders and Tasks; the sidebar row label (Today, Inbox, ...) is the filter.
         TodoView? todoPage = null;

@@ -15,6 +15,7 @@ public partial class MonthView : Page
     private readonly EventEditorViewModel _editor;
     private readonly ReminderQuickAdd _reminders;
     private readonly WeekViewModel _weekViewModel;
+    private readonly EventDetailsPresenter _details;
     private const double BannerLineTop = 22d;
     private const double BannerCornerRadius = 4d;
 
@@ -29,12 +30,14 @@ public partial class MonthView : Page
         MonthViewModel viewModel,
         WeekViewModel weekViewModel,
         EventEditorViewModel editor,
-        ReminderQuickAdd reminders)
+        ReminderQuickAdd reminders,
+        EventDetailsPresenter details)
     {
         ViewModel = viewModel;
         _weekViewModel = weekViewModel;
         _editor = editor;
         _reminders = reminders;
+        _details = details;
 
         InitializeComponent();
 
@@ -454,5 +457,24 @@ public partial class MonthView : Page
         await ViewModel.RefreshAsync();
     }
 
-    private async void OnChipActivated(object? sender, MonthChip chip) => await _editor.OpenAsync(chip.Id);
+    private async void OnChipActivated(object? sender, MonthChipActivation activation)
+    {
+        var chip = activation.Chip;
+
+        await _details.ShowAsync(activation.Anchor, new CalendarItem
+        {
+            Id = chip.Id,
+            Title = chip.Title,
+            StartUtc = chip.StartUtc,
+            EndUtc = chip.EndUtc,
+            Kind = chip.IsReminder
+                ? CalendarItemKind.Reminder
+                : chip.IsTask ? CalendarItemKind.Task : CalendarItemKind.Event,
+            Color = chip.Color,
+            CalendarName = chip.CalendarName,
+            Location = chip.Location,
+            AllDay = chip.AllDay,
+            HasTime = chip.HasTime,
+        }, ViewModel.RefreshAsync);
+    }
 }

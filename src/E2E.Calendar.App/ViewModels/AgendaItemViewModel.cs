@@ -19,6 +19,12 @@ public sealed partial class AgendaItemViewModel : ObservableObject
 
     public string? Color { get; init; }
 
+    public DateTimeOffset StartUtc { get; init; }
+
+    public DateTimeOffset EndUtc { get; init; }
+
+    public bool AllDay { get; init; }
+
     public string TimeLabel { get; init; } = string.Empty;
 
     public bool HasTime { get; init; }

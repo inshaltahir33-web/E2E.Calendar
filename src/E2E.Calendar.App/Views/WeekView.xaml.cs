@@ -20,7 +20,8 @@ public partial class WeekView : Page
         EventEditorViewModel editor,
         IEventRepository events,
         IEventService eventService,
-        ReminderQuickAdd reminders)
+        ReminderQuickAdd reminders,
+        EventDetailsPresenter details)
     {
         ViewModel = viewModel;
         _editor = editor;
@@ -29,7 +30,7 @@ public partial class WeekView : Page
 
         InitializeComponent();
 
-        TimeGridInteractions.Wire(TimeGrid, _editor, _events, _eventService, reminders, ViewModel.RefreshAsync);
+        TimeGridInteractions.Wire(TimeGrid, _editor, _events, _eventService, reminders, details, ViewModel.RefreshAsync);
 
         TimeGrid.DayHeaderClicked += (_, date) =>
         {
