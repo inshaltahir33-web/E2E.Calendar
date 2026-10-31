@@ -21,6 +21,7 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
 
     private DateOnly _from;
     private DateOnly _to;
+    private ClockFormat _clockFormat;
 
     [ObservableProperty]
     private string _stickyHeader = string.Empty;
@@ -42,7 +43,8 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
         ICalendarRepository calendars,
         IReminderRepository reminders,
         ITaskRepository tasks,
-        IClock clock)
+        IClock clock,
+        SettingsService settings)
         : base(state, query, cache)
     {
         _agenda = agenda;
@@ -50,6 +52,20 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
         _reminders = reminders;
         _tasks = tasks;
         _clock = clock;
+        _clockFormat = settings.Current.ClockFormat;
+
+        settings.Changed += OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        if (_clockFormat == settings.ClockFormat)
+        {
+            return;
+        }
+
+        _clockFormat = settings.ClockFormat;
+        _ = RefreshAsync();
     }
 
     public bool IsEmpty => Days.Count == 0;
@@ -206,7 +222,9 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
                         ? name
                         : item.CalendarName,
                     Color = item.Color,
-                    TimeLabel = item.TimeLabel,
+                    TimeLabel = item.HasTime
+                        ? FormatTime(timeZone.ToLocal(item.StartUtc), _clockFormat)
+                        : string.Empty,
                     HasTime = item.HasTime,
                     IsReminder = item.Kind == CalendarItemKind.Reminder,
                     IsTask = item.Kind == CalendarItemKind.Task,
@@ -228,6 +246,11 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
 
     private static bool IsSingleDay(CalendarItem item) =>
         !item.AllDay && item.EndUtc - item.StartUtc <= TimeSpan.FromDays(1);
+
+    private static string FormatTime(DateTime local, ClockFormat format) =>
+        format == ClockFormat.TwentyFourHour
+            ? local.ToString("HH:mm", CultureInfo.CurrentCulture)
+            : local.ToString("h:mm tt", CultureInfo.CurrentCulture);
 
     private static bool SpansDay(CalendarItem item, DateOnly date, TimeZoneInfo timeZone)
     {

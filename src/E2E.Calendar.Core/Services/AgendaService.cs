@@ -41,7 +41,7 @@ public sealed class AgendaService
 
         foreach (var reminder in await _reminders.GetInRangeAsync(fromUtc, toUtc, cancellationToken))
         {
-            if (reminder.DueUtc is not { } dueUtc)
+            if (reminder.DoneUtc is not null || reminder.Deleted || reminder.DueUtc is not { } dueUtc)
             {
                 continue;
             }
@@ -54,13 +54,13 @@ public sealed class AgendaService
                 EndUtc = dueUtc,
                 Kind = CalendarItemKind.Reminder,
                 HasTime = true,
-                IsDone = reminder.DoneUtc is not null,
             });
         }
 
         foreach (var task in await _tasks.GetAllAsync(cancellationToken))
         {
-            if (task.DueUtc is not { } dueUtc)
+            if (task.DoneUtc is not null || task.Deleted || task.DueUtc is not { } dueUtc ||
+                dueUtc < fromUtc || dueUtc >= toUtc)
             {
                 continue;
             }
@@ -73,7 +73,6 @@ public sealed class AgendaService
                 EndUtc = dueUtc,
                 Kind = CalendarItemKind.Task,
                 HasTime = task.HasTime,
-                IsDone = task.DoneUtc is not null,
             });
         }
 
