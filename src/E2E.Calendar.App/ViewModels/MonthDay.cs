@@ -27,9 +27,25 @@ public sealed partial class MonthDay : ObservableObject
 
     public required int EventCount { get; init; }
 
+    /// <summary>Number of top lines reserved by the week's banner bars in this cell.</summary>
+    public required int LineOffset { get; init; }
+
     public string MoreLabel => $"+{MoreCount} more";
 
     public Visibility SelectionVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
     partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(SelectionVisibility));
 }
+
+/// <summary>A banner bar inside one week row; columns are zero-based day slots.</summary>
+public sealed record MonthBanner(
+    string Id,
+    string Title,
+    string? Color,
+    int StartColumn,
+    int EndColumn,
+    int Lane,
+    bool ContinuesFromPrev,
+    bool ContinuesToNext);
+
+public sealed record MonthWeek(int Row, IReadOnlyList<MonthBanner> Banners);

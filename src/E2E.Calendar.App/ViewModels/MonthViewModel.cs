@@ -9,13 +9,20 @@ namespace E2E.Calendar.App.ViewModels;
 
 public sealed partial class MonthViewModel : CalendarPageViewModel
 {
+    private const int MaxLinesPerCell = 3;
+
     private readonly EventService _events;
     private readonly IEventRepository _repository;
+    private readonly IReminderRepository _reminders;
+    private readonly ITaskRepository _tasks;
     private readonly CalendarItemQueryService _items;
     private readonly IClock _clock;
 
     [ObservableProperty]
     private IReadOnlyList<MonthDay> _days = Array.Empty<MonthDay>();
+
+    [ObservableProperty]
+    private IReadOnlyList<MonthWeek> _weeks = Array.Empty<MonthWeek>();
 
     [ObservableProperty]
     private IReadOnlyList<int> _weekNumbers = Array.Empty<int>();
@@ -27,11 +34,15 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         CalendarItemQueryService items,
         EventService events,
         IEventRepository repository,
+        IReminderRepository reminders,
+        ITaskRepository tasks,
         IClock clock)
         : base(state, query, cache)
     {
         _events = events;
         _repository = repository;
+        _reminders = reminders;
+        _tasks = tasks;
         _items = items;
         _clock = clock;
     }
@@ -53,21 +64,85 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                 timeZone.ToUtc(gridStart.ToDateTime(TimeOnly.MinValue)),
                 timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)));
 
-            // Project items with the same layout the Day and Week grids use, so a
-            // multi-day banner appears on every date it touches, exactly as it does
-            // there, and the same date lists the same items in every view.
-            var byDay = BuildItemsByDay(items, gridStart, gridEnd.AddDays(-1), State.WeekStart, timeZone);
+            // Recurring occurrences share the series id, so key the layout by the
+            // occurrence itself to keep one bar/chip per occurrence.
+            var byOccurrence = new Dictionary<string, CalendarItem>(items.Count, StringComparer.Ordinal);
+            var occurrences = new List<LayoutOccurrence>(items.Count);
 
-            var today = DateOnly.FromDateTime(timeZone.ToLocal(State.CurrentDate));
+            foreach (var item in items)
+            {
+                var key = $"{item.Id}|{item.StartUtc.UtcTicks}";
+
+                byOccurrence[key] = item;
+                occurrences.Add(CalendarLayout.ToOccurrence(item, timeZone) with { Id = key });
+            }
+
+            // The month grid runs through the same layout the Day and Week views use,
+            // so a date lists the same items everywhere. Banners span whole week rows;
+            // timed items become single-line chips under them.
+            var layout = CalendarLayout.Build(
+                occurrences,
+                gridStart,
+                gridEnd.AddDays(-1),
+                State.WeekStart,
+                maxBannerLanes: MaxLinesPerCell,
+                maxColumns: Math.Max(1, items.Count));
+
+            var weeks = new List<MonthWeek>(layout.Weeks.Count);
+
+            for (var row = 0; row < layout.Weeks.Count; row++)
+            {
+                var week = layout.Weeks[row];
+
+                weeks.Add(new MonthWeek(
+                    row,
+                    week.Banners
+                        .OrderBy(banner => banner.Lane)
+                        .ThenBy(banner => banner.StartDay)
+                        .Select(banner => ToBanner(banner, week.Start, byOccurrence))
+                        .ToList()));
+            }
+
+            var today = DateOnly.FromDateTime(timeZone.ToLocal(_clock.UtcNow));
 
             var days = new List<MonthDay>(42);
 
             for (var index = 0; index < 42; index++)
             {
                 var date = gridStart.AddDays(index);
+                var week = layout.Weeks[index / 7];
+                var dayLayout = layout.Days[index];
 
-                byDay.TryGetValue(date, out var dayItems);
-                dayItems ??= new List<CalendarItem>();
+                var visibleBanners = week.Banners
+                    .Where(banner => banner.StartDay <= date && date <= banner.EndDay)
+                    .ToList();
+                var hiddenBanners = week.HiddenPlacements
+                    .Where(banner => banner.StartDay <= date && date <= banner.EndDay)
+                    .ToList();
+
+                var lineOffset = visibleBanners.Count == 0
+                    ? 0
+                    : visibleBanners.Max(banner => banner.Lane) + 1;
+
+                var timed = dayLayout.Items
+                    .OrderBy(placement => placement.VisualStart)
+                    .ThenBy(placement => placement.Occurrence.Id, StringComparer.Ordinal)
+                    .ToList();
+
+                var visibleTimed = timed
+                    .Take(Math.Max(0, MaxLinesPerCell - lineOffset))
+                    .ToList();
+
+                var allItems = visibleBanners
+                    .Concat(hiddenBanners)
+                    .Select(banner => banner.Occurrence.Id)
+                    .Concat(timed.Select(placement => placement.Occurrence.Id))
+                    .Concat(dayLayout.Hidden.Select(placement => placement.Occurrence.Id))
+                    .Distinct(StringComparer.Ordinal)
+                    .Select(id => byOccurrence[id])
+                    .OrderBy(item => item.StartUtc)
+                    .ThenBy(item => item.Title, StringComparer.Ordinal)
+                    .ToList();
 
                 days.Add(new MonthDay
                 {
@@ -77,10 +152,13 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                     IsCurrentMonth = date.Month == firstOfMonth.Month && date.Year == firstOfMonth.Year,
                     IsWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday,
                     IsSelected = date == State.SelectedDate,
-                    Chips = dayItems.Take(3).Select(ToChip).ToList(),
-                    AllItems = dayItems,
-                    MoreCount = Math.Max(0, dayItems.Count - 3),
-                    EventCount = dayItems.Count,
+                    Chips = visibleTimed
+                        .Select(placement => ToChip(byOccurrence[placement.Occurrence.Id]))
+                        .ToList(),
+                    AllItems = allItems,
+                    MoreCount = hiddenBanners.Count + (timed.Count - visibleTimed.Count) + dayLayout.Hidden.Count,
+                    EventCount = allItems.Count,
+                    LineOffset = lineOffset,
                 });
             }
 
@@ -92,6 +170,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                 weekNumbers[week] = ISOWeek.GetWeekOfYear(weekStart.ToDateTime(TimeOnly.MinValue));
             }
 
+            Weeks = weeks;
             Days = days;
             WeekNumbers = weekNumbers;
         });
@@ -109,108 +188,56 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
 
     public async Task<bool> MoveItemToDateAsync(string itemId, DateOnly targetDate)
     {
-        var calendarEvent = await _repository.GetByIdAsync(itemId);
+        var timeZone = _clock.LocalTimeZone;
 
-        if (calendarEvent is null)
+        if (await _repository.GetByIdAsync(itemId) is { } calendarEvent)
         {
-            return false;
+            var localStart = timeZone.ToLocal(calendarEvent.StartUtc);
+            var duration = calendarEvent.EndUtc - calendarEvent.StartUtc;
+            var newStartUtc = timeZone.ToUtc(targetDate.ToDateTime(TimeOnly.FromTimeSpan(localStart.TimeOfDay)));
+
+            await _events.UpdateAsync(calendarEvent with { StartUtc = newStartUtc, EndUtc = newStartUtc + duration });
+
+            return true;
         }
 
-        var timeZone = _clock.LocalTimeZone;
-        var localStart = timeZone.ToLocal(calendarEvent.StartUtc);
-        var duration = calendarEvent.EndUtc - calendarEvent.StartUtc;
+        if (await _reminders.GetByIdAsync(itemId) is { DueUtc: { } reminderDue } reminder)
+        {
+            var newDueUtc = timeZone.ToUtc(targetDate.ToDateTime(TimeOnly.FromTimeSpan(timeZone.ToLocal(reminderDue).TimeOfDay)));
 
-        var newLocalStart = targetDate.ToDateTime(TimeOnly.FromTimeSpan(localStart.TimeOfDay));
-        var newStartUtc = timeZone.ToUtc(newLocalStart);
+            await _reminders.UpsertAsync(reminder with { DueUtc = newDueUtc, UpdatedUtc = _clock.UtcNow });
 
-        await _events.UpdateAsync(calendarEvent with { StartUtc = newStartUtc, EndUtc = newStartUtc + duration });
+            return true;
+        }
 
-        return true;
+        if (await _tasks.GetByIdAsync(itemId) is { DueUtc: { } taskDue } task)
+        {
+            var newDueUtc = timeZone.ToUtc(targetDate.ToDateTime(TimeOnly.FromTimeSpan(timeZone.ToLocal(taskDue).TimeOfDay)));
+
+            await _tasks.UpsertAsync(task with { DueUtc = newDueUtc });
+
+            return true;
+        }
+
+        return false;
     }
 
-    private static Dictionary<DateOnly, List<CalendarItem>> BuildItemsByDay(
-        IReadOnlyList<CalendarItem> items,
-        DateOnly rangeStart,
-        DateOnly rangeEnd,
-        WeekStartDay weekStart,
-        TimeZoneInfo timeZone)
+    private static MonthBanner ToBanner(
+        BannerPlacement banner,
+        DateOnly weekStart,
+        IReadOnlyDictionary<string, CalendarItem> byOccurrence)
     {
-        var byDay = new Dictionary<DateOnly, List<CalendarItem>>();
+        var item = byOccurrence.GetValueOrDefault(banner.Occurrence.Id);
 
-        if (items.Count == 0)
-        {
-            return byDay;
-        }
-
-        var byId = items.ToDictionary(item => item.Id, StringComparer.Ordinal);
-        var seen = new Dictionary<DateOnly, HashSet<string>>();
-
-        void Add(DateOnly date, string id)
-        {
-            if (date < rangeStart || date > rangeEnd || !byId.TryGetValue(id, out var item))
-            {
-                return;
-            }
-
-            if (!seen.TryGetValue(date, out var ids))
-            {
-                ids = new HashSet<string>(StringComparer.Ordinal);
-                seen[date] = ids;
-            }
-
-            if (!ids.Add(id))
-            {
-                return;
-            }
-
-            if (!byDay.TryGetValue(date, out var list))
-            {
-                list = new List<CalendarItem>();
-                byDay[date] = list;
-            }
-
-            list.Add(item);
-        }
-
-        var occurrences = items.Select(item => CalendarLayout.ToOccurrence(item, timeZone)).ToList();
-        var layout = CalendarLayout.Build(
-            occurrences,
-            rangeStart,
-            rangeEnd,
-            weekStart,
-            maxBannerLanes: items.Count,
-            maxColumns: items.Count);
-
-        foreach (var week in layout.Weeks)
-        {
-            foreach (var banner in week.Banners.Concat(week.HiddenPlacements))
-            {
-                for (var day = banner.StartDay; day <= banner.EndDay; day = day.AddDays(1))
-                {
-                    Add(day, banner.Occurrence.Id);
-                }
-            }
-        }
-
-        foreach (var day in layout.Days)
-        {
-            foreach (var placement in day.Items.Concat(day.Hidden))
-            {
-                Add(day.Date, placement.Occurrence.Id);
-            }
-        }
-
-        foreach (var list in byDay.Values)
-        {
-            list.Sort(static (left, right) =>
-            {
-                var byStart = left.StartUtc.CompareTo(right.StartUtc);
-
-                return byStart != 0 ? byStart : string.CompareOrdinal(left.Title, right.Title);
-            });
-        }
-
-        return byDay;
+        return new MonthBanner(
+            banner.Occurrence.Id,
+            item?.Title ?? string.Empty,
+            item?.Color,
+            banner.StartDay.DayNumber - weekStart.DayNumber,
+            banner.EndDay.DayNumber - weekStart.DayNumber,
+            banner.Lane,
+            banner.ContinuesFromPrev,
+            banner.ContinuesToNext);
     }
 
     private static MonthChip ToChip(CalendarItem item) => new()

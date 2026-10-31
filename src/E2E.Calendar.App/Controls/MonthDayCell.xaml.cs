@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
@@ -12,6 +13,9 @@ namespace E2E.Calendar.App.Controls;
 
 public sealed partial class MonthDayCell : UserControl
 {
+    /// <summary>20px chip plus 2px spacing; banner bars use the same rhythm.</summary>
+    public const double LineHeight = 22d;
+
     public static readonly DependencyProperty DayNumberProperty = DependencyProperty.Register(
         nameof(DayNumber),
         typeof(string),
@@ -111,6 +115,7 @@ public sealed partial class MonthDayCell : UserControl
         }
 
         UpdateVisuals();
+        ChipsHost.Margin = new Thickness(0, day.LineOffset * LineHeight, 0, 0);
         SetChips(day.Chips);
         Items = day.AllItems;
     }
@@ -281,6 +286,12 @@ public sealed partial class MonthDayCell : UserControl
 
     private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        if (e.OriginalSource is DependencyObject source &&
+            (FindAncestor<MonthChipView>(source) is not null || FindAncestor<Button>(source) is not null))
+        {
+            return;
+        }
+
         NewEventRequested?.Invoke(this, Date);
     }
 
@@ -316,6 +327,21 @@ public sealed partial class MonthDayCell : UserControl
             var id = await e.Data.GetView().GetTextAsync();
             ChipDropped?.Invoke(this, new MonthChipDrop(id, Date));
         }
+    }
+
+    private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        while (element is not null)
+        {
+            if (element is T match)
+            {
+                return match;
+            }
+
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        return null;
     }
 }
 
