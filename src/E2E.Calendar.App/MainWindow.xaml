@@ -373,52 +373,91 @@
                                     <TextBlock Text="New" />
                                 </StackPanel>
                                 <Button.Flyout>
-                                    <MenuFlyout MenuFlyoutPresenterStyle="{StaticResource AppMenuFlyoutPresenterStyle}">
+                                    <MenuFlyout
+                                        MenuFlyoutPresenterStyle="{StaticResource AppMenuFlyoutPresenterStyle}"
+                                        Placement="BottomEdgeAlignedLeft">
                                         <MenuFlyoutItem
                                             AutomationProperties.Name="New event"
                                             Click="OnNewEventClick"
                                             KeyboardAcceleratorTextOverride="N"
                                             Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                            Text="Event" />
+                                            Text="Event"
+                                            ToolTipService.ToolTip="Something at a set time">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontSize="16" Glyph="&#xE787;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                         <MenuFlyoutItem
                                             AutomationProperties.Name="New reminder"
                                             Click="OnNewReminderClick"
                                             KeyboardAcceleratorTextOverride="R"
                                             Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                            Text="Reminder" />
+                                            Text="Reminder"
+                                            ToolTipService.ToolTip="Notify me at a time">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontSize="16" Glyph="&#xE7ED;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                         <MenuFlyoutSubItem
                                             AutomationProperties.Name="Remind me in"
+                                            Style="{StaticResource AppMenuFlyoutSubItemStyle}"
                                             Text="Remind me in">
+                                            <MenuFlyoutSubItem.Icon>
+                                                <FontIcon FontSize="16" Glyph="&#xE823;" />
+                                            </MenuFlyoutSubItem.Icon>
                                             <MenuFlyoutItem
                                                 AutomationProperties.Name="Remind me in 10 minutes"
                                                 Click="OnNewCountdownClick"
                                                 Style="{StaticResource AppMenuFlyoutItemStyle}"
                                                 Tag="10"
-                                                Text="10 minutes" />
+                                                Text="10 minutes">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontSize="16" Glyph="&#xE823;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                             <MenuFlyoutItem
                                                 AutomationProperties.Name="Remind me in 30 minutes"
                                                 Click="OnNewCountdownClick"
                                                 Style="{StaticResource AppMenuFlyoutItemStyle}"
                                                 Tag="30"
-                                                Text="30 minutes" />
+                                                Text="30 minutes">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontSize="16" Glyph="&#xE823;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                             <MenuFlyoutItem
                                                 AutomationProperties.Name="Remind me in 60 minutes"
                                                 Click="OnNewCountdownClick"
                                                 Style="{StaticResource AppMenuFlyoutItemStyle}"
                                                 Tag="60"
-                                                Text="60 minutes" />
+                                                Text="60 minutes">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon FontSize="16" Glyph="&#xE823;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                         </MenuFlyoutSubItem>
                                         <MenuFlyoutItem
                                             AutomationProperties.Name="New task"
                                             Click="OnNewTaskClick"
                                             Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                            Text="Task" />
+                                            Text="Task"
+                                            ToolTipService.ToolTip="To-do without an alarm">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontSize="16" Glyph="&#xE9D5;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
                                         <MenuFlyoutItem
                                             AutomationProperties.Name="Quick add"
                                             Click="OnQuickAddClick"
                                             KeyboardAcceleratorTextOverride="Win+Alt+C"
                                             Style="{StaticResource AppMenuFlyoutItemStyle}"
-                                            Text="Quick add" />
+                                            Text="Quick add"
+                                            ToolTipService.ToolTip="Type a sentence">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon FontSize="16" Glyph="&#xE70F;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
