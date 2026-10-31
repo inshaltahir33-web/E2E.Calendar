@@ -79,15 +79,6 @@
                         <TranslateTransform x:Name="CalendarTransform" />
                     </Grid.RenderTransform>
                 </Grid>
-
-                <!-- Incoming month layer: visible during the transition, slid in from the opposite side -->
-                <Grid x:Name="IncomingMonthGrid"
-                      HorizontalAlignment="Center"
-                      RenderTransformOrigin="0.5,0.5">
-                    <Grid.RenderTransform>
-                        <TranslateTransform x:Name="IncomingTransform" />
-                    </Grid.RenderTransform>
-                </Grid>
             </Grid>
         </Border>
 

@@ -15,7 +15,6 @@ using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 using XamlAutomationProperties = Microsoft.UI.Xaml.Automation.AutomationProperties;
 using UiDispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 using Windows.Foundation;
-using System.Diagnostics;
 
 namespace E2E.Calendar.App.Controls;
 
@@ -29,9 +28,6 @@ public sealed partial class MiniCalendarView : UserControl
 
     /// <summary>Movement needed before a press becomes a swipe; below it the gesture stays a tap.</summary>
     private const double SwipeSlop = 10;
-
-    /// <summary>Per-phase duration of the month transition (slide out + slide in ≈ 200 ms).</summary>
-    private const int MonthTransitionMs = 200;
 
     private const int SnapBackMs = 150;
 
@@ -49,7 +45,6 @@ public sealed partial class MiniCalendarView : UserControl
     private double _dragStartY;
     private double _dragOffset;
     private TranslateTransform? _dragTransform;
-    private double _currentMonthWidth;
 
     public MiniCalendarView(MiniCalendarViewModel viewModel, IDialogService dialogs)
     {
@@ -303,7 +298,7 @@ public sealed partial class MiniCalendarView : UserControl
         if (Math.Abs(offset) >= SwipeThreshold)
         {
             // Drag right-to-left (negative) pages to the next month; left-to-right goes back.
-            ChangeMonthAsync(offset < 0 ? 1 : -1, offset);
+            _ = ChangeMonthAsync(offset < 0 ? 1 : -1);
         }
         else
         {
@@ -462,79 +457,23 @@ public sealed partial class MiniCalendarView : UserControl
 
     /// <summary>
     /// The one month-change path used by the header arrows, the wheel and the swipe.
-    /// <paramref name="startOffset"/> is the drag distance the current month already follows.
+    /// The grid is never animated away: the month is swapped in place so it stays visible.
     /// </summary>
-    private async Task ChangeMonthAsync(int delta, double startOffset = 0)
+    private async Task ChangeMonthAsync(int delta)
     {
-        if (delta == 0)
+        if (delta == 0 || _isTransitioning)
         {
             return;
         }
 
-        var from = new DateOnly(ViewModel.VisibleYear, ViewModel.VisibleMonth, 1);
-        var target = from.AddMonths(delta);
-        var navDirection = NavigationDirection.Get(from, target);
-        var direction = (int)navDirection;
-
-        if (direction == 0)
-        {
-            return;
-        }
-
-        for (var index = 0; index < Math.Abs(delta); index++)
-        {
-            await SlideMonthAsync(direction, index == 0 ? startOffset : 0);
-        }
-    }
-
-    /// <summary>
-    /// Slides the visible month out in the navigation direction, swaps the month while it is
-    /// off screen and slides the new one in from the opposite side. Only the grid's
-    /// Translation X and Opacity are animated — never its width or margins.
-    /// </summary>
-    private async Task SlideMonthAsync(int direction, double startOffset)
-    {
         _isTransitioning = true;
 
         try
         {
-            if (!_isLoaded)
-            {
-                _viewModel.MoveMonth(direction);
-                await _viewModel.RefreshAsync();
-                return;
-            }
+            ResetGridTransform();
 
-            var width = Math.Max(CalendarGrid.ActualWidth, _currentMonthWidth > 0 ? _currentMonthWidth : MiniCalendarGridBuilder.DaysPerWeek * CellSize);
-
-            // 1️⃣ Update layout first so the new month's Measure/Arrange is complete
-            CalendarGrid.UpdateLayout();
-            IncomingMonthGrid.UpdateLayout();
-
-            // 2️⃣ Position the incoming month off-screen in the direction of travel
-            var outTarget = direction > 0 ? -width : width;
-            var inStart = direction > 0 ? width : -width;
-
-            // Reset transforms
-            CalendarTransform.X = 0;
-            IncomingTransform.X = 0;
-            CalendarGrid.Opacity = 1;
-            IncomingMonthGrid.Opacity = 0;
-
-            // 3️⃣ Animate the old month out and the new month in simultaneously
-            //    – old goes: direction > 0 → left ( -width ), direction < 0 → right ( +width )
-            //    – new comes from: direction > 0 → right ( +width ), direction < 0 → left ( -width )
-            await AnimateMonthAsync(startOffset, outTarget, inStart, 0, width, MonthTransitionMs);
-
-            // 4️⃣ Swap the month data while the grids are off-screen
-            _viewModel.MoveMonth(direction);
+            _viewModel.MoveMonth(delta);
             await _viewModel.RefreshAsync();
-
-            // 5️⃣ Position the new (now current) month at origin, ready for the next transition
-            CalendarTransform.X = 0;
-            IncomingTransform.X = 0;
-            CalendarGrid.Opacity = 1;
-            IncomingMonthGrid.Opacity = 0;
         }
         finally
         {
@@ -542,77 +481,14 @@ public sealed partial class MiniCalendarView : UserControl
         }
     }
 
-    /// <summary>
-    /// Anims both the outgoing (CalendarGrid) and incoming (IncomingMonthGrid) month layers.
-    /// Old layer slides out <paramref name="outTarget"/> pixels, new layer slides in from
-    /// <paramref name="inStart"/> pixels, both using CubicEase EaseOut over <paramref name="durationMs"/>.
-    /// </summary>
-    private async Task AnimateMonthAsync(double startOffset, double outTarget, double inStart, double toX, double width, int durationMs)
+    /// <summary>Clears any leftover drag offset so the rebuilt month is drawn at its origin.</summary>
+    private void ResetGridTransform()
     {
-        Debug.WriteLine($"[MiniCalendar] Animation start: direction={(outTarget < 0 ? "next" : "prev")}, out={outTarget}, in={inStart}");
-
-        // Outgoing layer slides out
-        var outTransform = CalendarTransform;
-        outTransform.X = startOffset;
-        var outEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var outStoryboard = new Storyboard();
-        var outAnim = new DoubleAnimation
-        {
-            From = startOffset,
-            To = outTarget,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
-            EasingFunction = outEasing,
-        };
-        Storyboard.SetTarget(outAnim, outTransform);
-        Storyboard.SetTargetProperty(outAnim, "X");
-        outStoryboard.Children.Add(outAnim);
-
-        // Incoming layer slides in from opposite side
-        var inTransform = IncomingTransform;
-        inTransform.X = inStart;
-        var inEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var inStoryboard = new Storyboard();
-        var inAnim = new DoubleAnimation
-        {
-            From = inStart,
-            To = toX,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
-            EasingFunction = inEasing,
-        };
-        Storyboard.SetTarget(inAnim, inTransform);
-        Storyboard.SetTargetProperty(inAnim, "X");
-        inStoryboard.Children.Add(inAnim);
-
-        // Fade out old, fade in new
-        var fadeOut = new DoubleAnimation
-        {
-            From = 1,
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
-            EasingFunction = outEasing,
-        };
-        Storyboard.SetTarget(fadeOut, CalendarGrid);
-        Storyboard.SetTargetProperty(fadeOut, "Opacity");
-        outStoryboard.Children.Add(fadeOut);
-
-        var fadeIn = new DoubleAnimation
-        {
-            From = 0,
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
-            EasingFunction = inEasing,
-        };
-        Storyboard.SetTarget(fadeIn, IncomingMonthGrid);
-        Storyboard.SetTargetProperty(fadeIn, "Opacity");
-        inStoryboard.Children.Add(fadeIn);
-
-        outStoryboard.Begin();
-        inStoryboard.Begin();
-
-        // Both storyboards run for the full duration; just wait for it.
-        await Task.Delay(durationMs);
-
-        Debug.WriteLine($"[MiniCalendar] Animation completed after {durationMs}ms");
+        _dragTransform = null;
+        _dragOffset = 0;
+        CalendarGrid.RenderTransform = CalendarTransform;
+        CalendarTransform.X = 0;
+        CalendarGrid.Opacity = 1;
     }
 
     private void SnapBackAsync(double offset)
@@ -656,14 +532,6 @@ public sealed partial class MiniCalendarView : UserControl
         {
             geo.Rect = new Rect(0, 0, e.NewSize.Width, e.NewSize.Height);
         }
-        _currentMonthWidth = e.NewSize.Width;
-    }
-
-    private double MonthSlideWidth()
-    {
-        var width = CalendarGrid.ActualWidth;
-
-        return width > 1 ? width : MiniCalendarGridBuilder.DaysPerWeek * CellSize;
     }
 
     private async void OnCalendarKeyDown(object sender, KeyRoutedEventArgs e)
