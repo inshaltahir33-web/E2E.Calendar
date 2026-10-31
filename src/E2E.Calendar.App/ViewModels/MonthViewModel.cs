@@ -11,6 +11,10 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
 {
     private const int MaxLinesPerCell = 3;
 
+    // Two banner lanes leave the third line free for a chip or the "+N more" link,
+    // so overflow stays reachable instead of being clipped at the cell edge.
+    private const int MaxBannerLanes = 2;
+
     private readonly EventService _events;
     private readonly IEventRepository _repository;
     private readonly IReminderRepository _reminders;
@@ -85,7 +89,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                 gridStart,
                 gridEnd.AddDays(-1),
                 State.WeekStart,
-                maxBannerLanes: MaxLinesPerCell,
+                maxBannerLanes: MaxBannerLanes,
                 maxColumns: Math.Max(1, items.Count));
 
             var weeks = new List<MonthWeek>(layout.Weeks.Count);
@@ -120,7 +124,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                     .Where(banner => banner.StartDay <= date && date <= banner.EndDay)
                     .ToList();
 
-                var lineOffset = visibleBanners.Count == 0
+                var bannerLines = visibleBanners.Count == 0
                     ? 0
                     : visibleBanners.Max(banner => banner.Lane) + 1;
 
@@ -129,9 +133,15 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                     .ThenBy(placement => placement.Occurrence.Id, StringComparer.Ordinal)
                     .ToList();
 
-                var visibleTimed = timed
-                    .Take(Math.Max(0, MaxLinesPerCell - lineOffset))
-                    .ToList();
+                // A cell shows at most three lines; when something does not fit, the
+                // last line becomes "+N more" instead of spilling into the next row.
+                var extraItems = timed.Count + hiddenBanners.Count + dayLayout.Hidden.Count;
+                var freeLines = Math.Max(0, MaxLinesPerCell - bannerLines);
+                var chipCount = extraItems <= freeLines
+                    ? Math.Min(timed.Count, freeLines)
+                    : Math.Max(0, freeLines - 1);
+
+                var visibleTimed = timed.Take(chipCount).ToList();
 
                 var allItems = visibleBanners
                     .Concat(hiddenBanners)
@@ -156,9 +166,9 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                         .Select(placement => ToChip(byOccurrence[placement.Occurrence.Id]))
                         .ToList(),
                     AllItems = allItems,
-                    MoreCount = hiddenBanners.Count + (timed.Count - visibleTimed.Count) + dayLayout.Hidden.Count,
+                    MoreCount = allItems.Count - visibleBanners.Count - visibleTimed.Count,
                     EventCount = allItems.Count,
-                    LineOffset = lineOffset,
+                    LineOffset = bannerLines,
                 });
             }
 

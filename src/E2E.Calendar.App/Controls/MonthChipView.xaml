@@ -5,7 +5,7 @@
 
     <Border
         x:Name="ChipBorder"
-        Height="20"
+        Height="18"
         Padding="0,0,6,0"
         Background="{ThemeResource App.CardBackgroundBrush}"
         BorderThickness="0"

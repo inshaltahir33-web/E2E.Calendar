@@ -89,7 +89,9 @@ public static class Motion
             return;
         }
 
+        ElementCompositionPreview.SetIsTranslationEnabled(element, true);
         element.Opacity = 1;
+        element.Translation = Vector3.Zero;
 
         var visual = ElementCompositionPreview.GetElementVisual(element);
         var compositor = visual.Compositor;
@@ -103,13 +105,15 @@ public static class Motion
         opacity.InsertKeyFrame(1f, 1f);
         opacity.Duration = TimeSpan.FromMilliseconds(durationMs);
 
-        var offset = compositor.CreateVector3KeyFrameAnimation();
-        offset.InsertKeyFrame(0f, new Vector3(0, (float)offsetPixels, 0));
-        offset.InsertKeyFrame(1f, Vector3.Zero, easing);
-        offset.Duration = TimeSpan.FromMilliseconds(durationMs);
+        // Translation is render-only; animating the visual Offset instead would
+        // override the element's layout position (for example the row below a header).
+        var translation = compositor.CreateVector3KeyFrameAnimation();
+        translation.InsertKeyFrame(0f, new Vector3(0, (float)offsetPixels, 0));
+        translation.InsertKeyFrame(1f, Vector3.Zero, easing);
+        translation.Duration = TimeSpan.FromMilliseconds(durationMs);
 
         visual.StartAnimation("Opacity", opacity);
-        visual.StartAnimation("Offset", offset);
+        visual.StartAnimation("Translation", translation);
 
         await Task.Delay(durationMs);
     }

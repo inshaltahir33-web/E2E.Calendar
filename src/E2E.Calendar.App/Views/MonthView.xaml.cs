@@ -14,7 +14,7 @@ public partial class MonthView : Page
     private readonly EventEditorViewModel _editor;
     private readonly ReminderQuickAdd _reminders;
     private readonly WeekViewModel _weekViewModel;
-    private const double BannerLineTop = 28d;
+    private const double BannerLineTop = 22d;
     private const double BannerCornerRadius = 4d;
 
     private readonly List<MonthDayCell> _cells = new();
@@ -329,7 +329,7 @@ public partial class MonthView : Page
         {
             Child = content,
             Background = chipBrushes.Fill,
-            Height = 20,
+            Height = MonthDayCell.LineHeight - 1,
             VerticalAlignment = VerticalAlignment.Top,
             CornerRadius = new CornerRadius(
                 banner.ContinuesFromPrev ? 0 : BannerCornerRadius,

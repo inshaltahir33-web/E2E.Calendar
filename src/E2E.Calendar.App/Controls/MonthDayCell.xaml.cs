@@ -13,8 +13,8 @@ namespace E2E.Calendar.App.Controls;
 
 public sealed partial class MonthDayCell : UserControl
 {
-    /// <summary>20px chip plus 2px spacing; banner bars use the same rhythm.</summary>
-    public const double LineHeight = 22d;
+    /// <summary>18px chip plus 1px spacing; banner bars use the same rhythm.</summary>
+    public const double LineHeight = 19d;
 
     public static readonly DependencyProperty DayNumberProperty = DependencyProperty.Register(
         nameof(DayNumber),
@@ -222,10 +222,6 @@ public sealed partial class MonthDayCell : UserControl
         WeekendTint.Visibility = IsWeekend && !IsToday ? Visibility.Visible : Visibility.Collapsed;
         MoreButton.Visibility = MoreVisible ? Visibility.Visible : Visibility.Collapsed;
         CellBorder.BorderBrush = ThemeBrushes.Get(this, "GridLine");
-
-        HeatDot1.Visibility = EventCount >= 1 ? Visibility.Visible : Visibility.Collapsed;
-        HeatDot2.Visibility = EventCount >= 3 ? Visibility.Visible : Visibility.Collapsed;
-        HeatDot3.Visibility = EventCount >= 6 ? Visibility.Visible : Visibility.Collapsed;
 
         // Other-month days are dimmed to 40% so the current month stays the focus.
         CellContent.Opacity = IsCurrentMonth ? 1d : 0.4d;

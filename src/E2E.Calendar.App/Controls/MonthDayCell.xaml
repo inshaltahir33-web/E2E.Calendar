@@ -44,19 +44,19 @@
 
         <StackPanel
             x:Name="CellContent"
-            Padding="4">
+            Padding="2">
 
-            <Grid Height="24" HorizontalAlignment="Left">
+            <Grid Height="20" HorizontalAlignment="Left">
                 <Ellipse
                     x:Name="TodayCircle"
-                    Width="22"
-                    Height="22"
+                    Width="20"
+                    Height="20"
                     HorizontalAlignment="Left"
                     Fill="{ThemeResource Accent}"
                     Visibility="Collapsed" />
                 <TextBlock
                     x:Name="DayText"
-                    Width="22"
+                    Width="20"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     TextAlignment="Center"
@@ -64,52 +64,24 @@
                     Foreground="{ThemeResource TextPrimary}" />
                 <TextBlock
                     x:Name="TodayText"
-                    Width="22"
+                    Width="20"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     TextAlignment="Center"
                     FontSize="{StaticResource FontSizeCaption}"
                     Foreground="{ThemeResource App.OnAccentBrush}"
                     Visibility="Collapsed" />
-                <StackPanel
-                    x:Name="HeatDots"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal"
-                    Spacing="2">
-                    <Border
-                        x:Name="HeatDot1"
-                        Width="5"
-                        Height="5"
-                        CornerRadius="3"
-                        Background="{ThemeResource Accent}"
-                        Opacity="0.35"
-                        Visibility="Collapsed" />
-                    <Border
-                        x:Name="HeatDot2"
-                        Width="5"
-                        Height="5"
-                        CornerRadius="3"
-                        Background="{ThemeResource Accent}"
-                        Opacity="0.65"
-                        Visibility="Collapsed" />
-                    <Border
-                        x:Name="HeatDot3"
-                        Width="5"
-                        Height="5"
-                        CornerRadius="3"
-                        Background="{ThemeResource Accent}"
-                        Opacity="0.95"
-                        Visibility="Collapsed" />
-                </StackPanel>
             </Grid>
 
-            <StackPanel x:Name="ChipsHost" Spacing="2" />
+            <StackPanel x:Name="ChipsHost" Spacing="1" />
 
-            <!-- "+N more" is a small link, not a button-looking pill. -->
+            <!-- "+N more" is a small link on the last line, not a button-looking pill. -->
             <Button
                 x:Name="MoreButton"
                 AutomationProperties.Name="Show the remaining events for this day"
+                Height="16"
+                MinHeight="0"
+                Margin="0,1,0,0"
                 HorizontalAlignment="Left"
                 Background="{ThemeResource App.TransparentBrush}"
                 BorderThickness="0"
