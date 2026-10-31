@@ -394,19 +394,6 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource EditorCardStyle}">
-                        <StackPanel Spacing="{StaticResource SpaceSM}">
-                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="TEMPLATE" />
-                            <ComboBox
-                                HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="Event template"
-                                DisplayMemberPath="Name"
-                                ItemsSource="{x:Bind ViewModel.Templates, Mode=OneWay}"
-                                PlaceholderText="Start from a template"
-                                SelectionChanged="OnTemplateSelected" />
-                        </StackPanel>
-                    </Border>
-
                 </StackPanel>
             </ScrollViewer>
 

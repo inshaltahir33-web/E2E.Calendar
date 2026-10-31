@@ -11,6 +11,7 @@ using E2E.Calendar.Data;
 using E2E.Calendar.Platform;
 using E2E.Calendar.Sync.Ics;
 using Microsoft.Data.Sqlite;
+using Microsoft.UI.Xaml;
 using CalendarModel = E2E.Calendar.Core.Models.Calendar;
 
 namespace E2E.Calendar.App.ViewModels;
@@ -122,6 +123,50 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<SettingsAccountItem> Accounts { get; } = new();
 
+    public ObservableCollection<SettingsPremiumPlan> PremiumPlans { get; } = new()
+    {
+        new SettingsPremiumPlan
+        {
+            Title = "Monthly",
+            Price = "$2.99 / month",
+            Detail = "7-day free trial",
+        },
+        new SettingsPremiumPlan
+        {
+            Title = "Yearly",
+            Price = "$19.99 / year",
+            Detail = "Save 44% compared with monthly",
+            Badge = "Save 44%",
+            IsHighlighted = true,
+        },
+        new SettingsPremiumPlan
+        {
+            Title = "Lifetime",
+            Price = "$39.99 one-time",
+            Detail = "Pay once, keep premium forever",
+        },
+    };
+
+    public IReadOnlyList<SettingsPremiumFeature> PremiumFeatures { get; } =
+    [
+        new("Day / Week / Month / Agenda views", "Included", "Included", false),
+        new("Local calendars and ICS subscriptions", "Included", "Included", false),
+        new("Event alerts and standalone reminders", "Included", "Included", false),
+        new("Persistent reminders", "3 active", "Unlimited", false),
+        new("Tasks and lists", "1 list", "Unlimited lists", false),
+        new("Natural-language quick add", "Included", "Included", false),
+        new("Global hotkey and tray quick capture", "Included", "Included", false),
+        new("Themes and accent colours", "Included", "Included", false),
+        new("Connected accounts (Google / Microsoft / iCloud)", "Coming soon", "Coming soon", true),
+        new("Year view and custom multi-day view", "Coming soon", "Coming soon", true),
+        new("Calendar sets and profiles", "Coming soon", "Coming soon", true),
+        new("Event templates", "Coming soon", "Coming soon", true),
+        new("Compact always-on-top agenda strip", "Coming soon", "Coming soon", true),
+        new("Habit tracker, weather and daily digest", "Coming soon", "Coming soon", true),
+        new("Find a free slot and share availability", "Coming soon", "Coming soon", true),
+        new("Windows Hello app lock", "Coming soon", "Coming soon", true),
+    ];
+
     public string AppVersion => "1.0.0 (local)";
 
     public string DatabaseSummary => "Stored on this device, encrypted with SQLCipher";
@@ -208,7 +253,28 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _premiumStatus = "Checking your plan…";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPremiumNote))]
     private string? _premiumNote;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PremiumUpgradeLabel))]
+    [NotifyPropertyChangedFor(nameof(PremiumRestoreLabel))]
+    [NotifyPropertyChangedFor(nameof(IsPurchaseUnavailable))]
+    [NotifyCanExecuteChangedFor(nameof(ShowPaywallCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RestorePurchasesCommand))]
+    private bool _isStoreAvailable;
+
+    private const string StoreOnlyMessage = "Available in the Microsoft Store version";
+
+    public bool HasPremiumNote => !string.IsNullOrWhiteSpace(PremiumNote);
+
+    public bool IsPurchaseUnavailable => !IsStoreAvailable;
+
+    public bool CanPurchase => IsStoreAvailable;
+
+    public string PremiumUpgradeLabel => IsStoreAvailable ? "Upgrade" : StoreOnlyMessage;
+
+    public string PremiumRestoreLabel => IsStoreAvailable ? "Restore purchases" : StoreOnlyMessage;
 
     public async Task LoadAsync()
     {
@@ -255,6 +321,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         // The OS owns the startup task state, so read it back instead of persisting a copy.
         ApplyStartupStatus(await _startupTasks.GetStatusAsync());
 
+        IsStoreAvailable = _entitlements.IsStoreAvailable;
         await RefreshPremiumAsync();
 
         var calendars = await _calendars.GetAllAsync();
@@ -656,14 +723,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         PremiumStatus = EntitlementText.Describe(snapshot, _entitlements.IsStoreAvailable);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanPurchase))]
     private async Task ShowPaywallAsync()
     {
         await _paywall.ShowAsync();
         await RefreshPremiumAsync();
     }
 
-    [RelayCommand(AllowConcurrentExecutions = false)]
+    [RelayCommand(CanExecute = nameof(CanPurchase), AllowConcurrentExecutions = false)]
     private async Task RestorePurchasesAsync()
     {
         var result = await _entitlements.RestoreAsync();
@@ -706,4 +773,26 @@ public sealed record SettingsAccountItem
     public required string DisplayName { get; init; }
 
     public required string Detail { get; init; }
+}
+
+public sealed class SettingsPremiumPlan
+{
+    public required string Title { get; init; }
+
+    public required string Price { get; init; }
+
+    public required string Detail { get; init; }
+
+    public string? Badge { get; init; }
+
+    public bool IsHighlighted { get; init; }
+
+    public Visibility BadgeVisibility => string.IsNullOrEmpty(Badge) ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility HighlightVisibility => IsHighlighted ? Visibility.Visible : Visibility.Collapsed;
+}
+
+public sealed record SettingsPremiumFeature(string Name, string Free, string Premium, bool IsComingSoon)
+{
+    public double RowOpacity => IsComingSoon ? 0.6 : 1.0;
 }

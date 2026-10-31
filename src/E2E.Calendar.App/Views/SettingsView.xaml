@@ -544,30 +544,116 @@
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Premium" />
 
                     <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
-                            <StackPanel Spacing="{StaticResource SpaceXS}">
-                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Your plan" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="{x:Bind ViewModel.PremiumStatus, Mode=OneWay}"
-                                    TextWrapping="Wrap" />
-                                <TextBlock
-                                    Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="{x:Bind ViewModel.PremiumNote, Mode=OneWay}"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource SpaceXS}">
-                                <Button
-                                    AutomationProperties.Name="Upgrade"
-                                    Command="{x:Bind ViewModel.ShowPaywallCommand}"
-                                    Content="Upgrade" />
-                                <Button
-                                    AutomationProperties.Name="Restore purchases"
-                                    Command="{x:Bind ViewModel.RestorePurchasesCommand}"
-                                    Content="Restore purchases" />
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel Spacing="{StaticResource SpaceXS}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Your plan" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="{x:Bind ViewModel.PremiumStatus, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                Text="{x:Bind ViewModel.PremiumNote, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Visibility="{x:Bind ViewModel.HasPremiumNote, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
                     </Border>
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.PremiumPlans, Mode=OneTime}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SettingsPremiumPlan">
+                                <Border Margin="0,0,0,8" Style="{StaticResource SettingsCardStyle}">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource SpaceMD}">
+                                        <Border
+                                            Width="{StaticResource AccentBarWidth}"
+                                            VerticalAlignment="Stretch"
+                                            Background="{ThemeResource App.AccentBrush}"
+                                            CornerRadius="{StaticResource RadiusControl}"
+                                            Visibility="{x:Bind HighlightVisibility, Mode=OneTime}" />
+                                        <StackPanel Grid.Column="1" Spacing="{StaticResource SpaceXS}">
+                                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{x:Bind Title, Mode=OneTime}" />
+                                                <Border
+                                                    Padding="8,2"
+                                                    VerticalAlignment="Center"
+                                                    Background="{ThemeResource AccentSoft}"
+                                                    CornerRadius="{StaticResource RadiusControl}"
+                                                    Visibility="{x:Bind BadgeVisibility, Mode=OneTime}">
+                                                    <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind Badge, Mode=OneTime}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{x:Bind Price, Mode=OneTime}" />
+                                            <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind Detail, Mode=OneTime}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceXS}">
+                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Free vs Premium" />
+                            <Grid ColumnDefinitions="*,104,104" ColumnSpacing="{StaticResource SpaceSM}">
+                                <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="Feature" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Center"
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Free" />
+                                <TextBlock
+                                    Grid.Column="2"
+                                    HorizontalAlignment="Center"
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Premium" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.PremiumFeatures, Mode=OneTime}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SettingsPremiumFeature">
+                                        <Border
+                                            Padding="0,6"
+                                            BorderBrush="{ThemeResource App.DividerBrush}"
+                                            BorderThickness="0,1,0,0"
+                                            Opacity="{x:Bind RowOpacity, Mode=OneTime}">
+                                            <Grid ColumnDefinitions="*,104,104" ColumnSpacing="{StaticResource SpaceSM}">
+                                                <TextBlock
+                                                    Style="{StaticResource SettingsCardTitleStyle}"
+                                                    Text="{x:Bind Name, Mode=OneTime}"
+                                                    TextWrapping="Wrap" />
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    HorizontalAlignment="Center"
+                                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                                    Text="{x:Bind Free, Mode=OneTime}" />
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    HorizontalAlignment="Center"
+                                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                                    Text="{x:Bind Premium, Mode=OneTime}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                        <Button
+                            AutomationProperties.Name="{x:Bind ViewModel.PremiumUpgradeLabel, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ShowPaywallCommand}"
+                            Content="{x:Bind ViewModel.PremiumUpgradeLabel, Mode=OneWay}"
+                            Style="{StaticResource AccentButtonStyle}" />
+                        <Button
+                            AutomationProperties.Name="{x:Bind ViewModel.PremiumRestoreLabel, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.RestorePurchasesCommand}"
+                            Content="{x:Bind ViewModel.PremiumRestoreLabel, Mode=OneWay}"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Style="{StaticResource SettingsCardDescriptionStyle}"
+                        Text="Purchases open in the Microsoft Store version of E2E Calendar."
+                        Visibility="{x:Bind ViewModel.IsPurchaseUnavailable, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
 
                 <!--  Privacy & data  -->

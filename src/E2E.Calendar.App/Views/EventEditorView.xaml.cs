@@ -1,7 +1,6 @@
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
-using E2E.Calendar.Core.Models;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -183,12 +182,4 @@ public partial class EventEditorView : UserControl
     private void OnNextColorClick(object sender, RoutedEventArgs e) => ViewModel.NextColorCommand.Execute(null);
 
     private void OnPreviousColorClick(object sender, RoutedEventArgs e) => ViewModel.PreviousColorCommand.Execute(null);
-
-    private void OnTemplateSelected(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is ComboBox combo && combo.SelectedItem is EventTemplate template)
-        {
-            ViewModel.ApplyTemplate(template);
-        }
-    }
 }

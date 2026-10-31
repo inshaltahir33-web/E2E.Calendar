@@ -13,7 +13,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
 {
     private readonly EventService _events;
     private readonly RecurrenceEditService _recurrenceEdit;
-    private readonly EventTemplateService _templateService;
     private readonly IEventRepository _eventRepository;
     private readonly IAlertRepository _alerts;
     private readonly CalendarService _calendars;
@@ -109,9 +108,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
     private ObservableCollection<string> _palette = new(CalendarPalette.All);
 
     [ObservableProperty]
-    private ObservableCollection<EventTemplate> _templates = new();
-
-    [ObservableProperty]
     private ObservableCollection<AlertRow> _alertRows = new();
 
     [ObservableProperty]
@@ -135,7 +131,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
     public EventEditorViewModel(
         EventService events,
         RecurrenceEditService recurrenceEdit,
-        EventTemplateService templates,
         IEventRepository eventRepository,
         IAlertRepository alerts,
         CalendarService calendars,
@@ -144,7 +139,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
     {
         _events = events;
         _recurrenceEdit = recurrenceEdit;
-        _templateService = templates;
         _eventRepository = eventRepository;
         _alerts = alerts;
         _calendars = calendars;
@@ -166,8 +160,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
             "America/Los_Angeles",
             "Australia/Sydney",
         ]);
-
-        Templates = new ObservableCollection<EventTemplate>(templates.GetAvailable());
 
         _calendars.Changed += OnCalendarsChanged;
 
@@ -762,18 +754,6 @@ public sealed partial class EventEditorViewModel : ObservableObject
             EndDate = RepeatEndDate is { } end ? DateOnly.FromDateTime(end.DateTime) : null,
             Count = OccurrenceCount,
         }) ?? string.Empty;
-
-    public void ApplyTemplate(EventTemplate template)
-    {
-        Title = template.Title;
-        EndUtc = StartUtc.AddMinutes(template.DurationMinutes);
-        Color = template.Color;
-
-        if (AlertRows.Count == 0)
-        {
-            AddAlert(template.LeadTimeMinutes);
-        }
-    }
 
     [RelayCommand]
     public void AddAlert()
