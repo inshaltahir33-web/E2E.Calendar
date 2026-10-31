@@ -53,6 +53,7 @@ public sealed partial class MainWindow : Window
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
+    private readonly DispatcherQueueTimer _countsRefresh;
     private CancellationTokenSource? _searchCts;
     private EventSearchCriteria _searchCriteria = new();
 
@@ -179,6 +180,13 @@ public sealed partial class MainWindow : Window
             _searchDebounce.Interval = TimeSpan.FromMilliseconds(250);
             _searchDebounce.IsRepeating = false;
             _searchDebounce.Tick += OnSearchDebounceTick;
+
+            // Counts also change with time (a reminder becomes overdue without any user
+            // action), so they are re-read on a short repeating tick.
+            _countsRefresh = DispatcherQueue.GetForCurrentThread().CreateTimer();
+            _countsRefresh.Interval = TimeSpan.FromSeconds(30);
+            _countsRefresh.IsRepeating = true;
+            _countsRefresh.Tick += (_, _) => _ = RefreshReminderCountsAsync();
 
             _navigation.Frame = ContentFrame;
             _navigation.Navigated += OnNavigated;
@@ -340,6 +348,7 @@ public sealed partial class MainWindow : Window
             Motion.Refresh();
 
             await RefreshCalendarsAsync();
+            _countsRefresh.Start();
             _navigation.NavigateTo(NavigationKeys.Week);
 
             if (!_settings.Current.OnboardingComplete)

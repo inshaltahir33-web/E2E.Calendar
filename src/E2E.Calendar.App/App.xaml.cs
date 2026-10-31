@@ -293,6 +293,14 @@ public partial class App : Application
 
         var view = _host.Services.GetRequiredService<Views.QuickAddView>();
 
+        // The quick add window is hosted outside the main window, so it does not inherit
+        // the per-window RequestedTheme that AppearanceService applies to the root element.
+        if (view.Content is FrameworkElement quickAddRoot &&
+            _mainWindow?.Content is FrameworkElement root)
+        {
+            quickAddRoot.RequestedTheme = root.ActualTheme;
+        }
+
         _quickAddWindow = view;
 
         view.Activate();
