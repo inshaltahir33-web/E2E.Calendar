@@ -68,4 +68,87 @@ public sealed class CalendarServiceTests
         calendars.Should().HaveCount(1);
         calendars[0].Name.Should().Be("Personal");
     }
+
+    [Fact]
+    public async Task Creating_a_calendar_raises_the_change_event_and_reaches_the_shared_list()
+    {
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Calendar>());
+
+        var calendars = new CalendarService(_repository);
+        await calendars.GetAllAsync();
+
+        var changes = new List<CalendarListChangedEventArgs>();
+        calendars.Changed += (_, change) => changes.Add(change);
+
+        var created = await calendars.CreateLocalAsync("Student", CalendarPalette.Blue);
+
+        changes.Should().ContainSingle();
+        changes[0].Kind.Should().Be(CalendarListChangeKind.Created);
+        changes[0].CalendarId.Should().Be(created.Id);
+
+        // Every surface binds to this one list, so the new calendar is visible without a reload.
+        calendars.Calendars.Should().ContainSingle(calendar => calendar.Id == created.Id);
+
+        // Surfaces that snapshot (sidebar rows, editor dropdown) re-read through GetAllAsync.
+        var snapshot = await calendars.GetAllAsync();
+
+        snapshot.Should().ContainSingle(calendar =>
+            calendar.Id == created.Id &&
+            calendar.Name == "Student" &&
+            calendar.Color == CalendarPalette.Blue &&
+            calendar.Visible);
+    }
+
+    [Fact]
+    public async Task Renaming_and_recolouring_a_calendar_raise_updates_and_refresh_the_shared_list()
+    {
+        var stored = new Calendar
+        {
+            Id = "cal-1",
+            Name = "Personal",
+            Color = CalendarPalette.Blue,
+            Visible = true,
+            IsLocal = true,
+        };
+
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { stored });
+
+        var calendars = new CalendarService(_repository);
+        await calendars.GetAllAsync();
+
+        var changes = new List<CalendarListChangedEventArgs>();
+        calendars.Changed += (_, change) => changes.Add(change);
+
+        (await calendars.RenameAsync("cal-1", "Home")).Should().NotBeNull();
+        (await calendars.SetColorAsync("cal-1", CalendarPalette.Teal)).Should().NotBeNull();
+
+        changes.Should().HaveCount(2);
+        changes.Should().OnlyContain(change =>
+            change.Kind == CalendarListChangeKind.Updated && change.CalendarId == "cal-1");
+
+        calendars.Calendars.Should().ContainSingle();
+        calendars.Calendars[0].Name.Should().Be("Home");
+        calendars.Calendars[0].Color.Should().Be(CalendarPalette.Teal);
+    }
+
+    [Fact]
+    public async Task Deleting_a_calendar_raises_the_change_event_and_removes_it_from_the_shared_list()
+    {
+        var stored = new Calendar { Id = "cal-1", Name = "Personal", Visible = true, IsLocal = true };
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { stored });
+
+        var calendars = new CalendarService(_repository);
+        (await calendars.GetAllAsync()).Should().HaveCount(1);
+
+        var changes = new List<CalendarListChangedEventArgs>();
+        calendars.Changed += (_, change) => changes.Add(change);
+
+        await calendars.DeleteAsync("cal-1");
+
+        changes.Should().ContainSingle();
+        changes[0].Kind.Should().Be(CalendarListChangeKind.Deleted);
+        changes[0].CalendarId.Should().Be("cal-1");
+        calendars.Calendars.Should().BeEmpty();
+        (await calendars.GetAllAsync()).Should().BeEmpty();
+    }
 }
