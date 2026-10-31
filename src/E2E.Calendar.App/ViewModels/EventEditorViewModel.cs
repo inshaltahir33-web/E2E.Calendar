@@ -450,11 +450,19 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public bool IsEndAfterCount => RecurrenceEnd == RecurrenceEnd.AfterCount;
 
+    public bool CanOpenMap => !string.IsNullOrWhiteSpace(Location);
+
     public string MapSearchUrl =>
         $"https://www.bing.com/maps?q={Uri.EscapeDataString(Location ?? string.Empty)}";
 
     public Uri? MapSearchUri =>
         Uri.TryCreate(MapSearchUrl, UriKind.Absolute, out var uri) ? uri : null;
+
+    public Uri? MapsAppUri =>
+        !string.IsNullOrWhiteSpace(Location) &&
+        Uri.TryCreate($"bingmaps:?where={Uri.EscapeDataString(Location.Trim())}", UriKind.Absolute, out var uri)
+            ? uri
+            : null;
 
     public Uri? DetectedMeetingUri =>
         Uri.TryCreate(DetectedMeetingUrl, UriKind.Absolute, out var uri) ? uri : null;
@@ -1045,6 +1053,14 @@ public sealed partial class EventEditorViewModel : ObservableObject
     }
 
     partial void OnColorChanged(string? value) => OnPropertyChanged(nameof(ColorLabel));
+
+    partial void OnLocationChanged(string? value)
+    {
+        OnPropertyChanged(nameof(CanOpenMap));
+        OnPropertyChanged(nameof(MapSearchUrl));
+        OnPropertyChanged(nameof(MapSearchUri));
+        OnPropertyChanged(nameof(MapsAppUri));
+    }
 
     partial void OnTitleChanged(string value)
     {

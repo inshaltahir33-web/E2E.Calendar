@@ -46,7 +46,11 @@
             x:Name="CellContent"
             Padding="2">
 
-            <Grid Height="20" HorizontalAlignment="Left">
+            <Grid
+                Height="20"
+                HorizontalAlignment="Left"
+                DoubleTapped="OnDayNumberDoubleTapped"
+                Tapped="OnDayNumberTapped">
                 <Ellipse
                     x:Name="TodayCircle"
                     Width="20"

@@ -615,6 +615,9 @@ public sealed partial class TimeGrid : UserControl
         _overlayCanvas.Children.Add(_ghostLabel);
     }
 
+    /// <summary>Raised when a day's header (weekday name and number) is clicked in the week grid.</summary>
+    public event EventHandler<DateOnly>? DayHeaderClicked;
+
     private double ComputeColumnWidth(int dayCount)
     {
         // The viewport width is independent of the content, so the columns never
@@ -677,7 +680,7 @@ public sealed partial class TimeGrid : UserControl
         for (var index = 0; index < days.Count; index++)
         {
             var day = days[index];
-            var cell = CreateHeaderCell(day);
+            var cell = CreateHeaderCell(day, days.Count > 1);
             Grid.SetRow(cell, 1);
             Grid.SetColumn(cell, index + 1);
             RootLayout.Children.Add(cell);
@@ -685,7 +688,7 @@ public sealed partial class TimeGrid : UserControl
         }
     }
 
-    private Border CreateHeaderCell(TimeGridDay day)
+    private Border CreateHeaderCell(TimeGridDay day, bool interactive)
     {
         var content = new StackPanel
         {
@@ -734,7 +737,7 @@ public sealed partial class TimeGrid : UserControl
         dateHost.Children.Add(dateText);
         content.Children.Add(dateHost);
 
-        return new Border
+        var header = new Border
         {
             Child = content,
             MinHeight = Tokens.Double("GridDayHeaderHeight", 60d),
@@ -742,6 +745,18 @@ public sealed partial class TimeGrid : UserControl
             BorderBrush = ThemeBrushes.Get(this, "App.StrokeSubtleBrush"),
             BorderThickness = new Thickness(0, 0, 0, 1),
         };
+
+        if (interactive)
+        {
+            ToolTipService.SetToolTip(header, "Open day view");
+            header.Tapped += (_, args) =>
+            {
+                args.Handled = true;
+                DayHeaderClicked?.Invoke(this, day.Date);
+            };
+        }
+
+        return header;
     }
 
     private void RenderAllDayStrip()

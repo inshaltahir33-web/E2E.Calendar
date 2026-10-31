@@ -195,6 +195,9 @@ public sealed partial class MonthDayCell : UserControl
 
     public event EventHandler<DateOnly>? DaySelected;
 
+    /// <summary>Raised when the day number itself is clicked, as opposed to the empty cell space.</summary>
+    public event EventHandler<DateOnly>? DayOpened;
+
     public event EventHandler<DateOnly>? NewEventRequested;
 
     public event EventHandler<DateOnly>? NewReminderRequested;
@@ -277,6 +280,20 @@ public sealed partial class MonthDayCell : UserControl
     private void OnTapped(object sender, TappedRoutedEventArgs e)
     {
         DaySelected?.Invoke(this, Date);
+    }
+
+    private void OnDayNumberTapped(object sender, TappedRoutedEventArgs e)
+    {
+        // The number opens the day; stop the cell from also treating this as a plain selection.
+        e.Handled = true;
+        DayOpened?.Invoke(this, Date);
+    }
+
+    private void OnDayNumberDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        // A double-click on the number must not fall through to "new event" on the cell.
+        e.Handled = true;
+        DayOpened?.Invoke(this, Date);
     }
 
     private void OnCellKeyDown(object sender, KeyRoutedEventArgs e)

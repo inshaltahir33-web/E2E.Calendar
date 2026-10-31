@@ -3,6 +3,7 @@ using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
+using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -360,6 +361,7 @@ public partial class MonthView : Page
             var last = _cells[^1];
             MonthHost.Children.Remove(last);
             last.DaySelected -= OnDaySelected;
+            last.DayOpened -= OnDayOpened;
             last.NewEventRequested -= OnNewEventRequested;
             last.NewReminderRequested -= OnNewReminderRequested;
             last.ChipDropped -= OnChipDropped;
@@ -372,6 +374,7 @@ public partial class MonthView : Page
             var cell = new MonthDayCell();
 
             cell.DaySelected += OnDaySelected;
+            cell.DayOpened += OnDayOpened;
             cell.NewEventRequested += OnNewEventRequested;
             cell.NewReminderRequested += OnNewReminderRequested;
             cell.ChipDropped += OnChipDropped;
@@ -417,6 +420,12 @@ public partial class MonthView : Page
     }
 
     private void OnDaySelected(object? sender, DateOnly date) => ViewModel.SelectDay(date);
+
+    private void OnDayOpened(object? sender, DateOnly date)
+    {
+        ViewModel.State.SelectDateCommand.Execute(date);
+        ViewModel.State.SetViewModeCommand.Execute(CalendarViewMode.Day);
+    }
 
     private async void OnNewEventRequested(object? sender, DateOnly date)
     {

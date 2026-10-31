@@ -3,6 +3,7 @@ using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core.Abstractions;
+using E2E.Calendar.Core.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -29,6 +30,12 @@ public partial class WeekView : Page
         InitializeComponent();
 
         TimeGridInteractions.Wire(TimeGrid, _editor, _events, _eventService, reminders, ViewModel.RefreshAsync);
+
+        TimeGrid.DayHeaderClicked += (_, date) =>
+        {
+            ViewModel.State.SelectDateCommand.Execute(date);
+            ViewModel.State.SetViewModeCommand.Execute(CalendarViewMode.Day);
+        };
 
         TimeGrid.ItemCompleted += async (_, args) =>
         {

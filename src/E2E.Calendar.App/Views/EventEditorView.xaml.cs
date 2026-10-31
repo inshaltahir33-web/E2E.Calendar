@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.System;
 
 namespace E2E.Calendar.App.Views;
 
@@ -171,6 +172,36 @@ public partial class EventEditorView : UserControl
     private void OnSaveClick(object sender, RoutedEventArgs e) => ViewModel.RequestSaveCommand.Execute(null);
 
     private void OnDeleteClick(object sender, RoutedEventArgs e) => ViewModel.RequestDeleteCommand.Execute(null);
+
+    private async void OnOpenMapClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.MapsAppUri is { } mapsAppUri)
+        {
+            try
+            {
+                if (await Launcher.LaunchUriAsync(mapsAppUri))
+                {
+                    return;
+                }
+            }
+            catch (Exception)
+            {
+                // No handler for the bingmaps: scheme; fall back to the browser below.
+            }
+        }
+
+        if (ViewModel.MapSearchUri is { } webUri && await Launcher.LaunchUriAsync(webUri))
+        {
+            return;
+        }
+
+        await _dialogs.ShowAsync(new ContentDialog
+        {
+            Title = "Maps could not be opened",
+            Content = "Open Bing Maps in a browser and search for the location manually.",
+            CloseButtonText = "Close",
+        });
+    }
 
     private async void OnSaveTemplateClick(object sender, RoutedEventArgs e)
     {

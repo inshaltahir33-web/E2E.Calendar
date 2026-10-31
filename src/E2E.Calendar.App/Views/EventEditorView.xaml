@@ -378,18 +378,30 @@
 
                     <Border Style="{StaticResource EditorCardStyle}">
                         <StackPanel Spacing="{StaticResource SpaceSM}">
-                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="MEETING LINK" />
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="LOCATION" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceSM}">
                                 <TextBox
-                                    AutomationProperties.Name="Meeting link"
-                                    PlaceholderText="Paste a Teams, Zoom or Meet link"
-                                    Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
-                                <HyperlinkButton
+                                    AutomationProperties.Name="Location"
+                                    PlaceholderText="Add a place or address"
+                                    Text="{x:Bind ViewModel.Location, Mode=TwoWay}" />
+                                <Button
                                     Grid.Column="1"
-                                    AutomationProperties.Name="Open the location in a map"
+                                    VerticalAlignment="Center"
+                                    Click="OnOpenMapClick"
                                     Content="Map"
-                                    NavigateUri="{x:Bind ViewModel.MapSearchUri, Mode=OneWay}" />
+                                    IsEnabled="{x:Bind ViewModel.CanOpenMap, Mode=OneWay}"
+                                    AutomationProperties.Name="Open the location in a map" />
                             </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource EditorCardStyle}">
+                        <StackPanel Spacing="{StaticResource SpaceSM}">
+                            <TextBlock Style="{StaticResource EditorCardHeaderStyle}" Text="MEETING LINK" />
+                            <TextBox
+                                AutomationProperties.Name="Meeting link"
+                                PlaceholderText="Paste a Teams, Zoom or Meet link"
+                                Text="{x:Bind ViewModel.MeetingUrl, Mode=TwoWay}" />
                             <StackPanel
                                 Orientation="Horizontal"
                                 Spacing="{StaticResource SpaceSM}"
