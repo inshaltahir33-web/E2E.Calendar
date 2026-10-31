@@ -317,9 +317,11 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public event EventHandler? DeleteRequested;
 
-    public async Task OpenAsync(CalendarItem item)
+    public Task OpenAsync(CalendarItem item) => OpenAsync(item.Id);
+
+    public async Task OpenAsync(string eventId)
     {
-        await LoadByIdAsync(item.Id);
+        await LoadByIdAsync(eventId);
 
         IsOpen = true;
         Opened?.Invoke(this, EventArgs.Empty);

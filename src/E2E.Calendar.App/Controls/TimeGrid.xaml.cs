@@ -5,6 +5,7 @@ using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.Services;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -882,7 +883,7 @@ public sealed partial class TimeGrid : UserControl
 
         var radius = Tokens.Double("RadiusChip", 6d);
 
-        return new Border
+        var bar = new Border
         {
             Child = content,
             Background = chipBrushes.Fill,
@@ -896,7 +897,33 @@ public sealed partial class TimeGrid : UserControl
                 1,
                 placement.ContinuesToNext ? 0 : 2,
                 1),
+            Tag = item,
+            IsTabStop = true,
         };
+
+        AutomationProperties.SetName(bar, item.Title);
+        bar.Tapped += OnAllDayBarTapped;
+        bar.KeyDown += OnAllDayBarKeyDown;
+
+        return bar;
+    }
+
+    private void OnAllDayBarTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is Border { Tag: CalendarItem item })
+        {
+            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item));
+            e.Handled = true;
+        }
+    }
+
+    private void OnAllDayBarKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key is VirtualKey.Enter or VirtualKey.Space && sender is Border { Tag: CalendarItem item })
+        {
+            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item));
+            e.Handled = true;
+        }
     }
 
     private void RenderBody()

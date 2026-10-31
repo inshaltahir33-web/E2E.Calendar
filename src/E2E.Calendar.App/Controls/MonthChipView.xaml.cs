@@ -2,8 +2,10 @@ using E2E.Calendar.App.Utilities;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace E2E.Calendar.App.Controls;
 
@@ -38,7 +40,10 @@ public sealed partial class MonthChipView : UserControl
         InitializeComponent();
 
         CanDrag = true;
+        IsTabStop = true;
         DragStarting += OnDragStarting;
+        Tapped += OnTapped;
+        KeyDown += OnKeyDown;
 
         PointerEntered += (_, _) => ApplyHover(true);
         PointerExited += (_, _) => ApplyHover(false);
@@ -70,6 +75,28 @@ public sealed partial class MonthChipView : UserControl
     {
         get => (string)GetValue(ItemIdProperty);
         set => SetValue(ItemIdProperty, value);
+    }
+
+    public event EventHandler? Activated;
+
+    private void OnTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (IsLight)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        Activated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (!IsLight && e.Key is (VirtualKey.Enter or VirtualKey.Space))
+        {
+            e.Handled = true;
+            Activated?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private static void OnVisualChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)

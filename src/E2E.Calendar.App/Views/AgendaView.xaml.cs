@@ -186,15 +186,35 @@ public partial class AgendaView : Page
         AnimateCompletion(item, checkBox);
     }
 
-    private void OnAgendaItemKeyDown(object sender, KeyRoutedEventArgs e)
+    private async void OnAgendaItemKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key is Windows.System.VirtualKey.Enter or Windows.System.VirtualKey.Space &&
-            sender is FrameworkElement { DataContext: AgendaItemViewModel item } &&
-            item.IsTickable)
+        if (e.Key is not (Windows.System.VirtualKey.Enter or Windows.System.VirtualKey.Space) ||
+            sender is not FrameworkElement { DataContext: AgendaItemViewModel item })
+        {
+            return;
+        }
+
+        if (item.IsTickable)
         {
             _ = ViewModel.ToggleCompletedAsync(item);
-            e.Handled = true;
         }
+        else
+        {
+            await _editor.OpenAsync(item.Id);
+        }
+
+        e.Handled = true;
+    }
+
+    private async void OnAgendaItemTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: AgendaItemViewModel item } || item.IsTickable)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        await _editor.OpenAsync(item.Id);
     }
 
     private static void AnimateCompletion(AgendaItemViewModel item, UIElement target)

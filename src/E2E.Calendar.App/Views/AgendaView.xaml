@@ -94,6 +94,7 @@
                                                 Padding="0,0,8,0"
                                                 IsTabStop="True"
                                                 KeyDown="OnAgendaItemKeyDown"
+                                                Tapped="OnAgendaItemTapped"
                                                 AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                                                 Background="{ThemeResource App.TransparentBrush}"
                                                 ColumnDefinitions="3,*,Auto">

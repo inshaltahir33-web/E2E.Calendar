@@ -363,6 +363,7 @@ public partial class MonthView : Page
             last.NewEventRequested -= OnNewEventRequested;
             last.NewReminderRequested -= OnNewReminderRequested;
             last.ChipDropped -= OnChipDropped;
+            last.ChipActivated -= OnChipActivated;
             _cells.RemoveAt(_cells.Count - 1);
         }
 
@@ -374,6 +375,7 @@ public partial class MonthView : Page
             cell.NewEventRequested += OnNewEventRequested;
             cell.NewReminderRequested += OnNewReminderRequested;
             cell.ChipDropped += OnChipDropped;
+            cell.ChipActivated += OnChipActivated;
 
             MonthHost.Children.Add(cell);
             _cells.Add(cell);
@@ -442,4 +444,6 @@ public partial class MonthView : Page
         await ViewModel.MoveItemToDateAsync(drop.ItemId, drop.TargetDate);
         await ViewModel.RefreshAsync();
     }
+
+    private async void OnChipActivated(object? sender, MonthChip chip) => await _editor.OpenAsync(chip.Id);
 }

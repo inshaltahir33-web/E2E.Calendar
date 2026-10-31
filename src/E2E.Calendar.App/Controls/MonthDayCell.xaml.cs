@@ -201,6 +201,8 @@ public sealed partial class MonthDayCell : UserControl
 
     public event EventHandler<MonthChipDrop>? ChipDropped;
 
+    public event EventHandler<MonthChip>? ChipActivated;
+
     private static void OnVisualChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         if (sender is MonthDayCell cell && !cell._suppressVisualUpdates)
@@ -260,6 +262,11 @@ public sealed partial class MonthDayCell : UserControl
                 ItemId = chip.Id,
                 IsLight = chip.IsReminder || chip.IsTask,
             };
+
+            if (!chip.IsReminder && !chip.IsTask)
+            {
+                view.Activated += (_, _) => ChipActivated?.Invoke(this, chip);
+            }
 
             // MonthChipView already installs its own DragStarting handler and
             // sets the payload from ItemId, so no extra handler is needed here.
