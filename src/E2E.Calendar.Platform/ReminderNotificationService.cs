@@ -167,11 +167,15 @@ public sealed class ReminderNotificationService : BackgroundService
     {
         try
         {
-            var (title, timeLabel, meetingUrl) = await GetOwnerSummaryAsync(instance, CancellationToken.None);
+            var (title, timeLabel, meetingUrl, ownerPriority) =
+                await GetOwnerSummaryAsync(instance, CancellationToken.None);
+            var isHighPriority =
+                ownerPriority >= Priority.High || await IsAlertHighPriorityAsync(instance);
 
             // AppNotificationBuilder is the supported way to attach actions without hand
-            // writing toast XML. The body activation opens the app; Snooze and Done carry
-            // action + instance id so ToastActivationService can resolve the instance.
+            // writing toast XML. The body and the Open button open the app; every button
+            // carries action + instance id so ToastActivationService can resolve the instance.
+            // The snooze menu is a combo box because Windows exposes selection inputs that way.
             var builder = new AppNotificationBuilder()
                 .AddArgument("action", "open")
                 .AddArgument("id", instance.Id)
@@ -179,15 +183,23 @@ public sealed class ReminderNotificationService : BackgroundService
                 .SetGroup(ToastCleanup.Group)
                 .AddText(heading)
                 .AddText(title)
-                .AddText(timeLabel);
+                .AddText(timeLabel)
+                .AddComboBox(CreateSnoozeMenu());
 
-            var snoozeMinutes = Math.Max(1, _settings.Current.DefaultSnoozeMinutes);
-            builder.AddButton(CreateButton($"Snooze {snoozeMinutes} min", "snooze", instance.Id));
+            builder.AddButton(CreateButton("Snooze", "snooze", instance.Id));
             builder.AddButton(CreateButton("Done", "done", instance.Id));
+            builder.AddButton(CreateButton("Open", "open", instance.Id));
 
             if (!string.IsNullOrWhiteSpace(meetingUrl))
             {
                 builder.AddButton(CreateButton("Join", "join", instance.Id));
+            }
+
+            // The reminder scenario keeps the toast on screen (and repeats its sound)
+            // until the user acts on it, so a high-priority reminder cannot slip by.
+            if (isHighPriority)
+            {
+                builder.SetScenario(AppNotificationScenario.Reminder);
             }
 
             // AppNotificationManager is the supported path without package identity. The
@@ -195,7 +207,10 @@ public sealed class ReminderNotificationService : BackgroundService
             // shortcut whose AppUserModelID matches the process.
             AppNotificationManager.Default.Show(builder.BuildNotification());
 
-            _logger.LogInformation("Reminder toast shown for {InstanceId}.", instance.Id);
+            _logger.LogInformation(
+                "Reminder toast shown for {InstanceId} (high priority: {IsHighPriority}).",
+                instance.Id,
+                isHighPriority);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -211,12 +226,49 @@ public sealed class ReminderNotificationService : BackgroundService
         return button;
     }
 
-    private async Task<(string Title, string TimeLabel, string? MeetingUrl)> GetOwnerSummaryAsync(
+    private AppNotificationComboBox CreateSnoozeMenu()
+    {
+        var comboBox = new AppNotificationComboBox(SnoozeSchedule.ToastInputId);
+        comboBox.SetTitle("Snooze");
+
+        foreach (var choice in SnoozeSchedule.Choices)
+        {
+            comboBox.AddItem(SnoozeSchedule.ToKey(choice), SnoozeSchedule.ToLabel(choice));
+        }
+
+        comboBox.SetSelectedItem(SnoozeSchedule.ToKey(DefaultSnoozeChoice()));
+        return comboBox;
+    }
+
+    private SnoozeChoice DefaultSnoozeChoice()
+    {
+        var minutes = Math.Max(1, _settings.Current.DefaultSnoozeMinutes);
+        return SnoozeSchedule.Choices.FirstOrDefault(
+            choice => SnoozeSchedule.Minutes(choice) == minutes,
+            SnoozeChoice.TenMinutes);
+    }
+
+    private async Task<bool> IsAlertHighPriorityAsync(AlertInstance instance)
+    {
+        try
+        {
+            var alert = await _alerts.GetAlertByIdAsync(instance.AlertId);
+            return alert is { Priority: >= Priority.High };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not load the priority for alert instance {InstanceId}.", instance.Id);
+            return false;
+        }
+    }
+
+    private async Task<(string Title, string TimeLabel, string? MeetingUrl, Priority Priority)> GetOwnerSummaryAsync(
         AlertInstance instance,
         CancellationToken cancellationToken)
     {
         string? title = null;
         string? meetingUrl = null;
+        var priority = Priority.Normal;
 
         try
         {
@@ -229,11 +281,15 @@ public sealed class ReminderNotificationService : BackgroundService
                     break;
 
                 case OwnerType.Reminder:
-                    title = (await _reminders.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title;
+                    var reminder = await _reminders.GetByIdAsync(instance.OwnerId, cancellationToken);
+                    title = reminder?.Title;
+                    priority = reminder?.Priority ?? Priority.Normal;
                     break;
 
                 case OwnerType.Task:
-                    title = (await _tasks.GetByIdAsync(instance.OwnerId, cancellationToken))?.Title;
+                    var task = await _tasks.GetByIdAsync(instance.OwnerId, cancellationToken);
+                    title = task?.Title;
+                    priority = task?.Priority ?? Priority.Normal;
                     break;
             }
         }
@@ -249,7 +305,7 @@ public sealed class ReminderNotificationService : BackgroundService
         var local = _clock.LocalTimeZone.ToLocal(instance.OccurrenceUtc);
         var timeLabel = local.ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture);
 
-        return (string.IsNullOrWhiteSpace(title) ? "Reminder" : title, timeLabel, meetingUrl);
+        return (string.IsNullOrWhiteSpace(title) ? "Reminder" : title, timeLabel, meetingUrl, priority);
     }
 }
 

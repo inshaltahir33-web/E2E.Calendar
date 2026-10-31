@@ -16,7 +16,8 @@ namespace E2E.Calendar.Platform;
 /// <see cref="Register"/> has been called.
 ///
 /// Toast payloads use flat key/value arguments: action=snooze|done|join|open, id=instance.
-/// Snooze re-fires after the default snooze from settings unless minutes is supplied.
+/// Snooze reads the chosen option from the toast's snooze menu (UserInput) and falls
+/// back to the default snooze from settings when the menu is unavailable.
 /// </summary>
 public sealed class ToastActivationService
 {
@@ -85,8 +86,14 @@ public sealed class ToastActivationService
             switch (action)
             {
                 case "snooze":
-                    arguments.TryGetValue("minutes", out var minutes);
-                    await SnoozeAsync(instanceId, minutes);
+                    string? choice = null;
+                    if (args.UserInput is { } userInput &&
+                        userInput.TryGetValue(SnoozeSchedule.ToastInputId, out var selected))
+                    {
+                        choice = selected;
+                    }
+
+                    await SnoozeAsync(instanceId, choice);
                     break;
 
                 case "done":
@@ -108,8 +115,8 @@ public sealed class ToastActivationService
         }
     }
 
-    /// <summary>Re-arms the alert after the chosen minutes and removes the toast.</summary>
-    public async Task SnoozeAsync(string instanceId, string? minutes)
+    /// <summary>Re-arms the alert at the chosen snooze option and removes the toast.</summary>
+    public async Task SnoozeAsync(string instanceId, string? choice)
     {
         var instance = await _alerts.GetInstanceByIdAsync(instanceId);
         if (instance is null)
@@ -119,9 +126,9 @@ public sealed class ToastActivationService
         }
 
         var now = _clock.UtcNow;
-        var fireAt = IsTomorrow(minutes)
-            ? TomorrowAtSameTime(now)
-            : now.AddMinutes(ParseMinutes(minutes));
+        var fireAt = SnoozeSchedule.TryParse(choice, out var snoozeChoice)
+            ? SnoozeSchedule.Resolve(snoozeChoice, now, _clock.LocalTimeZone)
+            : now.AddMinutes(Math.Max(1, _settings.Current.DefaultSnoozeMinutes));
 
         // Retire the original instance and materialise the snoozed one. The copy keeps
         // SnoozedUntilUtc set so the planner never mistakes it for a plannable instance.
@@ -189,20 +196,4 @@ public sealed class ToastActivationService
 
     public static string SnoozeInstanceId(string instanceId, DateTimeOffset fireAtUtc) =>
         $"{instanceId}:snooze:{fireAtUtc.UtcTicks}";
-
-    private static bool IsTomorrow(string? minutes) =>
-        string.Equals(minutes, "tomorrow", StringComparison.OrdinalIgnoreCase);
-
-    private int ParseMinutes(string? minutes) =>
-        int.TryParse(minutes, out var value) && value > 0
-            ? value
-            : Math.Max(1, _settings.Current.DefaultSnoozeMinutes);
-
-    private DateTimeOffset TomorrowAtSameTime(DateTimeOffset nowUtc)
-    {
-        var timeZone = _clock.LocalTimeZone;
-        var nowLocal = timeZone.ToLocal(nowUtc);
-        var tomorrowLocal = nowLocal.Date.AddDays(1).Add(nowLocal.TimeOfDay);
-        return timeZone.ToUtc(tomorrowLocal);
-    }
 }
