@@ -300,12 +300,11 @@
                             <DataTemplate>
                                 <Border Margin="0,0,0,8" Style="{StaticResource SettingsCardStyle}">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
-                                        <Border
+                                        <Ellipse
                                             Width="{StaticResource CalendarSwatchSize}"
                                             Height="{StaticResource CalendarSwatchSize}"
                                             VerticalAlignment="Center"
-                                            Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
-                                            CornerRadius="{StaticResource RadiusSwatch}" />
+                                            Fill="{Binding Color, Converter={StaticResource ColorToBrush}}" />
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource SpaceXS}">
                                             <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{Binding Name}" />
                                             <TextBlock

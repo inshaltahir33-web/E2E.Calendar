@@ -376,6 +376,78 @@
         </Setter>
     </Style>
 
+    <!-- Top-bar ghost buttons (Today, previous/next): transparent until hovered, and no
+         focus or pressed outline is left behind after a mouse click. -->
+    <Style x:Key="GhostButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{ThemeResource App.TransparentBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource App.TransparentBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MinWidth" Value="32" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyDefault}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <!-- No focus ring left behind after a click. -->
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border
+                        x:Name="Root"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverVeil"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0"
+                                            Duration="{StaticResource TransitionDuration}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="PointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverVeil"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="{StaticResource TransitionDuration}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="Root.Background" Value="{ThemeResource App.PressedBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Disabled">
+                                    <VisualState.Setters>
+                                        <Setter Target="Root.Opacity" Value="0.4" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <Grid>
+                            <Border
+                                x:Name="HoverVeil"
+                                Background="{ThemeResource App.SurfaceRaisedBrush}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Opacity="0" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="EditorCardStyle" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource App.CardElevatedBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource App.DividerBrush}" />
@@ -468,6 +540,84 @@
         <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
         <Setter Property="Padding" Value="4" />
         <Setter Property="Background" Value="{ThemeResource App.SurfaceRaisedBrush}" />
+    </Style>
+
+    <!-- Selection is painted on the item (accent pill + white text) by ApplyViewSwitcherSelection.
+         The default SelectorBarItem template re-animates its own background/underline on every
+         selection change, so this template keeps the item's Background and Foreground intact. -->
+    <Style x:Key="ViewSwitcherItemStyle" TargetType="muxc:SelectorBarItem">
+        <Setter Property="Background" Value="{ThemeResource App.TransparentBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource App.TextPrimaryBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+        <Setter Property="Padding" Value="14,5" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyDefault}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="muxc:SelectorBarItem">
+                    <Grid
+                        x:Name="PART_ContainerRoot"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CombinedStates">
+                                <VisualState x:Name="UnselectedNormal" />
+                                <VisualState x:Name="SelectedNormal" />
+                                <VisualState x:Name="UnselectedPointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverVeil"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="{StaticResource TransitionDuration}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverVeil"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="{StaticResource TransitionDuration}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="UnselectedPressed">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="HoverVeil"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="{StaticResource TransitionDuration}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPressed" />
+                            </VisualStateGroup>
+                            <VisualStateGroup x:Name="DisabledStates">
+                                <VisualState x:Name="Enabled" />
+                                <VisualState x:Name="Disabled" />
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <Border
+                            x:Name="HoverVeil"
+                            Background="{ThemeResource App.HoverBrush}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Opacity="0" />
+                        <TextBlock
+                            x:Name="PART_TextVisual"
+                            Margin="{TemplateBinding Padding}"
+                            VerticalAlignment="Center"
+                            FontFamily="{TemplateBinding FontFamily}"
+                            FontSize="{TemplateBinding FontSize}"
+                            Foreground="{TemplateBinding Foreground}"
+                            Text="{TemplateBinding Text}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
     <Style x:Key="SegmentedViewSwitcherStyle" BasedOn="{StaticResource ViewSwitcherStyle}" TargetType="muxc:SelectorBar" />
 

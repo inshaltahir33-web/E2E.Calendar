@@ -50,6 +50,7 @@ public sealed partial class MainWindow : Window
     private bool _syncInProgress;
     private bool _rsvpInProgress;
     private bool _isClosingEditor;
+    private bool _syncingViewSwitcher;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -509,6 +510,12 @@ public sealed partial class MainWindow : Window
 
     private void OnViewSwitcherSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
+        // Programmatic restores (navigation, shortcuts) must not navigate a second time.
+        if (_syncingViewSwitcher)
+        {
+            return;
+        }
+
         if (sender.SelectedItem is not SelectorBarItem item || item.Tag is not string tag)
         {
             return;
@@ -790,11 +797,27 @@ public sealed partial class MainWindow : Window
 
     private void SelectViewInSwitcher(CalendarViewMode mode)
     {
-        if (ViewSwitcher.Items
+        var target = ViewSwitcher.Items
             .OfType<SelectorBarItem>()
-            .FirstOrDefault(item => Equals(item.Tag, mode.ToString())) is { } target)
+            .FirstOrDefault(item => Equals(item.Tag, mode.ToString()));
+
+        if (target is null)
         {
-            ViewSwitcher.SelectedItem = target;
+            return;
+        }
+
+        if (!Equals(ViewSwitcher.SelectedItem, target))
+        {
+            _syncingViewSwitcher = true;
+
+            try
+            {
+                ViewSwitcher.SelectedItem = target;
+            }
+            finally
+            {
+                _syncingViewSwitcher = false;
+            }
         }
 
         ApplyViewSwitcherSelection();
@@ -1522,27 +1545,31 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void UpdateChromeForView(string key)
     {
-        var isCalendarView = key is NavigationKeys.Day
-            or NavigationKeys.Week
-            or NavigationKeys.Month
-            or NavigationKeys.Agenda;
+        var mode = key switch
+        {
+            NavigationKeys.Day => CalendarViewMode.Day,
+            NavigationKeys.Week => CalendarViewMode.Week,
+            NavigationKeys.Month => CalendarViewMode.Month,
+            NavigationKeys.Agenda => CalendarViewMode.Agenda,
+            _ => (CalendarViewMode?)null,
+        };
+        var isCalendarView = mode is not null;
 
         PeriodNavigationPanel.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
-        ViewSwitcher.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
         PageTitleText.Visibility = isCalendarView ? Visibility.Collapsed : Visibility.Visible;
 
-        if (isCalendarView)
-        {
-            if (ViewSwitcher.SelectedItem is null)
-            {
-                SelectViewInSwitcher(StateViewModel.ViewMode);
-            }
+        // The switcher is invisible (not collapsed) on other pages so the search box and
+        // overflow button keep their position; it is restored on every calendar navigation.
+        ViewSwitcher.Opacity = isCalendarView ? 1 : 0;
+        ViewSwitcher.IsHitTestVisible = isCalendarView;
+        ViewSwitcher.IsEnabled = isCalendarView;
 
+        if (mode is { } current)
+        {
+            SelectViewInSwitcher(current);
             return;
         }
 
-        // Never leave a calendar tab selected while a non-calendar page is open.
-        ViewSwitcher.SelectedItem = null;
         PageTitleText.Text = key switch
         {
             NavigationKeys.Settings => "Settings",

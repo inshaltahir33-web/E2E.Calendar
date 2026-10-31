@@ -111,19 +111,20 @@
                         <Button
                             Click="OnTodayClick"
                             Content="Today"
+                            Style="{StaticResource GhostButtonStyle}"
                             VerticalAlignment="Center"
                             AutomationProperties.Name="Go to today"
                             ToolTipService.ToolTip="Go to today (T)" />
                         <Button
                             Click="OnPreviousClick"
-                            Style="{StaticResource ToolbarButtonStyle}"
+                            Style="{StaticResource GhostButtonStyle}"
                             AutomationProperties.Name="Previous period"
                             ToolTipService.ToolTip="Previous period (Left arrow)">
                             <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
                         </Button>
                         <Button
                             Click="OnNextClick"
-                            Style="{StaticResource ToolbarButtonStyle}"
+                            Style="{StaticResource GhostButtonStyle}"
                             AutomationProperties.Name="Next period"
                             ToolTipService.ToolTip="Next period (Right arrow)">
                             <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
@@ -170,10 +171,10 @@
                     VerticalAlignment="Center"
                     SelectionChanged="OnViewSwitcherSelectionChanged"
                     AutomationProperties.Name="Calendar view">
-                    <muxc:SelectorBarItem Tag="Day" Text="Day" />
-                    <muxc:SelectorBarItem Tag="Week" Text="Week" IsSelected="True" />
-                    <muxc:SelectorBarItem Tag="Month" Text="Month" />
-                    <muxc:SelectorBarItem Tag="Agenda" Text="Agenda" />
+                    <muxc:SelectorBarItem Tag="Day" Text="Day" Style="{StaticResource ViewSwitcherItemStyle}" />
+                    <muxc:SelectorBarItem Tag="Week" Text="Week" IsSelected="True" Style="{StaticResource ViewSwitcherItemStyle}" />
+                    <muxc:SelectorBarItem Tag="Month" Text="Month" Style="{StaticResource ViewSwitcherItemStyle}" />
+                    <muxc:SelectorBarItem Tag="Agenda" Text="Agenda" Style="{StaticResource ViewSwitcherItemStyle}" />
                 </muxc:SelectorBar>
 
                 <!-- Search box with the filter icon inside it. -->
@@ -456,7 +457,7 @@
                                             <Grid MinHeight="{StaticResource SidebarRowHeight}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="10" />
+                                                    <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox
@@ -464,14 +465,13 @@
                                                     VerticalAlignment="Center"
                                                     AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
                                                     IsChecked="{x:Bind IsVisible, Mode=TwoWay}" />
-                                                <Border
+                                                <Ellipse
                                                     Grid.Column="1"
                                                     Width="{StaticResource CalendarSwatchSize}"
                                                     Height="{StaticResource CalendarSwatchSize}"
                                                     Margin="{StaticResource MarginStartSmall}"
                                                     VerticalAlignment="Center"
-                                                    Background="{x:Bind ColorBrush, Mode=OneWay}"
-                                                    CornerRadius="{StaticResource RadiusSwatch}" />
+                                                    Fill="{x:Bind ColorBrush, Mode=OneWay}" />
                                                 <TextBlock
                                                     Grid.Column="2"
                                                     Margin="{StaticResource MarginStartMedium}"
