@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
+using CalendarModel = E2E.Calendar.Core.Models.Calendar;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -31,6 +33,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<CalendarListItem> Calendars { get; } = new();
 
+    /// <summary>The shared calendar list, bound directly by calendar pickers such as search filters.</summary>
+    public ReadOnlyObservableCollection<CalendarModel> SharedCalendars { get; }
+
     public ObservableCollection<NavigationListItem> ReminderLists { get; } = new();
 
     public ObservableCollection<NavigationListItem> TaskLists { get; } = new();
@@ -38,8 +43,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>Distinct tags found on stored events. Populated by the window from the event store.</summary>
     public ObservableCollection<NavigationListItem> Tags { get; } = new();
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(CalendarService calendars)
     {
+        ArgumentNullException.ThrowIfNull(calendars);
+
+        SharedCalendars = calendars.Calendars;
+
         ReminderLists.Add(new NavigationListItem { Label = "Today", Glyph = CalendarGlyphs.Today, TargetKey = NavigationKeys.Reminders });
         ReminderLists.Add(new NavigationListItem { Label = "Scheduled", Glyph = CalendarGlyphs.Scheduled, TargetKey = NavigationKeys.Reminders });
         ReminderLists.Add(new NavigationListItem { Label = "Overdue", Glyph = CalendarGlyphs.Overdue, TargetKey = NavigationKeys.Reminders });

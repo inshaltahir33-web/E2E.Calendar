@@ -244,6 +244,15 @@
                                             AutomationProperties.Name="To date" />
                                     </StackPanel>
 
+                                    <ComboBox
+                                        x:Name="SearchCalendarBox"
+                                        Header="Calendar"
+                                        HorizontalAlignment="Stretch"
+                                        DisplayMemberPath="Name"
+                                        ItemsSource="{x:Bind ViewModel.SharedCalendars, Mode=OneWay}"
+                                        PlaceholderText="Any calendar"
+                                        AutomationProperties.Name="Calendar filter" />
+
                                     <TextBox
                                         x:Name="SearchTagsBox"
                                         PlaceholderText="e.g. work, travel"

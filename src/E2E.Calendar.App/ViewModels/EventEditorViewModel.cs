@@ -16,7 +16,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
     private readonly EventTemplateService _templateService;
     private readonly IEventRepository _eventRepository;
     private readonly IAlertRepository _alerts;
-    private readonly ICalendarRepository _calendarRepository;
+    private readonly CalendarService _calendars;
     private readonly IEventQueryCache _queryCache;
     private readonly IClock _clock;
 
@@ -138,7 +138,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         EventTemplateService templates,
         IEventRepository eventRepository,
         IAlertRepository alerts,
-        ICalendarRepository calendars,
+        CalendarService calendars,
         IEventQueryCache queryCache,
         IClock clock)
     {
@@ -147,7 +147,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         _templateService = templates;
         _eventRepository = eventRepository;
         _alerts = alerts;
-        _calendarRepository = calendars;
+        _calendars = calendars;
         _queryCache = queryCache;
         _clock = clock;
 
@@ -169,8 +169,13 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         Templates = new ObservableCollection<EventTemplate>(templates.GetAvailable());
 
+        _calendars.Changed += OnCalendarsChanged;
+
         PropertyChanged += OnEditorPropertyChanged;
     }
+
+    private void OnCalendarsChanged(object? sender, CalendarListChangedEventArgs e) =>
+        _ = LoadCalendarsAsync();
 
     public bool HasTitleError => !string.IsNullOrEmpty(TitleError);
 
@@ -878,7 +883,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     private async Task LoadCalendarsAsync()
     {
-        var calendars = await _calendarRepository.GetAllAsync();
+        var calendars = await _calendars.GetAllAsync();
+        var selectedId = CalendarId;
 
         CalendarOptions = new ObservableCollection<CalendarOption>(calendars.Select(calendar => new CalendarOption
         {
@@ -887,7 +893,9 @@ public sealed partial class EventEditorViewModel : ObservableObject
             Color = calendar.Color,
         }));
 
-        CalendarId ??= calendars.FirstOrDefault()?.Id;
+        CalendarId = calendars.Any(calendar => calendar.Id == selectedId)
+            ? selectedId
+            : calendars.FirstOrDefault()?.Id;
     }
 
     private async Task LoadAlertsAsync(string ownerId)

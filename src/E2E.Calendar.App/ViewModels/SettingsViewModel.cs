@@ -11,6 +11,7 @@ using E2E.Calendar.Data;
 using E2E.Calendar.Platform;
 using E2E.Calendar.Sync.Ics;
 using Microsoft.Data.Sqlite;
+using CalendarModel = E2E.Calendar.Core.Models.Calendar;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -64,6 +65,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _db = db;
         _secrets = secrets;
         _startupTasks = startupTasks;
+
+        _calendars.Changed += OnCalendarsChanged;
 
         var sections = new List<SettingsSection>
         {
@@ -258,25 +261,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var subscriptions = (await _subscriptions.GetAllAsync())
             .ToDictionary(subscription => subscription.CalendarId);
 
-        Calendars.Clear();
-
-        foreach (var calendar in calendars)
-        {
-            subscriptions.TryGetValue(calendar.Id, out var subscription);
-
-            Calendars.Add(new SettingsCalendarItem
-            {
-                Id = calendar.Id,
-                Name = calendar.Name,
-                Color = calendar.Color,
-                IsVisible = calendar.Visible,
-                IsReadOnly = calendar.ReadOnly,
-                IsSubscription = subscription is not null,
-                Detail = subscription is not null
-                    ? DescribeSubscription(subscription)
-                    : calendar.ReadOnly ? "Read-only" : null,
-            });
-        }
+        ApplyCalendars(calendars, subscriptions);
 
         Accounts.Clear();
         Accounts.Add(new SettingsAccountItem
@@ -298,6 +283,43 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
 
         _loading = false;
+    }
+
+    private void OnCalendarsChanged(object? sender, CalendarListChangedEventArgs e) =>
+        _ = RefreshCalendarsAsync();
+
+    private async Task RefreshCalendarsAsync()
+    {
+        var calendars = await _calendars.GetAllAsync();
+        var subscriptions = (await _subscriptions.GetAllAsync())
+            .ToDictionary(subscription => subscription.CalendarId);
+
+        ApplyCalendars(calendars, subscriptions);
+    }
+
+    private void ApplyCalendars(
+        IReadOnlyList<CalendarModel> calendars,
+        IReadOnlyDictionary<string, CalendarSubscription> subscriptions)
+    {
+        Calendars.Clear();
+
+        foreach (var calendar in calendars)
+        {
+            subscriptions.TryGetValue(calendar.Id, out var subscription);
+
+            Calendars.Add(new SettingsCalendarItem
+            {
+                Id = calendar.Id,
+                Name = calendar.Name,
+                Color = calendar.Color,
+                IsVisible = calendar.Visible,
+                IsReadOnly = calendar.ReadOnly,
+                IsSubscription = subscription is not null,
+                Detail = subscription is not null
+                    ? DescribeSubscription(subscription)
+                    : calendar.ReadOnly ? "Read-only" : null,
+            });
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanAddAccount), AllowConcurrentExecutions = false)]
@@ -340,6 +362,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             await _sync.AddAccountAsync(provider);
+            await _calendars.ReloadAsync();
             await LoadAsync();
             AccountStatus = $"{provider} account connected.";
         }
@@ -498,6 +521,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public async Task ImportBirthdaysAsync(CancellationToken cancellationToken = default)
     {
         await _sync.ImportBirthdaysAsync(cancellationToken);
+        await _calendars.ReloadAsync(cancellationToken);
         await LoadAsync();
     }
 
@@ -564,19 +588,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public async Task SetCalendarColorAsync(string id, string color, CancellationToken cancellationToken = default)
     {
-        var calendar = (await _calendars.GetAllAsync(cancellationToken)).FirstOrDefault(item => item.Id == id);
-        if (calendar is null)
-        {
-            return;
-        }
-
-        await _calendars.UpsertAsync(calendar with { Color = CalendarPalette.Normalize(color) }, cancellationToken);
-        await LoadAsync();
+        await _calendars.SetColorAsync(id, color, cancellationToken);
     }
 
     public async Task RemoveAccountAsync(string accountId, CancellationToken cancellationToken = default)
     {
         await _sync.RemoveAccountAsync(accountId, cancellationToken);
+        await _calendars.ReloadAsync(cancellationToken);
         await LoadAsync();
     }
 
@@ -628,6 +646,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         await _db.MigrateAsync(cancellationToken);
         await _settings.LoadAsync(cancellationToken);
         await _sync.LoadAccountsAsync(cancellationToken);
+        await _calendars.ReloadAsync(cancellationToken);
         await LoadAsync();
     }
 

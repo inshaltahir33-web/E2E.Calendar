@@ -11,4 +11,6 @@ public sealed record EventSearchCriteria
     public IReadOnlyList<string> Tags { get; init; } = [];
 
     public string? Category { get; init; }
+
+    public string? CalendarId { get; init; }
 }

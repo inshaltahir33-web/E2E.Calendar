@@ -22,6 +22,7 @@ using Windows.Storage;
 using Windows.Graphics;
 using WinRT.Interop;
 using Windows.UI;
+using CalendarModel = E2E.Calendar.Core.Models.Calendar;
 
 namespace E2E.Calendar.App;
 
@@ -226,6 +227,9 @@ public sealed partial class MainWindow : Window
 
             // Sidebar counts follow every add / complete / delete made on the to-do page.
             _todo.Changed += (_, _) => _ = RefreshReminderCountsAsync();
+
+            // Every calendar surface follows the one shared list owned by CalendarService.
+            _calendars.Changed += OnCalendarsChanged;
 
             // Single-key shortcuts (N, R, T, D, W, M, A) must not fire while the user is typing in a text box.
             RootGrid.GotFocus += OnRootGotFocus;
@@ -921,6 +925,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await _sync.SyncAsync();
+            await _calendars.ReloadAsync();
             await RefreshCalendarsAsync();
 
             ViewModel.SyncStatus = $"Synced just now · {_calendarProviderSummary()}";
@@ -941,6 +946,11 @@ public sealed partial class MainWindow : Window
         ViewModel.Calendars.Any(item => item.Id != CalendarService.PersonalCalendarId && item.Id != CalendarService.WorkCalendarId)
             ? "Connected accounts"
             : ViewModel.Calendars.Count == 0 ? "No calendars" : "Local";
+
+    private void OnCalendarsChanged(object? sender, CalendarListChangedEventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() => _ = RefreshCalendarsAsync());
+    }
 
     private async Task RefreshCalendarsAsync()
     {
@@ -1380,6 +1390,9 @@ public sealed partial class MainWindow : Window
         SearchToDate.Date = _searchCriteria.ToUtc?.ToLocalTime() ?? _clock.UtcNow.ToLocalTime();
         SearchTagsBox.Text = string.Join(", ", _searchCriteria.Tags);
         SearchCategoryBox.Text = _searchCriteria.Category ?? string.Empty;
+        SearchCalendarBox.SelectedItem = _searchCriteria.CalendarId is { } calendarId
+            ? _calendars.Calendars.FirstOrDefault(calendar => calendar.Id == calendarId)
+            : null;
         ApplySearchDateFilterState();
     }
 
@@ -1409,6 +1422,7 @@ public sealed partial class MainWindow : Window
             Category = string.IsNullOrWhiteSpace(SearchCategoryBox.Text)
                 ? null
                 : SearchCategoryBox.Text.Trim(),
+            CalendarId = (SearchCalendarBox.SelectedItem as CalendarModel)?.Id,
         };
 
         SearchFiltersButton.Flyout?.Hide();
@@ -1425,6 +1439,7 @@ public sealed partial class MainWindow : Window
         SearchToDate.Date = null;
         SearchTagsBox.Text = string.Empty;
         SearchCategoryBox.Text = string.Empty;
+        SearchCalendarBox.SelectedItem = null;
         ApplySearchDateFilterState();
         SearchFiltersButton.Flyout?.Hide();
         _searchDebounce.Stop();
@@ -1550,6 +1565,10 @@ public sealed partial class MainWindow : Window
 
         flyout.Items.Add(colour);
 
+        var rename = new MenuFlyoutItem { Text = "Rename" };
+        rename.Click += async (_, _) => await RenameCalendarAsync(item);
+        flyout.Items.Add(rename);
+
         var showOnly = new MenuFlyoutItem { Text = "Show only this calendar" };
         showOnly.Click += async (_, _) => await ShowOnlyCalendarAsync(item.Id);
         flyout.Items.Add(showOnly);
@@ -1563,17 +1582,28 @@ public sealed partial class MainWindow : Window
 
     private async Task SetCalendarColorAsync(string calendarId, string color)
     {
-        var calendars = await _calendars.GetAllAsync();
-        var calendar = calendars.FirstOrDefault(item => item.Id == calendarId);
+        await _calendars.SetColorAsync(calendarId, color);
+    }
 
-        if (calendar is null)
+    private async Task RenameCalendarAsync(CalendarListItem item)
+    {
+        var nameBox = new TextBox { Text = item.Name };
+        var dialog = new ContentDialog
+        {
+            Title = "Rename calendar",
+            Content = nameBox,
+            PrimaryButtonText = "Rename",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary ||
+            string.IsNullOrWhiteSpace(nameBox.Text))
         {
             return;
         }
 
-        await _calendars.UpsertAsync(calendar with { Color = color });
-
-        await RefreshCalendarsAsync();
+        await _calendars.RenameAsync(item.Id, nameBox.Text);
     }
 
     private async Task ShowOnlyCalendarAsync(string calendarId)
@@ -1582,10 +1612,13 @@ public sealed partial class MainWindow : Window
 
         foreach (var calendar in calendars)
         {
-            await _calendars.UpsertAsync(calendar with { Visible = calendar.Id == calendarId });
-        }
+            var visible = calendar.Id == calendarId;
 
-        await RefreshCalendarsAsync();
+            if (calendar.Visible != visible)
+            {
+                await _calendars.SetVisibleAsync(calendar.Id, visible);
+            }
+        }
     }
 
     private async void OnSnackbarAction(object? sender, EventArgs e)

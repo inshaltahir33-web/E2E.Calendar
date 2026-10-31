@@ -177,6 +177,7 @@ public sealed class IcsSubscriptionServiceTests
                 new HttpClient(Handler),
                 new IcsService(),
                 Calendars,
+                new E2E.Calendar.Core.Services.CalendarService(Calendars),
                 Events,
                 Subscriptions,
                 new FakeClock(Now),

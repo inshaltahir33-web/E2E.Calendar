@@ -1,6 +1,7 @@
 using System.Net;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using Microsoft.Extensions.Logging;
 using CalendarModel = E2E.Calendar.Core.Models.Calendar;
 
@@ -18,6 +19,7 @@ public sealed class IcsSubscriptionService
     private readonly HttpClient _http;
     private readonly IcsService _ics;
     private readonly ICalendarRepository _calendars;
+    private readonly CalendarService _calendarCatalog;
     private readonly IEventRepository _events;
     private readonly ICalendarSubscriptionRepository _subscriptions;
     private readonly IClock _clock;
@@ -27,6 +29,7 @@ public sealed class IcsSubscriptionService
         HttpClient http,
         IcsService ics,
         ICalendarRepository calendars,
+        CalendarService calendarCatalog,
         IEventRepository events,
         ICalendarSubscriptionRepository subscriptions,
         IClock clock,
@@ -35,6 +38,7 @@ public sealed class IcsSubscriptionService
         ArgumentNullException.ThrowIfNull(http);
         ArgumentNullException.ThrowIfNull(ics);
         ArgumentNullException.ThrowIfNull(calendars);
+        ArgumentNullException.ThrowIfNull(calendarCatalog);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(subscriptions);
         ArgumentNullException.ThrowIfNull(clock);
@@ -43,6 +47,7 @@ public sealed class IcsSubscriptionService
         _http = http;
         _ics = ics;
         _calendars = calendars;
+        _calendarCatalog = calendarCatalog;
         _events = events;
         _subscriptions = subscriptions;
         _clock = clock;
@@ -96,7 +101,7 @@ public sealed class IcsSubscriptionService
             RefreshHours = refreshHours,
         };
 
-        await _calendars.UpsertAsync(calendar, cancellationToken);
+        await _calendarCatalog.UpsertAsync(calendar, cancellationToken);
         await _subscriptions.UpsertAsync(subscription, cancellationToken);
 
         try
@@ -229,7 +234,7 @@ public sealed class IcsSubscriptionService
     {
         await _events.DeleteByCalendarIdsAsync([calendarId], cancellationToken);
         await _subscriptions.DeleteAsync(calendarId, cancellationToken);
-        await _calendars.DeleteAsync(calendarId, cancellationToken);
+        await _calendarCatalog.DeleteAsync(calendarId, cancellationToken);
     }
 
     private static string NameFrom(Uri uri)

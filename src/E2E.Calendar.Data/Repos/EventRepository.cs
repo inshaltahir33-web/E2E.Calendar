@@ -174,6 +174,12 @@ public sealed class EventRepository : IEventRepository
             parameters.Add("Category", criteria.Category.Trim());
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.CalendarId))
+        {
+            predicates.Add("calendar_id = @CalendarId");
+            parameters.Add("CalendarId", criteria.CalendarId.Trim());
+        }
+
         var tagIndex = 0;
         foreach (var tag in criteria.Tags.Where(tag => !string.IsNullOrWhiteSpace(tag)))
         {

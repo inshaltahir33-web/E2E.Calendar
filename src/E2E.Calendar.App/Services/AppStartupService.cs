@@ -34,6 +34,10 @@ public sealed class AppStartupService : IHostedService
         {
             await _demoSeeder.SeedAsync(cancellationToken);
 
+            // The demo seeder writes calendars through the repository, so pull them
+            // into the shared list before any surface binds to it.
+            calendars = await _calendars.ReloadAsync(cancellationToken);
+
             _logger.LogInformation("Demo data seeded");
         }
 
