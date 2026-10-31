@@ -21,6 +21,7 @@ public sealed partial class TodoView : Page
     private readonly TodoService _todo;
     private readonly IShellState _shell;
     private int _loadVersion;
+    private string? _configuredFilter;
 
     public TodoView(TodoService todo, IShellState shell)
     {
@@ -55,10 +56,20 @@ public sealed partial class TodoView : Page
         var version = ++_loadVersion;
         var filter = Filter;
 
+        if (!string.Equals(_configuredFilter, filter, StringComparison.Ordinal))
+        {
+            ConfigureAddArea(filter);
+            _configuredFilter = filter;
+        }
+
+        var canAdd = TodoService.CanAdd(filter);
+
         HeadingText.Text = filter;
+        HintText.Visibility = canAdd ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = TodoService.IsTaskList(filter)
             ? "Tasks in this list. New items are added here."
             : "Reminders and tasks that match. New items are added as reminders.";
+        EmptyText.Text = canAdd ? "Nothing here yet. Add something above." : "Nothing here.";
 
         try
         {
@@ -81,6 +92,88 @@ public sealed partial class TodoView : Page
         catch (Exception exception)
         {
             HintText.Text = "Could not load this list: " + exception.Message;
+        }
+    }
+
+    /// <summary>The add row follows the page: reminder chips, a task due date, or no box at all.</summary>
+    private void ConfigureAddArea(string filter)
+    {
+        var canAdd = TodoService.CanAdd(filter);
+
+        AddArea.Visibility = canAdd ? Visibility.Visible : Visibility.Collapsed;
+        NoAddText.Visibility = canAdd ? Visibility.Collapsed : Visibility.Visible;
+
+        if (!canAdd)
+        {
+            NoAddText.Text = filter switch
+            {
+                TodoService.Overdue => "Overdue items are read-only. Complete or reschedule them from Today or Scheduled.",
+                TodoService.Completed => "Completed items are read-only.",
+                _ => "Flagged items are read-only. Flag or unflag them from another list.",
+            };
+
+            AddBox.Text = string.Empty;
+            return;
+        }
+
+        var isTaskList = TodoService.IsTaskList(filter);
+
+        AddBox.PlaceholderText = isTaskList ? "Add a task…" : "Add a reminder…";
+        AutomationProperties.SetName(AddBox, isTaskList ? "New task title" : "New reminder title");
+
+        DueDateChip.Visibility = Visibility.Visible;
+        DueTimeChip.Visibility = isTaskList ? Visibility.Collapsed : Visibility.Visible;
+
+        ResetChips();
+    }
+
+    private void ResetChips()
+    {
+        if (TodoService.IsTaskList(Filter))
+        {
+            SetChips(null, null);
+            return;
+        }
+
+        var (date, time) = _todo.GetAddDefault(Filter);
+        SetChips(date, time);
+    }
+
+    private void SetChips(DateOnly? date, TimeOnly? time)
+    {
+        DueDateChip.Date = date is { } day
+            ? new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue))
+            : null;
+
+        if (time is { } clock)
+        {
+            DueTimeChip.Time = clock.ToTimeSpan();
+        }
+    }
+
+    /// <summary>
+    /// Typed date/time words only fill the chips; the words are removed from the title
+    /// when the item is added. Unrecognised text leaves the chips untouched.
+    /// </summary>
+    private void OnAddTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!TodoService.CanAdd(Filter))
+        {
+            return;
+        }
+
+        var preview = _todo.Preview(AddBox.Text);
+
+        if (preview.Date is not { } date)
+        {
+            return;
+        }
+
+        DueDateChip.Date = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue));
+
+        if (!TodoService.IsTaskList(Filter) && preview.Time is { } time)
+        {
+            DueTimeChip.Time = time.ToTimeSpan();
         }
     }
 
@@ -245,6 +338,11 @@ public sealed partial class TodoView : Page
 
     private async System.Threading.Tasks.Task AddAsync()
     {
+        if (!TodoService.CanAdd(Filter))
+        {
+            return;
+        }
+
         var text = AddBox.Text;
 
         if (string.IsNullOrWhiteSpace(text))
@@ -252,13 +350,21 @@ public sealed partial class TodoView : Page
             return;
         }
 
+        var preview = _todo.Preview(text);
+        var isTaskList = TodoService.IsTaskList(Filter);
+        DateOnly? dueDate = DueDateChip.Date is { } picked
+            ? DateOnly.FromDateTime(picked.Date)
+            : null;
+        TimeOnly? dueTime = isTaskList ? null : TimeOnly.FromTimeSpan(DueTimeChip.Time);
+
         try
         {
-            var added = await _todo.AddAsync(text, Filter);
+            var added = await _todo.AddAsync(text, Filter, preview.Title, dueDate, dueTime);
 
             if (added)
             {
                 AddBox.Text = string.Empty;
+                ResetChips();
             }
             else
             {

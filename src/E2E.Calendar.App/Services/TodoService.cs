@@ -31,6 +31,9 @@ public sealed record TodoRow(
     string ListName,
     string? ParentId = null);
 
+/// <summary>What the add box read from the typed shortcut: the cleaned title and the day/clock it named.</summary>
+public sealed record TodoAddPreview(string Title, DateOnly? Date, TimeOnly? Time);
+
 /// <summary>
 /// Single place that answers "what is in Today / Scheduled / Overdue / Completed / Flagged / Inbox / Work".
 /// The to-do page and the sidebar counts both use it, so the number next to a row always matches the list.
@@ -84,6 +87,65 @@ public sealed class TodoService
         string.Equals(filter, Inbox, StringComparison.OrdinalIgnoreCase)
         || string.Equals(filter, Work, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Overdue, Completed and Flagged are read-only views: no add box.</summary>
+    public static bool CanAdd(string? filter) => Normalize(filter) switch
+    {
+        Overdue or Completed or Flagged => false,
+        _ => true,
+    };
+
+    /// <summary>Default chips for a reminder list: Today = next full hour, Scheduled = tomorrow 09:00.</summary>
+    public (DateOnly Date, TimeOnly Time) GetAddDefault(string? filter)
+    {
+        var local = _clock.LocalTimeZone.ToLocal(_clock.UtcNow);
+
+        if (Normalize(filter) == Scheduled)
+        {
+            return (DateOnly.FromDateTime(local).AddDays(1), new TimeOnly(9, 0));
+        }
+
+        var nextHour = new DateTime(local.Year, local.Month, local.Day, local.Hour, 0, 0).AddHours(1);
+
+        return (DateOnly.FromDateTime(nextHour), TimeOnly.FromDateTime(nextHour));
+    }
+
+    /// <summary>
+    /// Turns typed text into the add-box chips: the title without the date/time words,
+    /// plus the day and clock those words named. A null day means nothing was recognised.
+    /// A bare "3 days" (no "in") names no day, so the chips must keep their current values.
+    /// </summary>
+    public TodoAddPreview Preview(string? text)
+    {
+        var trimmed = (text ?? string.Empty).Trim();
+
+        if (trimmed.Length == 0)
+        {
+            return new TodoAddPreview(string.Empty, null, null);
+        }
+
+        var parsed = QuickAddParser.Parse(trimmed, _clock);
+        var defaultTime = new TimeOnly(9, 0);
+
+        // A clock only counts when the words actually named one. The parser also
+        // returns 09:00 for a reminder with no time ("remind me to call mom").
+        var hasClock = parsed.StartTime is { } start
+            && !parsed.AllDay
+            && (start != defaultTime
+                || string.Equals(parsed.Title, "Untitled", StringComparison.OrdinalIgnoreCase));
+
+        var title = string.IsNullOrWhiteSpace(parsed.Title) ? trimmed : parsed.Title;
+
+        if (!parsed.HasDate && !hasClock)
+        {
+            return new TodoAddPreview(title, null, null);
+        }
+
+        return new TodoAddPreview(
+            title,
+            parsed.Date,
+            parsed.HasDate ? parsed.StartTime ?? defaultTime : parsed.StartTime);
+    }
+
     public async Task<IReadOnlyList<TodoRow>> LoadAsync(string? filter)
     {
         var all = await LoadAllAsync();
@@ -111,18 +173,28 @@ public sealed class TodoService
         return counts;
     }
 
-    /// <summary>Adds a task to the open task list (Inbox or a named list) or a reminder (smart views).</summary>
-    public async Task<bool> AddAsync(string title, string? filter)
+    /// <summary>
+    /// Adds a task to the open task list (Inbox or a named list) or a reminder (smart views).
+    /// The chips supply the day and clock; when they are empty the typed words are parsed instead.
+    /// </summary>
+    public async Task<bool> AddAsync(
+        string text,
+        string? filter,
+        string? title = null,
+        DateOnly? dueDate = null,
+        TimeOnly? dueTime = null)
     {
-        title = (title ?? string.Empty).Trim();
+        var raw = (text ?? string.Empty).Trim();
+        var name = Normalize(filter);
+        var parsed = raw.Length == 0 ? null : QuickAddParser.Parse(raw, _clock);
+        var cleanTitle = (title ?? parsed?.Title ?? raw).Trim();
 
-        if (title.Length == 0)
+        if (cleanTitle.Length == 0)
         {
             return false;
         }
 
         var now = _clock.UtcNow;
-        var name = Normalize(filter);
 
         if (IsTaskList(name))
         {
@@ -139,39 +211,52 @@ public sealed class TodoService
             {
                 Id = Guid.NewGuid().ToString("N"),
                 ListId = listId,
-                Title = title,
+                Title = cleanTitle,
+                DueUtc = dueDate is { } taskDate
+                    ? _clock.LocalTimeZone.ToUtc(taskDate.ToDateTime(dueTime ?? new TimeOnly(9, 0)))
+                    : null,
+                HasTime = dueDate is not null && dueTime is not null,
             });
         }
         else
         {
-            // Parse the text the same way the quick add preview does, so "in 2 minutes"
-            // or "at 5pm" keeps its due time instead of a fixed +1 hour.
-            var parsed = QuickAddParser.Parse(title, _clock);
+            DateTimeOffset dueUtc;
 
-            // Keep the parsed day: "in 3 days" / "4 Nov" / "tomorrow" must not collapse to
-            // "tomorrow at the current clock time". A day without a time lands at 09:00 local.
-            var dueUtc = parsed.HasTime
-                ? parsed.StartUtc
-                : parsed.HasDate
-                    ? _clock.LocalTimeZone.ToUtc(parsed.Date.ToDateTime(new TimeOnly(9, 0)))
-                    : name == Scheduled ? now.AddDays(1) : now.AddHours(1);
+            if (dueDate is { } reminderDate)
+            {
+                dueUtc = _clock.LocalTimeZone.ToUtc(reminderDate.ToDateTime(dueTime ?? new TimeOnly(9, 0)));
+            }
+            else if (parsed is { HasTime: true })
+            {
+                // Parsed times are UTC already. A day without a time landed on 09:00 local
+                // in the parser, so "in 3 days" / "4 Nov" keep their day.
+                dueUtc = parsed.StartUtc;
+            }
+            else if (parsed is { HasDate: true })
+            {
+                dueUtc = _clock.LocalTimeZone.ToUtc(parsed.Date.ToDateTime(new TimeOnly(9, 0)));
+            }
+            else
+            {
+                dueUtc = name == Scheduled ? now.AddDays(1) : now.AddHours(1);
+            }
 
             await _engine.CreateStandaloneAsync(
                 new Reminder
                 {
                     Id = Guid.NewGuid().ToString("N"),
-                    Title = parsed.Title,
+                    Title = cleanTitle,
                     DueUtc = dueUtc,
                     TimeZoneId = _clock.LocalTimeZone.ToIanaId(),
                     Flagged = name == Flagged,
                     CreatedUtc = now,
                     UpdatedUtc = now,
                 },
-                alertOffsetMinutes: parsed.AlertOffsetsMinutes.Count > 0
-                    ? parsed.AlertOffsetsMinutes[0]
+                alertOffsetMinutes: parsed is { } item && item.AlertOffsetsMinutes.Count > 0
+                    ? item.AlertOffsetsMinutes[0]
                     : 0);
 
-            _logger.LogInformation("Reminder created: {Title} due {DueUtc}.", title, dueUtc);
+            _logger.LogInformation("Reminder created: {Title} due {DueUtc}.", cleanTitle, dueUtc);
             _scheduler.Wake();
         }
 
@@ -341,7 +426,7 @@ public sealed class TodoService
         var lists = await _tasks.GetListsAsync();
         var listNames = lists.ToDictionary(list => list.Id, list => list.Name);
 
-        string Describe(DateTimeOffset? due)
+        string Describe(DateTimeOffset? due, bool hasTime = true)
         {
             if (due is null)
             {
@@ -359,7 +444,7 @@ public sealed class TodoService
                 _ => local.ToString("ddd d MMM"),
             };
 
-            return $"{day}, {local:t}";
+            return hasTime ? $"{day}, {local:t}" : day;
         }
 
         var rows = new List<TodoRow>();
@@ -396,7 +481,7 @@ public sealed class TodoService
                 TodoKind.Task,
                 task.Title,
                 task.DueUtc,
-                Describe(task.DueUtc),
+                Describe(task.DueUtc, task.HasTime),
                 !done && task.DueUtc is { } due && due < now,
                 done,
                 task.Priority >= Priority.High,
