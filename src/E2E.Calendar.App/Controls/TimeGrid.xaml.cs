@@ -88,6 +88,16 @@ public sealed partial class TimeGrid : UserControl
     private const int SnapMinutes = 15;
     private const int FineSnapMinutes = 5;
 
+    /// <summary>Height of the hour labels drawn in the gutter, centred on their hour line.</summary>
+    private const double HourLabelHeight = 18;
+
+    /// <summary>
+    /// Starts the body a little above the first hour line so the label centred on that line
+    /// (for example "06:00") is fully visible below the all-day strip instead of being
+    /// clipped by the strip's bottom edge.
+    /// </summary>
+    private const double TopRowInset = (HourLabelHeight / 2) + 4;
+
     private double _sessionScrollOffset = -1;
 
     private readonly List<Canvas> _dayCanvases = new();
@@ -1159,7 +1169,7 @@ public sealed partial class TimeGrid : UserControl
                 HorizontalAlignment = HorizontalAlignment.Right,
                 TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
-                Height = 18,
+                Height = HourLabelHeight,
             };
 
             Canvas.SetTop(label, y - (label.Height / 2));
@@ -1322,7 +1332,8 @@ public sealed partial class TimeGrid : UserControl
         var isTodayVisible = days.Any(day => day.Date == today);
 
         // Initial position: keep "now" about two hours below the top edge (never above 06:00 at
-        // the top), or start at 08:00 when the selected day is not today.
+        // the top), or start at 08:00 when the selected day is not today. Offset minus TopRowInset
+        // leaves the first hour row and its label fully clear of the all-day strip.
         var offset = isTodayVisible
             ? GetInitialOffset(now, today)
             : 8 * HourHeight;
@@ -1334,7 +1345,7 @@ public sealed partial class TimeGrid : UserControl
         }
 
         _hasScrolled = true;
-        ApplyScroll(Math.Max(0, offset));
+        ApplyScroll(Math.Max(0, offset - TopRowInset));
         _sessionScrollOffset = -1;
     }
 

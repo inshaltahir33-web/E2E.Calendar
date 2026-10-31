@@ -241,6 +241,95 @@ public sealed class CalendarLayoutTests
             .Which.Should().Be(new BannerOverflow(Wednesday, 1));
     }
 
+    [Fact]
+    public void An_all_day_reminder_is_a_single_thirty_minute_chip_instead_of_a_banner()
+    {
+        var result = CalendarLayout.Build(
+            [Occ("pay", At(Wednesday, 17).AddMinutes(21), At(Wednesday, 17).AddDays(1), CalendarItemKind.Reminder, isAllDay: true)],
+            Monday,
+            WeekEnd);
+
+        result.Weeks.Should().OnlyContain(week => week.Banners.Count == 0 && week.HiddenPlacements.Count == 0);
+
+        var withItems = result.Days.Where(day => day.Items.Count > 0).ToList();
+        withItems.Should().ContainSingle();
+
+        withItems[0].Date.Should().Be(Wednesday);
+
+        var chip = withItems[0].Items.Should().ContainSingle().Subject;
+        chip.Occurrence.Kind.Should().Be(CalendarItemKind.Reminder);
+        chip.VisualStart.Should().Be(At(Wednesday, 17).AddMinutes(21));
+        chip.VisualEnd.Should().Be(At(Wednesday, 17).AddMinutes(51));
+    }
+
+    [Fact]
+    public void A_task_with_a_multi_day_duration_is_a_single_thirty_minute_chip()
+    {
+        var result = CalendarLayout.Build(
+            [Occ("report", At(Wednesday, 9), At(Wednesday, 9).AddDays(3), CalendarItemKind.Task)],
+            Monday,
+            WeekEnd);
+
+        result.Weeks.Should().OnlyContain(week => week.Banners.Count == 0);
+
+        var withItems = result.Days.Where(day => day.Items.Count > 0).ToList();
+        withItems.Should().ContainSingle();
+
+        withItems[0].Date.Should().Be(Wednesday);
+
+        var chip = withItems[0].Items.Should().ContainSingle().Subject;
+        chip.Occurrence.Kind.Should().Be(CalendarItemKind.Task);
+        chip.VisualStart.Should().Be(At(Wednesday, 9));
+        chip.VisualEnd.Should().Be(At(Wednesday, 9).AddMinutes(30));
+    }
+
+    [Fact]
+    public void A_chip_due_near_midnight_ends_at_its_own_day_boundary()
+    {
+        var due = At(Wednesday, 23).AddMinutes(50);
+
+        var result = CalendarLayout.Build(
+            [Occ("late", due, due, CalendarItemKind.Reminder)],
+            Wednesday,
+            Wednesday.AddDays(1));
+
+        result.Days.Should().HaveCount(2);
+
+        var chip = result.Days[0].Items.Should().ContainSingle().Subject;
+        chip.VisualStart.Should().Be(due);
+        chip.VisualEnd.Should().Be(Wednesday.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        result.Days[1].Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void A_date_only_task_is_laid_out_as_a_chip_on_its_due_day()
+    {
+        var item = new CalendarItem
+        {
+            Id = "task",
+            Title = "Pay rent",
+            StartUtc = new DateTimeOffset(2026, 10, 28, 9, 0, 0, TimeSpan.Zero),
+            EndUtc = new DateTimeOffset(2026, 10, 29, 9, 0, 0, TimeSpan.Zero),
+            Kind = CalendarItemKind.Task,
+            HasTime = false,
+        };
+
+        var result = CalendarLayout.Build(
+            [CalendarLayout.ToOccurrence(item, TimeZoneInfo.Utc)],
+            Wednesday,
+            WeekEnd);
+
+        result.Weeks.Should().OnlyContain(week => week.Banners.Count == 0);
+
+        var day = result.Days[0];
+        day.Date.Should().Be(Wednesday);
+
+        var chip = day.Items.Should().ContainSingle().Subject;
+        chip.VisualStart.Should().Be(At(Wednesday, 9));
+        chip.VisualEnd.Should().Be(At(Wednesday, 9).AddMinutes(30));
+    }
+
     private static LayoutOccurrence Occ(
         string id,
         DateTime start,

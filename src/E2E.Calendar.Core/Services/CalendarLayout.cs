@@ -14,9 +14,11 @@ public static class CalendarLayout
 
     /// <summary>
     /// Lays out every occurrence that touches <paramref name="rangeStart"/>..<paramref name="rangeEnd"/> (inclusive).
-    /// All-day items and items longer than a day become week banners; everything else is split into timed
+    /// All-day events and events longer than a day become week banners; everything else is split into timed
     /// blocks per calendar day it touches. A timed item that only crosses midnight (for example 22:00-02:00)
     /// is split across both days instead of becoming a banner.
+    /// Reminders and tasks are always a single-day 30-minute block at their due time, whatever end
+    /// date or duration their data carries.
     /// </summary>
     public static CalendarLayoutResult Build(
         IEnumerable<LayoutOccurrence> occurrences,
@@ -53,7 +55,9 @@ public static class CalendarLayout
                 continue;
             }
 
-            if (occurrence.IsAllDay)
+            var isChip = occurrence.Kind is CalendarItemKind.Reminder or CalendarItemKind.Task;
+
+            if (occurrence.IsAllDay && !isChip)
             {
                 var startDay = DateOnly.FromDateTime(occurrence.StartLocal);
                 var endDay = occurrence.EndLocal > occurrence.StartLocal
@@ -64,7 +68,7 @@ public static class CalendarLayout
                 continue;
             }
 
-            var end = occurrence.Kind is CalendarItemKind.Reminder or CalendarItemKind.Task
+            var end = isChip
                 ? occurrence.StartLocal + ReminderVisualDuration
                 : occurrence.EndLocal;
 
@@ -73,7 +77,17 @@ public static class CalendarLayout
                 continue;
             }
 
-            if (end - occurrence.StartLocal > OneDay)
+            if (isChip)
+            {
+                // A chip belongs to the day it is due on, even when it is due near midnight.
+                var dayEnd = DateOnly.FromDateTime(occurrence.StartLocal).ToDateTime(TimeOnly.MinValue).AddDays(1);
+
+                if (end > dayEnd)
+                {
+                    end = dayEnd;
+                }
+            }
+            else if (end - occurrence.StartLocal > OneDay)
             {
                 var startDay = DateOnly.FromDateTime(occurrence.StartLocal);
 
@@ -91,8 +105,8 @@ public static class CalendarLayout
 
     /// <summary>
     /// Converts a stored item to the local occurrence shape used by this layout.
-    /// Date-only tasks (no time of day) are treated as all-day so every view puts
-    /// them in the all-day strip on the same date.
+    /// Date-only tasks still report <see cref="LayoutOccurrence.IsAllDay"/>, but
+    /// <see cref="Build"/> renders reminders and tasks as chips at their due time.
     /// </summary>
     public static LayoutOccurrence ToOccurrence(CalendarItem item, TimeZoneInfo timeZone)
     {
