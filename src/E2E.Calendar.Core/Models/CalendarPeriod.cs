@@ -46,13 +46,25 @@ public sealed record CalendarPeriod(CalendarViewMode Mode, DateTimeOffset FromUt
             CalendarViewMode.Day => date.ToString("d MMM yyyy", culture),
             CalendarViewMode.Week => FormatWeekLabel(culture, localDate, weekStart),
             CalendarViewMode.Month => date.ToString("Y", culture),
-            CalendarViewMode.Agenda => string.Format(
-                culture,
-                "{0} – {1}",
-                date.ToString("d MMM", culture),
-                date.AddDays(AgendaDays - 1).ToString("d MMM yyyy", culture)),
+            CalendarViewMode.Agenda => FormatAgendaLabel(culture, localDate, weekStart),
             _ => date.ToString("ddd d MMM yyyy", culture),
         };
+    }
+
+    private static string FormatAgendaLabel(CultureInfo culture, DateOnly localDate, WeekStartDay weekStart = WeekStartDay.Monday)
+    {
+        var date = localDate.ToDateTime(TimeOnly.MinValue);
+        var start = date;
+        var end = date.AddDays(AgendaDays - 1);
+
+        // Always show "d MMM – d MMM yyyy" format.
+        // This naturally shows both months when crossing a month,
+        // and shows the year at the end; both years when crossing a year.
+        return string.Format(
+            culture,
+            "{0} – {1}",
+            start.ToString("d MMM", culture),
+            end.ToString("d MMM yyyy", culture));
     }
 
     private static (DateTime From, DateTime To) LocalRange(CalendarViewMode mode, DateOnly localDate, WeekStartDay weekStart = WeekStartDay.Monday)

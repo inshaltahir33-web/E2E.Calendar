@@ -3,11 +3,19 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!-- Horizontal pointer drags page the month. The pointer is only captured once a
+         drag passes the slop threshold, so taps still select a day and vertical drags
+         still scroll the sidebar. -->
     <StackPanel
         Margin="10,4,10,4"
         Spacing="{StaticResource SpaceXXS}"
         KeyDown="OnCalendarKeyDown"
-        PointerWheelChanged="OnCalendarPointerWheelChanged">
+        PointerWheelChanged="OnCalendarPointerWheelChanged"
+        PointerPressed="OnCalendarPointerPressed"
+        PointerMoved="OnCalendarPointerMoved"
+        PointerReleased="OnCalendarPointerReleased"
+        PointerCanceled="OnCalendarPointerCanceled"
+        PointerCaptureLost="OnCalendarPointerCaptureLost">
 
         <Grid Height="26" ColumnDefinitions="Auto,*,Auto">
             <Button
@@ -50,7 +58,40 @@
             </Button>
         </Grid>
 
-        <Grid x:Name="CalendarGrid" HorizontalAlignment="Center" />
+        <Border x:Name="CalendarClipper"
+                HorizontalAlignment="Center"
+                Margin="0,4"
+                Width="{x:Bind ViewModel.VisibleDaysActualWidth, Mode=OneWay, FallbackValue=252}"
+                Height="{x:Bind ViewModel.VisibleDaysActualHeight, Mode=OneWay, FallbackValue=252}"
+                PointerPressed="OnCalendarPointerPressed"
+                PointerMoved="OnCalendarPointerMoved"
+                PointerReleased="OnCalendarPointerReleased"
+                PointerCanceled="OnCalendarPointerCanceled"
+                PointerCaptureLost="OnCalendarPointerCaptureLost">
+            <Border.Clip>
+                <RectangleGeometry
+                    x:Name="ClipGeometry"
+                    Rect="0,0,252,252" />
+            </Border.Clip>
+            <Grid>
+                <Grid x:Name="CalendarGrid"
+                      HorizontalAlignment="Center"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="CalendarTransform" />
+                    </Grid.RenderTransform>
+                </Grid>
+
+                <!-- Incoming month layer: visible during the transition, slid in from the opposite side -->
+                <Grid x:Name="IncomingMonthGrid"
+                      HorizontalAlignment="Center"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="IncomingTransform" />
+                    </Grid.RenderTransform>
+                </Grid>
+            </Grid>
+        </Border>
 
     </StackPanel>
 

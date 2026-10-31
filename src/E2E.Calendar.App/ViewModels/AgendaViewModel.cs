@@ -61,9 +61,12 @@ public sealed partial class AgendaViewModel : CalendarPageViewModel
 
     public override async Task RefreshAsync()
     {
-        var today = Today();
-        _from = today.AddDays(-InitialDaysBefore);
-        _to = today.AddDays(InitialDaysAfter);
+        var selectedDate = State.SelectedDate != default
+            ? State.SelectedDate
+            : Today();
+
+        _from = selectedDate.AddDays(-InitialDaysBefore);
+        _to = selectedDate.AddDays(InitialDaysAfter);
 
         await LoadRangeAsync();
     }

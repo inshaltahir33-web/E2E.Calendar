@@ -14,6 +14,8 @@ using Windows.System;
 using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 using XamlAutomationProperties = Microsoft.UI.Xaml.Automation.AutomationProperties;
 using UiDispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using Windows.Foundation;
+using System.Diagnostics;
 
 namespace E2E.Calendar.App.Controls;
 
@@ -22,6 +24,17 @@ public sealed partial class MiniCalendarView : UserControl
     private const double CellSize = 28;
     private const double HeaderHeight = 16;
 
+    /// <summary>Horizontal drag distance that commits the month change instead of snapping back.</summary>
+    private const double SwipeThreshold = 40;
+
+    /// <summary>Movement needed before a press becomes a swipe; below it the gesture stays a tap.</summary>
+    private const double SwipeSlop = 10;
+
+    /// <summary>Per-phase duration of the month transition (slide out + slide in ≈ 200 ms).</summary>
+    private const int MonthTransitionMs = 200;
+
+    private const int SnapBackMs = 150;
+
     private readonly MiniCalendarViewModel _viewModel;
     private readonly IDialogService _dialogs;
     private readonly List<DayCell> _cells = new();
@@ -29,6 +42,14 @@ public sealed partial class MiniCalendarView : UserControl
     private IReadOnlyList<MiniCalendarDayViewModel>? _builtDays;
     private int _pendingWheelDirection;
     private bool _isLoaded;
+    private bool _isSwiping;
+    private bool _isTransitioning;
+    private uint? _dragPointerId;
+    private double _dragStartX;
+    private double _dragStartY;
+    private double _dragOffset;
+    private TranslateTransform? _dragTransform;
+    private double _currentMonthWidth;
 
     public MiniCalendarView(MiniCalendarViewModel viewModel, IDialogService dialogs)
     {
@@ -47,6 +68,7 @@ public sealed partial class MiniCalendarView : UserControl
         _wheelDebounce.Tick += OnWheelDebounceTick;
 
         this.Loaded += OnLoaded;
+        CalendarGrid.SizeChanged += OnCalendarGridSizeChanged;
     }
 
     public MiniCalendarViewModel ViewModel { get; }
@@ -200,14 +222,130 @@ public sealed partial class MiniCalendarView : UserControl
         }
     }
 
-    private void OnPreviousMonthClick(object sender, RoutedEventArgs e)
+    private async void OnPreviousMonthClick(object sender, RoutedEventArgs e) => await ChangeMonthAsync(-1);
+
+    private async void OnNextMonthClick(object sender, RoutedEventArgs e) => await ChangeMonthAsync(1);
+
+    private void OnCalendarPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _viewModel.MoveMonth(-1);
+        if (_isTransitioning)
+        {
+            return;
+        }
+
+        var point = e.GetCurrentPoint(this);
+
+        // Mouse needs the left button; touch and pen are always a primary contact.
+        if (e.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Mouse &&
+            !point.Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _dragPointerId = e.Pointer.PointerId;
+        _dragStartX = point.Position.X;
+        _dragStartY = point.Position.Y;
+        _isSwiping = false;
     }
 
-    private void OnNextMonthClick(object sender, RoutedEventArgs e)
+    private void OnCalendarPointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        _viewModel.MoveMonth(1);
+        if (_dragPointerId != e.Pointer.PointerId)
+        {
+            return;
+        }
+
+        if (_isTransitioning)
+        {
+            // Abort any in-progress drag if an animation is running
+            _dragOffset = 0;
+            _isSwiping = false;
+            ReleasePointerCapture(e.Pointer);
+            return;
+        }
+
+        var position = e.GetCurrentPoint(this).Position;
+        var offsetX = position.X - _dragStartX;
+        var offsetY = position.Y - _dragStartY;
+
+        if (!_isSwiping)
+        {
+            // Below the slop, or mostly vertical: leave the gesture to taps and to the
+            // sidebar's ScrollViewer.
+            if (Math.Abs(offsetX) < SwipeSlop || Math.Abs(offsetX) <= Math.Abs(offsetY))
+            {
+                return;
+            }
+
+            _isSwiping = true;
+            _dragTransform = new TranslateTransform();
+            CalendarGrid.RenderTransform = _dragTransform;
+            CapturePointer(e.Pointer);
+        }
+
+        _dragOffset = offsetX;
+        _dragTransform!.X = _dragOffset;
+        e.Handled = true;
+    }
+
+    private void OnCalendarPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!FinishPointerGesture(e))
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        var offset = _dragOffset;
+        _dragOffset = 0;
+
+        if (Math.Abs(offset) >= SwipeThreshold)
+        {
+            // Drag right-to-left (negative) pages to the next month; left-to-right goes back.
+            ChangeMonthAsync(offset < 0 ? 1 : -1, offset);
+        }
+        else
+        {
+            SnapBackAsync(offset);
+        }
+    }
+
+    private void OnCalendarPointerCanceled(object sender, PointerRoutedEventArgs e)
+    {
+        if (!FinishPointerGesture(e))
+        {
+            return;
+        }
+
+        var offset = _dragOffset;
+        _dragOffset = 0;
+        SnapBackAsync(offset);
+    }
+
+    private void OnCalendarPointerCaptureLost(object sender, PointerRoutedEventArgs e) => OnCalendarPointerCanceled(sender, e);
+
+    /// <summary>
+    /// Ends the gesture for this pointer. Returns true only when it was a real swipe, so a
+    /// plain tap is left alone and still raises Tapped on the day cell.
+    /// </summary>
+    private bool FinishPointerGesture(PointerRoutedEventArgs e)
+    {
+        if (_dragPointerId != e.Pointer.PointerId)
+        {
+            return false;
+        }
+
+        var wasSwiping = _isSwiping;
+        _dragPointerId = null;
+        _isSwiping = false;
+
+        if (wasSwiping)
+        {
+            ReleasePointerCapture(e.Pointer);
+        }
+
+        return wasSwiping;
     }
 
     private async void OnHeaderClick(object sender, RoutedEventArgs e)
@@ -322,7 +460,11 @@ public sealed partial class MiniCalendarView : UserControl
         }
     }
 
-    private async Task ChangeMonthAsync(int delta)
+    /// <summary>
+    /// The one month-change path used by the header arrows, the wheel and the swipe.
+    /// <paramref name="startOffset"/> is the drag distance the current month already follows.
+    /// </summary>
+    private async Task ChangeMonthAsync(int delta, double startOffset = 0)
     {
         if (delta == 0)
         {
@@ -338,43 +480,190 @@ public sealed partial class MiniCalendarView : UserControl
         {
             return;
         }
+
         for (var index = 0; index < Math.Abs(delta); index++)
         {
-            if (direction < 0)
-            {
-                _viewModel.PreviousMonthCommand.Execute(null);
-            }
-            else
-            {
-                _viewModel.NextMonthCommand.Execute(null);
-            }
-
-            await _viewModel.RefreshAsync();
-            await AnimateMonthAsync(direction);
+            await SlideMonthAsync(direction, index == 0 ? startOffset : 0);
         }
     }
 
-    private async Task AnimateMonthAsync(int direction)
+    /// <summary>
+    /// Slides the visible month out in the navigation direction, swaps the month while it is
+    /// off screen and slides the new one in from the opposite side. Only the grid's
+    /// Translation X and Opacity are animated — never its width or margins.
+    /// </summary>
+    private async Task SlideMonthAsync(int direction, double startOffset)
+    {
+        _isTransitioning = true;
+
+        try
+        {
+            if (!_isLoaded)
+            {
+                _viewModel.MoveMonth(direction);
+                await _viewModel.RefreshAsync();
+                return;
+            }
+
+            var width = Math.Max(CalendarGrid.ActualWidth, _currentMonthWidth > 0 ? _currentMonthWidth : MiniCalendarGridBuilder.DaysPerWeek * CellSize);
+
+            // 1️⃣ Update layout first so the new month's Measure/Arrange is complete
+            CalendarGrid.UpdateLayout();
+            IncomingMonthGrid.UpdateLayout();
+
+            // 2️⃣ Position the incoming month off-screen in the direction of travel
+            var outTarget = direction > 0 ? -width : width;
+            var inStart = direction > 0 ? width : -width;
+
+            // Reset transforms
+            CalendarTransform.X = 0;
+            IncomingTransform.X = 0;
+            CalendarGrid.Opacity = 1;
+            IncomingMonthGrid.Opacity = 0;
+
+            // 3️⃣ Animate the old month out and the new month in simultaneously
+            //    – old goes: direction > 0 → left ( -width ), direction < 0 → right ( +width )
+            //    – new comes from: direction > 0 → right ( +width ), direction < 0 → left ( -width )
+            await AnimateMonthAsync(startOffset, outTarget, inStart, 0, width, MonthTransitionMs);
+
+            // 4️⃣ Swap the month data while the grids are off-screen
+            _viewModel.MoveMonth(direction);
+            await _viewModel.RefreshAsync();
+
+            // 5️⃣ Position the new (now current) month at origin, ready for the next transition
+            CalendarTransform.X = 0;
+            IncomingTransform.X = 0;
+            CalendarGrid.Opacity = 1;
+            IncomingMonthGrid.Opacity = 0;
+        }
+        finally
+        {
+            _isTransitioning = false;
+        }
+    }
+
+    /// <summary>
+    /// Anims both the outgoing (CalendarGrid) and incoming (IncomingMonthGrid) month layers.
+    /// Old layer slides out <paramref name="outTarget"/> pixels, new layer slides in from
+    /// <paramref name="inStart"/> pixels, both using CubicEase EaseOut over <paramref name="durationMs"/>.
+    /// </summary>
+    private async Task AnimateMonthAsync(double startOffset, double outTarget, double inStart, double toX, double width, int durationMs)
+    {
+        Debug.WriteLine($"[MiniCalendar] Animation start: direction={(outTarget < 0 ? "next" : "prev")}, out={outTarget}, in={inStart}");
+
+        // Outgoing layer slides out
+        var outTransform = CalendarTransform;
+        outTransform.X = startOffset;
+        var outEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var outStoryboard = new Storyboard();
+        var outAnim = new DoubleAnimation
+        {
+            From = startOffset,
+            To = outTarget,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            EasingFunction = outEasing,
+        };
+        Storyboard.SetTarget(outAnim, outTransform);
+        Storyboard.SetTargetProperty(outAnim, "X");
+        outStoryboard.Children.Add(outAnim);
+
+        // Incoming layer slides in from opposite side
+        var inTransform = IncomingTransform;
+        inTransform.X = inStart;
+        var inEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var inStoryboard = new Storyboard();
+        var inAnim = new DoubleAnimation
+        {
+            From = inStart,
+            To = toX,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            EasingFunction = inEasing,
+        };
+        Storyboard.SetTarget(inAnim, inTransform);
+        Storyboard.SetTargetProperty(inAnim, "X");
+        inStoryboard.Children.Add(inAnim);
+
+        // Fade out old, fade in new
+        var fadeOut = new DoubleAnimation
+        {
+            From = 1,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            EasingFunction = outEasing,
+        };
+        Storyboard.SetTarget(fadeOut, CalendarGrid);
+        Storyboard.SetTargetProperty(fadeOut, "Opacity");
+        outStoryboard.Children.Add(fadeOut);
+
+        var fadeIn = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            EasingFunction = inEasing,
+        };
+        Storyboard.SetTarget(fadeIn, IncomingMonthGrid);
+        Storyboard.SetTargetProperty(fadeIn, "Opacity");
+        inStoryboard.Children.Add(fadeIn);
+
+        outStoryboard.Begin();
+        inStoryboard.Begin();
+
+        // Both storyboards run for the full duration; just wait for it.
+        await Task.Delay(durationMs);
+
+        Debug.WriteLine($"[MiniCalendar] Animation completed after {durationMs}ms");
+    }
+
+    private void SnapBackAsync(double offset)
     {
         if (!_isLoaded)
         {
             return;
         }
 
-        var transform = new TranslateTransform { X = direction > 0 ? CalendarGrid.ActualWidth : -CalendarGrid.ActualWidth };
+        AnimateGridBack(offset, SnapBackMs);
+    }
+
+    private void AnimateGridBack(double offset, int durationMs)
+    {
+        var transform = new TranslateTransform { X = offset };
         CalendarGrid.RenderTransform = transform;
-        var animation = new DoubleAnimation
-        {
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(180),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-        };
-        Storyboard.SetTarget(animation, transform);
-        Storyboard.SetTargetProperty(animation, "X");
+
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
         var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
+
+        var slide = new DoubleAnimation
+        {
+            From = offset,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+            EasingFunction = easing,
+        };
+        Storyboard.SetTarget(slide, transform);
+        Storyboard.SetTargetProperty(slide, "X");
+        storyboard.Children.Add(slide);
+
         storyboard.Begin();
-        await Task.Delay(180);
+
+        Task.Delay(durationMs).GetAwaiter().GetResult();
+    }
+
+    private void OnCalendarGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Update the clip geometry so the grid stays clipped to its bounds
+        if (ClipGeometry is { } geo)
+        {
+            geo.Rect = new Rect(0, 0, e.NewSize.Width, e.NewSize.Height);
+        }
+        _currentMonthWidth = e.NewSize.Width;
+    }
+
+    private double MonthSlideWidth()
+    {
+        var width = CalendarGrid.ActualWidth;
+
+        return width > 1 ? width : MiniCalendarGridBuilder.DaysPerWeek * CellSize;
     }
 
     private async void OnCalendarKeyDown(object sender, KeyRoutedEventArgs e)
