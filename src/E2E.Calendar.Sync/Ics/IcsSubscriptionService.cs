@@ -63,6 +63,7 @@ public sealed class IcsSubscriptionService
     public async Task<CalendarSubscription> AddAsync(
         string url,
         int refreshHours,
+        string? name = null,
         CancellationToken cancellationToken = default)
     {
         if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri) ||
@@ -81,7 +82,7 @@ public sealed class IcsSubscriptionService
         var calendar = new CalendarModel
         {
             Id = $"ics-{Guid.NewGuid():N}",
-            Name = NameFrom(uri),
+            Name = string.IsNullOrWhiteSpace(name) ? NameFrom(uri) : name.Trim(),
             Color = CalendarPalette.Other,
             Visible = true,
             ReadOnly = true,

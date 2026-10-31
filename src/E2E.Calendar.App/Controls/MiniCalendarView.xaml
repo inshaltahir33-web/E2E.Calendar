@@ -61,8 +61,6 @@
         <Border x:Name="CalendarClipper"
                 HorizontalAlignment="Center"
                 Margin="0,4"
-                Width="{x:Bind ViewModel.VisibleDaysActualWidth, Mode=OneWay, FallbackValue=252}"
-                Height="{x:Bind ViewModel.VisibleDaysActualHeight, Mode=OneWay, FallbackValue=252}"
                 PointerPressed="OnCalendarPointerPressed"
                 PointerMoved="OnCalendarPointerMoved"
                 PointerReleased="OnCalendarPointerReleased"

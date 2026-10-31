@@ -7,4 +7,9 @@ namespace E2E.Calendar.App;
 public static class AppFeatures
 {
     public static bool SyncUiEnabled = false;
+
+    public static bool DemoEnabled = string.Equals(
+        Environment.GetEnvironmentVariable("E2E_DEMO"),
+        "1",
+        StringComparison.Ordinal);
 }

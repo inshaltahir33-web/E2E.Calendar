@@ -1,3 +1,4 @@
+using System.Globalization;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 
@@ -20,7 +21,13 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     private const string ShowSecondaryTimeZoneKey = "general.show_secondary_time_zone";
     private const string ShowBirthdaysKey = "calendars.show_birthdays";
     private const string SecondaryTimeZoneIdKey = "general.secondary_time_zone_id";
+    private const string DefaultSnoozeMinutesKey = "notifications.default_snooze_minutes";
+    private const string DailyDigestEnabledKey = "notifications.daily_digest_enabled";
+    private const string DailyDigestTimeKey = "notifications.daily_digest_time";
+    private const string CriticalBreaksThroughDoNotDisturbKey = "notifications.critical_break_through_dnd";
+    private const string PersistentRepeatMinutesKey = "notifications.persistent_repeat_minutes";
     private const string LastViewModeKey = "general.last_view_mode";
+    private const string TimeOfDayFormat = @"hh\:mm";
     private const string OnboardingCompleteKey = "app.onboarding_complete";
     private const string StartMinimizedToTrayKey = "app.start_minimized_to_tray";
     private const string WindowLeftKey = "window.left";
@@ -83,6 +90,23 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             cancellationToken);
         await _repository.SetAsync(ShowBirthdaysKey, settings.ShowBirthdays ? "1" : "0", cancellationToken);
         await _repository.SetAsync(SecondaryTimeZoneIdKey, settings.SecondaryTimeZoneId, cancellationToken);
+        await _repository.SetAsync(DefaultSnoozeMinutesKey, settings.DefaultSnoozeMinutes.ToString(), cancellationToken);
+        await _repository.SetAsync(
+            DailyDigestEnabledKey,
+            settings.DailyDigestEnabled ? "1" : "0",
+            cancellationToken);
+        await _repository.SetAsync(
+            DailyDigestTimeKey,
+            settings.DailyDigestTime.ToString(TimeOfDayFormat, CultureInfo.InvariantCulture),
+            cancellationToken);
+        await _repository.SetAsync(
+            CriticalBreaksThroughDoNotDisturbKey,
+            settings.CriticalBreaksThroughDoNotDisturb ? "1" : "0",
+            cancellationToken);
+        await _repository.SetAsync(
+            PersistentRepeatMinutesKey,
+            settings.PersistentRepeatMinutes.ToString(),
+            cancellationToken);
         await _repository.SetAsync(LastViewModeKey, settings.LastViewMode, cancellationToken);
         await _repository.SetAsync(
             OnboardingCompleteKey,
@@ -131,6 +155,24 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             ShowSecondaryTimeZone = ParseBool(values, ShowSecondaryTimeZoneKey, defaults.ShowSecondaryTimeZone),
             ShowBirthdays = ParseBool(values, ShowBirthdaysKey, defaults.ShowBirthdays),
             SecondaryTimeZoneId = Get(values, SecondaryTimeZoneIdKey),
+            DefaultSnoozeMinutes = ParseInt(
+                values,
+                DefaultSnoozeMinutesKey,
+                defaults.DefaultSnoozeMinutes,
+                1,
+                1440),
+            DailyDigestEnabled = ParseBool(values, DailyDigestEnabledKey, defaults.DailyDigestEnabled),
+            DailyDigestTime = ParseTimeOfDay(values, DailyDigestTimeKey, defaults.DailyDigestTime),
+            CriticalBreaksThroughDoNotDisturb = ParseBool(
+                values,
+                CriticalBreaksThroughDoNotDisturbKey,
+                defaults.CriticalBreaksThroughDoNotDisturb),
+            PersistentRepeatMinutes = ParseInt(
+                values,
+                PersistentRepeatMinutesKey,
+                defaults.PersistentRepeatMinutes,
+                1,
+                1440),
             LastViewMode = Get(values, LastViewModeKey),
             OnboardingComplete = ParseBool(values, OnboardingCompleteKey, defaults.OnboardingComplete),
             StartMinimizedToTray = ParseBool(values, StartMinimizedToTrayKey, defaults.StartMinimizedToTray),
@@ -155,6 +197,21 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             "0" or "false" or "False" => false,
             _ => fallback,
         };
+
+    private static TimeSpan ParseTimeOfDay(
+        IReadOnlyDictionary<string, string?> values,
+        string key,
+        TimeSpan fallback)
+    {
+        if (Get(values, key) is { } raw &&
+            TimeSpan.TryParseExact(raw, TimeOfDayFormat, CultureInfo.InvariantCulture, out var parsed) &&
+            parsed >= TimeSpan.Zero && parsed < TimeSpan.FromDays(1))
+        {
+            return parsed;
+        }
+
+        return fallback;
+    }
 
     private static int? ParseNullableInt(IReadOnlyDictionary<string, string?> values, string key)
     {

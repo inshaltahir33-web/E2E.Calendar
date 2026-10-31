@@ -22,6 +22,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsService _settings;
     private readonly CalendarService _calendars;
+    private readonly IEventRepository _events;
+    private readonly IcsService _ics;
+    private readonly IClock _clock;
     private readonly IcsSubscriptionService _subscriptions;
     private readonly IEntitlementService _entitlements;
     private readonly IPaywallService _paywall;
@@ -30,11 +33,17 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISecretStore _secrets;
     private readonly StartupTaskService _startupTasks;
 
+    private static readonly int[] SnoozeMinuteOptions = [5, 10, 15, 30, 60];
+    private static readonly int[] RepeatMinuteOptions = [5, 10, 15, 30, 60];
+
     private bool _loading;
 
     public SettingsViewModel(
         SettingsService settings,
         CalendarService calendars,
+        IEventRepository events,
+        IcsService ics,
+        IClock clock,
         IcsSubscriptionService subscriptions,
         IEntitlementService entitlements,
         IPaywallService paywall,
@@ -45,6 +54,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         _settings = settings;
         _calendars = calendars;
+        _events = events;
+        _ics = ics;
+        _clock = clock;
         _subscriptions = subscriptions;
         _entitlements = entitlements;
         _paywall = paywall;
@@ -56,12 +68,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         var sections = new List<SettingsSection>
         {
             new SettingsSection("General", "\uE713"),
+            new SettingsSection("Accounts", "\uE77B"),
         };
-
-        if (AppFeatures.SyncUiEnabled)
-        {
-            sections.Add(new SettingsSection("Accounts", "\uE77B"));
-        }
 
         sections.Add(new SettingsSection("Calendars", "\uE787"));
         sections.Add(new SettingsSection("Notifications", "\uEA8F"));
@@ -69,9 +77,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         sections.Add(new SettingsSection("Shortcuts", "\uE765"));
         sections.Add(new SettingsSection("Premium", "\uE735"));
         sections.Add(new SettingsSection("Privacy & data", "\uE72E"));
-#if DEBUG
-        sections.Add(new SettingsSection("Developer", "\uEC7A"));
-#endif
+
+        if (AppFeatures.DemoEnabled)
+        {
+            sections.Add(new SettingsSection("Developer", "\uEC7A"));
+        }
+
         sections.Add(new SettingsSection("About", "\uE946"));
 
         Sections = sections;
@@ -82,6 +93,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         WeekStartLabels = ["Sunday", "Monday", "Saturday"];
         TimeZoneLabels = new ObservableCollection<string>(TimeZoneCatalog.Common.Select(item => item.Label));
         AccentColors = new ObservableCollection<string>(CalendarPalette.All);
+        SnoozeLabels = ["5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour"];
+        RepeatIntervalLabels = ["Every 5 minutes", "Every 10 minutes", "Every 15 minutes", "Every 30 minutes", "Every hour"];
     }
 
     public IReadOnlyList<SettingsSection> Sections { get; }
@@ -97,6 +110,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     public ObservableCollection<string> TimeZoneLabels { get; }
 
     public ObservableCollection<string> AccentColors { get; }
+
+    public IReadOnlyList<string> SnoozeLabels { get; }
+
+    public IReadOnlyList<string> RepeatIntervalLabels { get; }
 
     public ObservableCollection<SettingsCalendarItem> Calendars { get; } = new();
 
@@ -146,6 +163,37 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _isStartAtLoginSupported;
 
     [ObservableProperty]
+    private bool _isStartAtLoginEditable;
+
+    [ObservableProperty]
+    private bool _canOpenStartupSettings;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStartAtLoginNote))]
+    private string? _startAtLoginNote;
+
+    [ObservableProperty]
+    private int _defaultSnoozeIndex = 1;
+
+    [ObservableProperty]
+    private int _persistentRepeatIndex = 1;
+
+    [ObservableProperty]
+    private bool _dailyDigestEnabled;
+
+    [ObservableProperty]
+    private TimeSpan _dailyDigestTime = new(8, 0, 0);
+
+    [ObservableProperty]
+    private bool _criticalBreaksThroughDoNotDisturb = true;
+
+    public bool HasStartAtLoginNote => !string.IsNullOrWhiteSpace(StartAtLoginNote);
+
+    public double MinHourHeight => AppSettings.MinHourHeight;
+
+    public double MaxHourHeight => AppSettings.MaxHourHeight;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddGoogleAccountCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddMicrosoftAccountCommand))]
     private bool _isAccountOperationInProgress;
@@ -156,9 +204,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _premiumStatus = "Checking your plan…";
 
-    public double MinHourHeight => AppSettings.MinHourHeight;
-
-    public double MaxHourHeight => AppSettings.MaxHourHeight;
+    [ObservableProperty]
+    private string? _premiumNote;
 
     public async Task LoadAsync()
     {
@@ -196,9 +243,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(settings.SecondaryTimeZoneId);
         ShowBirthdays = settings.ShowBirthdays;
 
+        DefaultSnoozeIndex = IndexOf(SnoozeMinuteOptions, settings.DefaultSnoozeMinutes, 1);
+        PersistentRepeatIndex = IndexOf(RepeatMinuteOptions, settings.PersistentRepeatMinutes, 1);
+        DailyDigestEnabled = settings.DailyDigestEnabled;
+        DailyDigestTime = settings.DailyDigestTime;
+        CriticalBreaksThroughDoNotDisturb = settings.CriticalBreaksThroughDoNotDisturb;
+
         // The OS owns the startup task state, so read it back instead of persisting a copy.
-        IsStartAtLoginSupported = await _startupTasks.IsSupportedAsync();
-        StartAtLogin = IsStartAtLoginSupported && await _startupTasks.IsEnabledAsync();
+        ApplyStartupStatus(await _startupTasks.GetStatusAsync());
 
         await RefreshPremiumAsync();
 
@@ -219,6 +271,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 Color = calendar.Color,
                 IsVisible = calendar.Visible,
                 IsReadOnly = calendar.ReadOnly,
+                IsSubscription = subscription is not null,
                 Detail = subscription is not null
                     ? DescribeSubscription(subscription)
                     : calendar.ReadOnly ? "Read-only" : null,
@@ -240,7 +293,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 Id = account.Id,
                 Provider = account.Provider,
                 DisplayName = account.DisplayName,
-                Detail = account.Email ?? "Connected account",
+                Detail = DescribeAccount(account),
             });
         }
 
@@ -267,8 +320,20 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public bool CanAddAccount => !IsAccountOperationInProgress;
 
+    private const int FreeAccountLimit = 1;
+
     private async Task AddAccountAsync(Provider provider)
     {
+        if (!_entitlements.Current.IsPremium && _sync.Accounts.Count >= FreeAccountLimit)
+        {
+            AccountStatus = "The free plan includes one connected account.";
+
+            if (!await _paywall.ShowAsync())
+            {
+                return;
+            }
+        }
+
         IsAccountOperationInProgress = true;
         AccountStatus = $"Opening {provider} sign-in...";
 
@@ -308,6 +373,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowSecondaryTimeZone = false;
         SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(null);
         ShowBirthdays = false;
+        DefaultSnoozeIndex = 1;
+        PersistentRepeatIndex = 1;
+        DailyDigestEnabled = false;
+        DailyDigestTime = new(8, 0, 0);
+        CriticalBreaksThroughDoNotDisturb = true;
 
         _loading = false;
 
@@ -332,6 +402,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowSecondaryTimeZone = ShowSecondaryTimeZone,
         SecondaryTimeZoneId = TimeZoneCatalog.Common[Math.Clamp(SecondaryTimeZoneIndex, 0, TimeZoneCatalog.Common.Count - 1)].Id,
         ShowBirthdays = ShowBirthdays,
+        DefaultSnoozeMinutes = SnoozeMinuteOptions[Math.Clamp(DefaultSnoozeIndex, 0, SnoozeMinuteOptions.Length - 1)],
+        PersistentRepeatMinutes = RepeatMinuteOptions[Math.Clamp(PersistentRepeatIndex, 0, RepeatMinuteOptions.Length - 1)],
+        DailyDigestEnabled = DailyDigestEnabled,
+        DailyDigestTime = DailyDigestTime,
+        CriticalBreaksThroughDoNotDisturb = CriticalBreaksThroughDoNotDisturb,
         OnboardingComplete = true,
     };
 
@@ -365,6 +440,16 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnSecondaryTimeZoneIndexChanged(int value) => Persist();
 
+    partial void OnDefaultSnoozeIndexChanged(int value) => Persist();
+
+    partial void OnPersistentRepeatIndexChanged(int value) => Persist();
+
+    partial void OnDailyDigestEnabledChanged(bool value) => Persist();
+
+    partial void OnDailyDigestTimeChanged(TimeSpan value) => Persist();
+
+    partial void OnCriticalBreaksThroughDoNotDisturbChanged(bool value) => Persist();
+
     partial void OnStartAtLoginChanged(bool value)
     {
         if (_loading)
@@ -377,18 +462,36 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private async Task ApplyStartAtLoginAsync(bool enabled)
     {
-        var applied = await _startupTasks.SetEnabledAsync(enabled);
+        var status = await _startupTasks.SetEnabledAsync(enabled);
 
-        if (applied == enabled)
-        {
-            return;
-        }
-
-        // The OS refused the change (for example the task was disabled in Task Manager),
-        // so snap the toggle back to the real state.
+        // Windows may refuse the change (for example the task was disabled in Task Manager),
+        // so mirror whatever state it reports instead of the requested one.
         _loading = true;
-        StartAtLogin = applied;
+        ApplyStartupStatus(status);
         _loading = false;
+    }
+
+    private void ApplyStartupStatus(StartupStatus status)
+    {
+        IsStartAtLoginSupported = status is not StartupStatus.Unsupported;
+        IsStartAtLoginEditable = StartupTaskService.IsEditable(status);
+        CanOpenStartupSettings = status is StartupStatus.DisabledByUser;
+        StartAtLogin = StartupTaskService.IsEnabled(status);
+        StartAtLoginNote = status switch
+        {
+            StartupStatus.Unsupported => "Start at login is only available in the packaged (MSIX) build of E2E Calendar.",
+            StartupStatus.DisabledByUser => "Windows turned this off. Enable E2E Calendar in Windows Settings > Apps > Startup.",
+            StartupStatus.DisabledByPolicy => "Start at login is turned off by your organization's policy.",
+            StartupStatus.EnabledByPolicy => "Start at login is turned on by your organization's policy.",
+            _ => null,
+        };
+    }
+
+    private static int IndexOf(int[] options, int value, int fallback)
+    {
+        var index = Array.IndexOf(options, value);
+
+        return index >= 0 ? index : fallback;
     }
 
     public async Task ImportBirthdaysAsync(CancellationToken cancellationToken = default)
@@ -403,10 +506,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         await LoadAsync();
     }
 
-    public async Task AddSubscriptionAsync(string url, int refreshHours, CancellationToken cancellationToken = default)
+    public async Task AddSubscriptionAsync(string url, string? name, int refreshHours, CancellationToken cancellationToken = default)
     {
-        await _subscriptions.AddAsync(url, refreshHours, cancellationToken);
+        await _subscriptions.AddAsync(url, refreshHours, name, cancellationToken);
         await LoadAsync();
+    }
+
+    public async Task<string> ExportEventsAsync(CancellationToken cancellationToken = default)
+    {
+        var events = await _events.GetInRangeAsync(
+            null,
+            _clock.UtcNow.AddYears(-10),
+            _clock.UtcNow.AddYears(10),
+            cancellationToken);
+
+        return _ics.Export(events);
     }
 
     public async Task DeleteCalendarAsync(string id, CancellationToken cancellationToken = default)
@@ -435,6 +549,16 @@ public sealed partial class SettingsViewModel : ObservableObject
             : "waiting for the first refresh";
 
         return $"Read-only · {lastRefresh} · refreshes every {subscription.RefreshHours} h";
+    }
+
+    private static string DescribeAccount(Account account)
+    {
+        var identity = string.IsNullOrWhiteSpace(account.Email) ? account.Provider.ToString() : account.Email;
+        var sync = account.LastSyncUtc is { } last
+            ? $"synced {last.ToLocalTime():g}"
+            : "not synced yet";
+
+        return $"{identity} · {sync}";
     }
 
     public async Task SetCalendarColorAsync(string id, string color, CancellationToken cancellationToken = default)
@@ -519,6 +643,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         await RefreshPremiumAsync();
     }
 
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task RestorePurchasesAsync()
+    {
+        var result = await _entitlements.RestoreAsync();
+        PremiumNote = result.Message ?? "Purchases restored.";
+        await RefreshPremiumAsync();
+    }
+
 }
 
 public sealed record SettingsSection(string Title, string Glyph);
@@ -535,6 +667,10 @@ public sealed partial class SettingsCalendarItem : ObservableObject
     public string? Color { get; init; }
 
     public bool IsReadOnly { get; init; }
+
+    public bool IsSubscription { get; init; }
+
+    public bool IsNotSubscription => !IsSubscription;
 
     public string? Detail { get; init; }
 

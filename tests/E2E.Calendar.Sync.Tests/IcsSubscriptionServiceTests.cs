@@ -64,6 +64,17 @@ public sealed class IcsSubscriptionServiceTests
     }
 
     [Fact]
+    public async Task Add_uses_the_supplied_calendar_name()
+    {
+        var fixture = new Fixture(Ok(Feed));
+
+        var subscription = await fixture.Service.AddAsync("https://example.com/team.ics", 6, "  Team holidays  ");
+
+        var calendar = await fixture.Calendars.GetByIdAsync(subscription.CalendarId);
+        calendar!.Name.Should().Be("Team holidays");
+    }
+
+    [Fact]
     public async Task Refresh_sends_conditional_headers_and_keeps_events_on_304()
     {
         var fixture = new Fixture(new HttpResponseMessage(HttpStatusCode.NotModified));

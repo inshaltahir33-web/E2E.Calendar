@@ -2,20 +2,86 @@ using Windows.ApplicationModel;
 
 namespace E2E.Calendar.Platform;
 
+public enum StartupStatus
+{
+    /// <summary>The app has no package identity or the task is not declared in its manifest.</summary>
+    Unsupported,
+    Disabled,
+    DisabledByUser,
+    DisabledByPolicy,
+    Enabled,
+    EnabledByPolicy,
+}
+
 /// <summary>
 /// Bridges the packaged <see cref="StartupTask"/> (declared in Package.appxmanifest)
-/// to the settings UI. Unpackaged builds have no package identity, so every call
-/// degrades to "not supported" instead of throwing.
+/// to the settings UI. Unpackaged builds have no package identity, so the status is
+/// reported as <see cref="StartupStatus.Unsupported"/> instead of a dead toggle.
 /// </summary>
 public sealed class StartupTaskService
 {
     public const string TaskId = "E2ECalendarStartup";
 
-    public async Task<bool> IsSupportedAsync()
+    public async Task<StartupStatus> GetStatusAsync()
+    {
+        if (!HasPackageIdentity())
+        {
+            return StartupStatus.Unsupported;
+        }
+
+        try
+        {
+            var task = await StartupTask.GetAsync(TaskId);
+
+            return Map(task.State);
+        }
+        catch (Exception)
+        {
+            return StartupStatus.Unsupported;
+        }
+    }
+
+    /// <summary>Enables or disables the task and returns the state the OS ended up in.</summary>
+    public async Task<StartupStatus> SetEnabledAsync(bool enabled)
+    {
+        if (!HasPackageIdentity())
+        {
+            return StartupStatus.Unsupported;
+        }
+
+        try
+        {
+            var task = await StartupTask.GetAsync(TaskId);
+
+            if (enabled)
+            {
+                return Map(await task.RequestEnableAsync());
+            }
+
+            task.Disable();
+
+            return StartupStatus.Disabled;
+        }
+        catch (Exception)
+        {
+            // RequestEnableAsync can fail when the user disabled the task from Task Manager,
+            // so report the state Windows actually reports rather than the requested one.
+            return await GetStatusAsync();
+        }
+    }
+
+    public static bool IsEnabled(StartupStatus status) =>
+        status is StartupStatus.Enabled or StartupStatus.EnabledByPolicy;
+
+    /// <summary>Whether the toggle can change the state without being refused by Windows.</summary>
+    public static bool IsEditable(StartupStatus status) =>
+        status is StartupStatus.Enabled or StartupStatus.Disabled;
+
+    private static bool HasPackageIdentity()
     {
         try
         {
-            await StartupTask.GetAsync(TaskId);
+            _ = Package.Current.Id;
 
             return true;
         }
@@ -25,46 +91,13 @@ public sealed class StartupTaskService
         }
     }
 
-    public async Task<bool> IsEnabledAsync()
-    {
-        try
+    private static StartupStatus Map(StartupTaskState state) =>
+        state switch
         {
-            var task = await StartupTask.GetAsync(TaskId);
-
-            return IsEnabled(task.State);
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
-
-    /// <summary>Enables or disables the task and returns the state the OS ended up in.</summary>
-    public async Task<bool> SetEnabledAsync(bool enabled)
-    {
-        try
-        {
-            var task = await StartupTask.GetAsync(TaskId);
-
-            if (enabled)
-            {
-                var state = await task.RequestEnableAsync();
-
-                return IsEnabled(state);
-            }
-
-            task.Disable();
-
-            return false;
-        }
-        catch (Exception)
-        {
-            // StartupTask.RequestEnableAsync can also throw when the user disabled the
-            // task from Task Manager; report the unchanged (disabled) state.
-            return false;
-        }
-    }
-
-    private static bool IsEnabled(StartupTaskState state) =>
-        state is StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy;
+            StartupTaskState.Enabled => StartupStatus.Enabled,
+            StartupTaskState.EnabledByPolicy => StartupStatus.EnabledByPolicy,
+            StartupTaskState.DisabledByUser => StartupStatus.DisabledByUser,
+            StartupTaskState.DisabledByPolicy => StartupStatus.DisabledByPolicy,
+            _ => StartupStatus.Disabled,
+        };
 }

@@ -7,7 +7,10 @@ using E2E.Calendar.Core.Models;
 using E2E.Calendar.Sync.Ics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage;
+using Windows.Storage.Pickers;
 using Windows.System;
+using WinRT.Interop;
 
 namespace E2E.Calendar.App.Views;
 
@@ -29,17 +32,12 @@ public sealed partial class SettingsView : UserControl
         SectionAccounts.Visibility = Visibility.Collapsed;
 
         // The panel array must mirror SettingsViewModel.Sections index for index, because the
-        // selected index drives which panel is shown. Accounts only exists when sync UI is on,
-        // Developer only in debug builds.
+        // selected index drives which panel is shown. Developer only exists when E2E_DEMO=1.
         var sections = new List<(string Name, FrameworkElement Panel)>
         {
             ("General", SectionGeneral),
+            ("Accounts", SectionAccounts),
         };
-
-        if (AppFeatures.SyncUiEnabled)
-        {
-            sections.Add(("Accounts", SectionAccounts));
-        }
 
         sections.Add(("Calendars", SectionCalendars));
         sections.Add(("Notifications", SectionNotifications));
@@ -47,9 +45,12 @@ public sealed partial class SettingsView : UserControl
         sections.Add(("Shortcuts", SectionShortcuts));
         sections.Add(("Premium", SectionPremium));
         sections.Add(("Privacy & data", SectionPrivacy));
-#if DEBUG
-        sections.Add(("Developer", SectionDeveloper));
-#endif
+
+        if (AppFeatures.DemoEnabled)
+        {
+            sections.Add(("Developer", SectionDeveloper));
+        }
+
         sections.Add(("About", SectionAbout));
 
         _sections = sections.ToArray();
@@ -89,6 +90,39 @@ public sealed partial class SettingsView : UserControl
             await _dialogs.ShowAsync(new ContentDialog
             {
                 Title = "Data could not be deleted",
+                Content = ex.Message,
+                CloseButtonText = "Close",
+            });
+        }
+    }
+
+    private async void OnExportEventsClick(object sender, RoutedEventArgs e)
+    {
+        if (App.Current.MainWindow is not { } window)
+        {
+            return;
+        }
+
+        var picker = new FileSavePicker { SuggestedFileName = "calendar" };
+        picker.FileTypeChoices.Add("iCalendar file", new List<string> { ".ics" });
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+
+        var file = await picker.PickSaveFileAsync();
+
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await FileIO.WriteTextAsync(file, await ViewModel.ExportEventsAsync());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Events could not be exported",
                 Content = ex.Message,
                 CloseButtonText = "Close",
             });
@@ -160,6 +194,11 @@ public sealed partial class SettingsView : UserControl
 
     private async void OnAddSubscriptionClick(object sender, RoutedEventArgs e)
     {
+        var nameBox = new TextBox
+        {
+            Header = "Calendar name",
+            PlaceholderText = "Team holidays",
+        };
         var urlBox = new TextBox
         {
             Header = "Calendar URL",
@@ -175,6 +214,7 @@ public sealed partial class SettingsView : UserControl
         };
 
         var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(nameBox);
         content.Children.Add(urlBox);
         content.Children.Add(intervalBox);
 
@@ -198,7 +238,7 @@ public sealed partial class SettingsView : UserControl
 
         try
         {
-            await ViewModel.AddSubscriptionAsync(urlBox.Text, hours);
+            await ViewModel.AddSubscriptionAsync(urlBox.Text, nameBox.Text, hours);
         }
         catch (Exception ex)
         {
@@ -281,6 +321,19 @@ public sealed partial class SettingsView : UserControl
                     CloseButtonText = "Close",
                 });
             }
+        }
+    }
+
+    private async void OnOpenStartupSettingsClick(object sender, RoutedEventArgs e)
+    {
+        if (!await Launcher.LaunchUriAsync(new Uri("ms-settings:startupapps")))
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Windows startup settings could not be opened",
+                Content = "Open Settings > Apps > Startup manually.",
+                CloseButtonText = "Close",
+            });
         }
     }
 

@@ -147,18 +147,31 @@
                     </Border>
 
                     <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Start at login" />
                                 <TextBlock
                                     Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Launch E2E Calendar minimized to the tray when you sign in, so reminders keep firing." />
+                                    Text="Launch E2E Calendar minimized to the tray when you sign in, so reminders keep firing."
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="{x:Bind ViewModel.StartAtLoginNote, Mode=OneWay}"
+                                    TextWrapping="Wrap"
+                                    Visibility="{x:Bind ViewModel.HasStartAtLoginNote, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                                <Button
+                                    HorizontalAlignment="Left"
+                                    Click="OnOpenStartupSettingsClick"
+                                    Content="Open startup settings"
+                                    Visibility="{x:Bind ViewModel.CanOpenStartupSettings, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                                    AutomationProperties.Name="Open Windows startup settings" />
                             </StackPanel>
                             <ToggleSwitch
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
-                                IsEnabled="{x:Bind ViewModel.IsStartAtLoginSupported, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.IsStartAtLoginEditable, Mode=OneWay}"
                                 IsOn="{x:Bind ViewModel.StartAtLogin, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsStartAtLoginSupported, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
                                 AutomationProperties.Name="Start at login" />
                         </Grid>
                     </Border>
@@ -225,24 +238,24 @@
                             <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Add an account" />
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Google, Microsoft and CalDAV sync will appear here." />
+                                Text="Connect Google, Microsoft or CalDAV. The free plan includes one account; premium unlocks unlimited accounts." />
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
                                 Text="{x:Bind ViewModel.AccountStatus, Mode=OneWay}"
                                 TextWrapping="Wrap" />
                             <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
                                 <Button
-                                    Content="Google"
+                                    Content="Add Google account"
                                     Command="{x:Bind ViewModel.AddGoogleAccountCommand}"
                                     IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
                                     AutomationProperties.Name="Add Google account" />
                                 <Button
-                                    Content="Microsoft"
+                                    Content="Add Microsoft account"
                                     Command="{x:Bind ViewModel.AddMicrosoftAccountCommand}"
                                     IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
                                     AutomationProperties.Name="Add Microsoft account" />
                                 <Button
-                                    Content="CalDAV"
+                                    Content="Add CalDAV account"
                                     Command="{x:Bind ViewModel.AddCalDavAccountCommand}"
                                     IsEnabled="{x:Bind ViewModel.CanAddAccount, Mode=OneWay}"
                                     AutomationProperties.Name="Add CalDAV account" />
@@ -310,7 +323,14 @@
                                                 Content="Delete"
                                                 Tag="{Binding Id}"
                                                 Click="OnDeleteCalendarClick"
+                                                Visibility="{Binding IsNotSubscription, Converter={StaticResource BoolToVisibility}}"
                                                 AutomationProperties.Name="Delete calendar" />
+                                            <Button
+                                                Content="Remove"
+                                                Tag="{Binding Id}"
+                                                Click="OnDeleteCalendarClick"
+                                                Visibility="{Binding IsSubscription, Converter={StaticResource BoolToVisibility}}"
+                                                AutomationProperties.Name="Remove calendar subscription" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -324,19 +344,106 @@
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Notifications" />
 
                     <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Reminder notifications" />
                                 <TextBlock
                                     Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Reminders appear as Windows notifications. Sound and delivery are controlled in Windows settings." />
+                                    Text="Reminders appear as Windows notifications. Sound and delivery are controlled in Windows settings."
+                                    TextWrapping="Wrap" />
                             </StackPanel>
                             <Button
                                 Grid.Column="1"
+                                HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
                                 Click="OnWindowsNotificationSettingsClick"
                                 Content="Open Windows settings"
                                 AutomationProperties.Name="Open Windows notification settings" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Default snooze" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Pre-selected snooze length on reminder notifications."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="150"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.SnoozeLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.DefaultSnoozeIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Default snooze length" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Daily digest" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="One summary each morning with today's events and reminders."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="{StaticResource SpaceSM}">
+                                <TimePicker
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Daily digest time"
+                                    IsEnabled="{x:Bind ViewModel.DailyDigestEnabled, Mode=OneWay}"
+                                    Time="{x:Bind ViewModel.DailyDigestTime, Mode=TwoWay}" />
+                                <ToggleSwitch
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Daily digest"
+                                    IsOn="{x:Bind ViewModel.DailyDigestEnabled, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardTitleStyle}"
+                                    Text="Critical reminders can break through Do Not Disturb"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Critical reminders use an urgent notification that is shown while focus assist is on."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Critical reminders can break through Do Not Disturb"
+                                IsOn="{x:Bind ViewModel.CriticalBreaksThroughDoNotDisturb, Mode=TwoWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Persistent alarms repeat every" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="How often a persistent reminder re-fires until it is marked done."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="180"
+                                VerticalAlignment="Center"
+                                ItemsSource="{x:Bind ViewModel.RepeatIntervalLabels, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.PersistentRepeatIndex, Mode=TwoWay}"
+                                AutomationProperties.Name="Persistent alarm repeat interval" />
                         </Grid>
                     </Border>
                 </StackPanel>
@@ -402,6 +509,10 @@
                                 <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="R" />
                             </Grid>
                             <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Go to today" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="T" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Quick add" />
                                 <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Win + Alt + C" />
                             </Grid>
@@ -441,13 +552,21 @@
                                     Style="{StaticResource SettingsCardDescriptionStyle}"
                                     Text="{x:Bind ViewModel.PremiumStatus, Mode=OneWay}"
                                     TextWrapping="Wrap" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="{x:Bind ViewModel.PremiumNote, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
                             </StackPanel>
-                            <Button
-                                Grid.Column="1"
-                                VerticalAlignment="Center"
-                                AutomationProperties.Name="View premium plans"
-                                Command="{x:Bind ViewModel.ShowPaywallCommand}"
-                                Content="View plans" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource SpaceXS}">
+                                <Button
+                                    AutomationProperties.Name="Upgrade"
+                                    Command="{x:Bind ViewModel.ShowPaywallCommand}"
+                                    Content="Upgrade" />
+                                <Button
+                                    AutomationProperties.Name="Restore purchases"
+                                    Command="{x:Bind ViewModel.RestorePurchasesCommand}"
+                                    Content="Restore purchases" />
+                            </StackPanel>
                         </Grid>
                     </Border>
                 </StackPanel>
@@ -464,6 +583,23 @@
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
                                 Text="No account required. Tokens are kept in Windows Credential Manager." />
                         </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Export all events" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Save every event from all calendars as a single iCalendar (.ics) file." />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Export all events"
+                                Content="Export .ics"
+                                Click="OnExportEventsClick" />
+                        </Grid>
                     </Border>
 
                     <Border Style="{StaticResource SettingsCardStyle}">

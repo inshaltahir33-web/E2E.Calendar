@@ -61,6 +61,53 @@ public sealed class SettingsServiceTests
     }
 
     [Fact]
+    public async Task Notification_defaults_apply_when_nothing_is_stored()
+    {
+        var settings = await new SettingsService(new FakeSettingsRepository()).LoadAsync();
+
+        settings.DefaultSnoozeMinutes.Should().Be(10);
+        settings.DailyDigestEnabled.Should().BeFalse();
+        settings.DailyDigestTime.Should().Be(new TimeSpan(8, 0, 0));
+        settings.CriticalBreaksThroughDoNotDisturb.Should().BeTrue();
+        settings.PersistentRepeatMinutes.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Notification_settings_are_loaded_back()
+    {
+        var repository = new FakeSettingsRepository();
+        var service = new SettingsService(repository);
+
+        await service.UpdateAsync(new AppSettings
+        {
+            DefaultSnoozeMinutes = 30,
+            DailyDigestEnabled = true,
+            DailyDigestTime = new TimeSpan(7, 45, 0),
+            CriticalBreaksThroughDoNotDisturb = false,
+            PersistentRepeatMinutes = 15,
+        });
+
+        var reloaded = await new SettingsService(repository).LoadAsync();
+
+        reloaded.DefaultSnoozeMinutes.Should().Be(30);
+        reloaded.DailyDigestEnabled.Should().BeTrue();
+        reloaded.DailyDigestTime.Should().Be(new TimeSpan(7, 45, 0));
+        reloaded.CriticalBreaksThroughDoNotDisturb.Should().BeFalse();
+        reloaded.PersistentRepeatMinutes.Should().Be(15);
+    }
+
+    [Fact]
+    public async Task An_invalid_digest_time_falls_back_to_the_default()
+    {
+        var repository = new FakeSettingsRepository();
+        repository.Values["notifications.daily_digest_time"] = "25:99";
+
+        var settings = await new SettingsService(repository).LoadAsync();
+
+        settings.DailyDigestTime.Should().Be(new TimeSpan(8, 0, 0));
+    }
+
+    [Fact]
     public async Task An_out_of_range_hour_height_is_clamped()
     {
         var repository = new FakeSettingsRepository();
