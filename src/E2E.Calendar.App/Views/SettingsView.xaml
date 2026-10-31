@@ -147,6 +147,23 @@
                     </Border>
 
                     <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Start at login" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="Launch E2E Calendar minimized to the tray when you sign in, so reminders keep firing." />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                IsEnabled="{x:Bind ViewModel.IsStartAtLoginSupported, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.StartAtLogin, Mode=TwoWay}"
+                                AutomationProperties.Name="Start at login" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <StackPanel Spacing="{StaticResource SpaceSM}">
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel>
@@ -238,11 +255,16 @@
                 <StackPanel x:Name="SectionCalendars" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Calendars" />
 
-                    <Button
-                        HorizontalAlignment="Left"
-                        Content="Create calendar"
-                        Click="OnCreateCalendarClick"
-                        AutomationProperties.Name="Create calendar" />
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                        <Button
+                            Content="Create calendar"
+                            Click="OnCreateCalendarClick"
+                            AutomationProperties.Name="Create calendar" />
+                        <Button
+                            Content="Add subscription"
+                            Click="OnAddSubscriptionClick"
+                            AutomationProperties.Name="Add calendar subscription" />
+                    </StackPanel>
 
                     <Border x:Name="BirthdayImportCard" Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnDefinitions="*,Auto">
@@ -271,11 +293,13 @@
                                             VerticalAlignment="Center"
                                             Background="{Binding Color, Converter={StaticResource ColorToBrush}}"
                                             CornerRadius="{StaticResource RadiusSwatch}" />
-                                        <TextBlock
-                                            Grid.Column="1"
-                                            VerticalAlignment="Center"
-                                            Style="{StaticResource SettingsCardTitleStyle}"
-                                            Text="{Binding Name}" />
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource SpaceXS}">
+                                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{Binding Name}" />
+                                            <TextBlock
+                                                Style="{StaticResource SettingsCardDescriptionStyle}"
+                                                Text="{Binding Detail}"
+                                                Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
+                                        </StackPanel>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource SpaceXS}">
                                             <Button
                                                 Content="Color"
@@ -402,6 +426,29 @@
                                 <TextBlock Grid.Column="1" Style="{StaticResource SettingsCardDescriptionStyle}" Text="Ctrl + Z" />
                             </Grid>
                         </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!--  Premium  -->
+                <StackPanel x:Name="SectionPremium" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="Premium" />
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
+                            <StackPanel Spacing="{StaticResource SpaceXS}">
+                                <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Your plan" />
+                                <TextBlock
+                                    Style="{StaticResource SettingsCardDescriptionStyle}"
+                                    Text="{x:Bind ViewModel.PremiumStatus, Mode=OneWay}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="View premium plans"
+                                Command="{x:Bind ViewModel.ShowPaywallCommand}"
+                                Content="View plans" />
+                        </Grid>
                     </Border>
                 </StackPanel>
 

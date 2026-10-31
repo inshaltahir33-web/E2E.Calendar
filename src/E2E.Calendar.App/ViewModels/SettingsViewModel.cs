@@ -8,6 +8,8 @@ using E2E.Calendar.Core.Services;
 using E2E.Calendar.App;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.Data;
+using E2E.Calendar.Platform;
+using E2E.Calendar.Sync.Ics;
 using Microsoft.Data.Sqlite;
 
 namespace E2E.Calendar.App.ViewModels;
@@ -20,27 +22,36 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsService _settings;
     private readonly CalendarService _calendars;
+    private readonly IcsSubscriptionService _subscriptions;
     private readonly IEntitlementService _entitlements;
+    private readonly IPaywallService _paywall;
     private readonly SyncCoordinator _sync;
     private readonly Db _db;
     private readonly ISecretStore _secrets;
+    private readonly StartupTaskService _startupTasks;
 
     private bool _loading;
 
     public SettingsViewModel(
         SettingsService settings,
         CalendarService calendars,
+        IcsSubscriptionService subscriptions,
         IEntitlementService entitlements,
+        IPaywallService paywall,
         SyncCoordinator sync,
         Db db,
-        ISecretStore secrets)
+        ISecretStore secrets,
+        StartupTaskService startupTasks)
     {
         _settings = settings;
         _calendars = calendars;
+        _subscriptions = subscriptions;
         _entitlements = entitlements;
+        _paywall = paywall;
         _sync = sync;
         _db = db;
         _secrets = secrets;
+        _startupTasks = startupTasks;
 
         var sections = new List<SettingsSection>
         {
@@ -56,6 +67,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         sections.Add(new SettingsSection("Notifications", "\uEA8F"));
         sections.Add(new SettingsSection("Appearance", "\uE790"));
         sections.Add(new SettingsSection("Shortcuts", "\uE765"));
+        sections.Add(new SettingsSection("Premium", "\uE735"));
         sections.Add(new SettingsSection("Privacy & data", "\uE72E"));
 #if DEBUG
         sections.Add(new SettingsSection("Developer", "\uEC7A"));
@@ -128,12 +140,21 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _showBirthdays;
 
     [ObservableProperty]
+    private bool _startAtLogin;
+
+    [ObservableProperty]
+    private bool _isStartAtLoginSupported;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddGoogleAccountCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddMicrosoftAccountCommand))]
     private bool _isAccountOperationInProgress;
 
     [ObservableProperty]
     private string? _accountStatus;
+
+    [ObservableProperty]
+    private string _premiumStatus = "Checking your plan…";
 
     public double MinHourHeight => AppSettings.MinHourHeight;
 
@@ -175,12 +196,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         SecondaryTimeZoneIndex = TimeZoneCatalog.IndexOf(settings.SecondaryTimeZoneId);
         ShowBirthdays = settings.ShowBirthdays;
 
+        // The OS owns the startup task state, so read it back instead of persisting a copy.
+        IsStartAtLoginSupported = await _startupTasks.IsSupportedAsync();
+        StartAtLogin = IsStartAtLoginSupported && await _startupTasks.IsEnabledAsync();
+
+        await RefreshPremiumAsync();
+
         var calendars = await _calendars.GetAllAsync();
+        var subscriptions = (await _subscriptions.GetAllAsync())
+            .ToDictionary(subscription => subscription.CalendarId);
 
         Calendars.Clear();
 
         foreach (var calendar in calendars)
         {
+            subscriptions.TryGetValue(calendar.Id, out var subscription);
+
             Calendars.Add(new SettingsCalendarItem
             {
                 Id = calendar.Id,
@@ -188,6 +219,9 @@ public sealed partial class SettingsViewModel : ObservableObject
                 Color = calendar.Color,
                 IsVisible = calendar.Visible,
                 IsReadOnly = calendar.ReadOnly,
+                Detail = subscription is not null
+                    ? DescribeSubscription(subscription)
+                    : calendar.ReadOnly ? "Read-only" : null,
             });
         }
 
@@ -331,6 +365,32 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnSecondaryTimeZoneIndexChanged(int value) => Persist();
 
+    partial void OnStartAtLoginChanged(bool value)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        _ = ApplyStartAtLoginAsync(value);
+    }
+
+    private async Task ApplyStartAtLoginAsync(bool enabled)
+    {
+        var applied = await _startupTasks.SetEnabledAsync(enabled);
+
+        if (applied == enabled)
+        {
+            return;
+        }
+
+        // The OS refused the change (for example the task was disabled in Task Manager),
+        // so snap the toggle back to the real state.
+        _loading = true;
+        StartAtLogin = applied;
+        _loading = false;
+    }
+
     public async Task ImportBirthdaysAsync(CancellationToken cancellationToken = default)
     {
         await _sync.ImportBirthdaysAsync(cancellationToken);
@@ -343,6 +403,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         await LoadAsync();
     }
 
+    public async Task AddSubscriptionAsync(string url, int refreshHours, CancellationToken cancellationToken = default)
+    {
+        await _subscriptions.AddAsync(url, refreshHours, cancellationToken);
+        await LoadAsync();
+    }
+
     public async Task DeleteCalendarAsync(string id, CancellationToken cancellationToken = default)
     {
         if (id is CalendarService.PersonalCalendarId or CalendarService.WorkCalendarId)
@@ -350,8 +416,25 @@ public sealed partial class SettingsViewModel : ObservableObject
             throw new InvalidOperationException("The default calendars cannot be deleted.");
         }
 
+        // Subscription calendars also own a feed row and their imported events.
+        if (await _subscriptions.GetAsync(id, cancellationToken) is not null)
+        {
+            await _subscriptions.RemoveAsync(id, cancellationToken);
+            await LoadAsync();
+            return;
+        }
+
         await _calendars.DeleteAsync(id, cancellationToken);
         await LoadAsync();
+    }
+
+    private static string DescribeSubscription(CalendarSubscription subscription)
+    {
+        var lastRefresh = subscription.LastRefreshUtc is { } refreshed
+            ? $"last refreshed {refreshed.ToLocalTime():g}"
+            : "waiting for the first refresh";
+
+        return $"Read-only · {lastRefresh} · refreshes every {subscription.RefreshHours} h";
     }
 
     public async Task SetCalendarColorAsync(string id, string color, CancellationToken cancellationToken = default)
@@ -423,6 +506,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         await LoadAsync();
     }
 
+    public async Task RefreshPremiumAsync()
+    {
+        var snapshot = await _entitlements.RefreshAsync();
+        PremiumStatus = EntitlementText.Describe(snapshot, _entitlements.IsStoreAvailable);
+    }
+
+    [RelayCommand]
+    private async Task ShowPaywallAsync()
+    {
+        await _paywall.ShowAsync();
+        await RefreshPremiumAsync();
+    }
+
 }
 
 public sealed record SettingsSection(string Title, string Glyph);
@@ -439,6 +535,10 @@ public sealed partial class SettingsCalendarItem : ObservableObject
     public string? Color { get; init; }
 
     public bool IsReadOnly { get; init; }
+
+    public string? Detail { get; init; }
+
+    public bool HasDetail => !string.IsNullOrWhiteSpace(Detail);
 }
 
 public sealed record SettingsAccountItem

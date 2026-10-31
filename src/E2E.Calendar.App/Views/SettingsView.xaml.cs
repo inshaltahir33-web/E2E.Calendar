@@ -4,6 +4,7 @@ using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Sync.Ics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
@@ -44,6 +45,7 @@ public sealed partial class SettingsView : UserControl
         sections.Add(("Notifications", SectionNotifications));
         sections.Add(("Appearance", SectionAppearance));
         sections.Add(("Shortcuts", SectionShortcuts));
+        sections.Add(("Premium", SectionPremium));
         sections.Add(("Privacy & data", SectionPrivacy));
 #if DEBUG
         sections.Add(("Developer", SectionDeveloper));
@@ -154,6 +156,59 @@ public sealed partial class SettingsView : UserControl
         }
 
         await ViewModel.CreateCalendarAsync(nameBox.Text, CalendarPalette.Personal);
+    }
+
+    private async void OnAddSubscriptionClick(object sender, RoutedEventArgs e)
+    {
+        var urlBox = new TextBox
+        {
+            Header = "Calendar URL",
+            PlaceholderText = "https://example.com/calendar.ics",
+        };
+        var intervalBox = new NumberBox
+        {
+            Header = "Refresh every (hours)",
+            Minimum = IcsSubscriptionService.MinRefreshHours,
+            Maximum = IcsSubscriptionService.MaxRefreshHours,
+            Value = 6,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact,
+        };
+
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(urlBox);
+        content.Children.Add(intervalBox);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Subscribe to a calendar",
+            Content = content,
+            PrimaryButtonText = "Subscribe",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await _dialogs.ShowAsync(dialog) != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var hours = double.IsNaN(intervalBox.Value)
+            ? IcsSubscriptionService.MinRefreshHours
+            : (int)Math.Round(intervalBox.Value);
+
+        try
+        {
+            await ViewModel.AddSubscriptionAsync(urlBox.Text, hours);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Subscription could not be added",
+                Content = ex.Message,
+                CloseButtonText = "Close",
+            });
+        }
     }
 
     private async void OnDeleteCalendarClick(object sender, RoutedEventArgs e)
