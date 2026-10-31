@@ -1,6 +1,8 @@
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
+using E2E.Calendar.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -13,17 +15,25 @@ namespace E2E.Calendar.App.Services;
 /// </summary>
 public sealed class ReminderQuickAdd
 {
-    private readonly IReminderRepository _reminders;
     private readonly IClock _clock;
     private readonly IDialogService _dialogs;
+    private readonly ReminderEngine _engine;
+    private readonly ReminderNotificationService _scheduler;
 
-    public ReminderQuickAdd(IReminderRepository reminders, IClock clock, IDialogService dialogs)
+    public ReminderQuickAdd(
+        IClock clock,
+        IDialogService dialogs,
+        ReminderEngine engine,
+        ReminderNotificationService scheduler)
     {
         ArgumentNullException.ThrowIfNull(dialogs);
+        ArgumentNullException.ThrowIfNull(engine);
+        ArgumentNullException.ThrowIfNull(scheduler);
 
-        _reminders = reminders;
         _clock = clock;
         _dialogs = dialogs;
+        _engine = engine;
+        _scheduler = scheduler;
     }
 
     public async Task<Reminder?> ShowAndCreateAsync(XamlRoot xamlRoot, DateTimeOffset dueUtc)
@@ -71,7 +81,8 @@ public sealed class ReminderQuickAdd
             UpdatedUtc = now,
         };
 
-        await _reminders.UpsertAsync(reminder);
+        await _engine.CreateStandaloneAsync(reminder);
+        _scheduler.Wake();
 
         return reminder;
     }

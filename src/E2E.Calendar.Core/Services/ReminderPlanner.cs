@@ -32,6 +32,11 @@ public sealed class ReminderPlanner
     {
         var from = nowUtc.AddDays(-1);
         var to = nowUtc.Add(horizon);
+
+        // Instances that came due shortly before this pass are still planned so the
+        // in-app timer can fire them; the notification loop retires anything older
+        // than its own fresh window as missed.
+        var catchUpFrom = nowUtc - TimeSpan.FromMinutes(5);
         var planned = 0;
 
         foreach (var alert in await _alerts.GetAllAlertsAsync(cancellationToken))
@@ -50,9 +55,9 @@ public sealed class ReminderPlanner
                     continue;
                 }
 
-                // Alerts whose trigger time is already past are never (re-)planned, so a
-                // fresh app start cannot toast reminders that came due while it was closed.
-                if (fireAt <= nowUtc)
+                // Anything that came due before the catch-up window is never (re-)planned,
+                // so a fresh app start cannot toast reminders that came due long ago.
+                if (fireAt < catchUpFrom)
                 {
                     continue;
                 }
