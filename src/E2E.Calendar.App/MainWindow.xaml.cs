@@ -215,7 +215,7 @@ public sealed partial class MainWindow : Window
             }
 
             this.SizeChanged += OnWindowSizeChanged;
-            this.AppWindow.Closing += OnWindowClosingSaveBounds;
+            this.AppWindow.Closing += OnWindowClosing;
             RootGrid.Loaded += OnLoaded;
         }
         catch (Exception ex)
@@ -407,7 +407,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnWindowClosingSaveBounds(AppWindow sender, AppWindowClosingEventArgs args)
+    private void OnWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         try
         {
@@ -425,6 +425,16 @@ public sealed partial class MainWindow : Window
         catch
         {
         }
+
+        // Closing means "hide to tray", not "exit": the hosted reminder scheduler
+        // must keep running. Quit is the only path that sets App.IsExiting.
+        if (App.Current.IsExiting)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        DispatcherQueue.TryEnqueue(() => AppWindow.Hide());
     }
 
     private void ApplySidebarCollapsed(bool collapsed)
@@ -504,6 +514,9 @@ public sealed partial class MainWindow : Window
 
     private void OnNewEventClick(object sender, RoutedEventArgs e) => OpenNewEvent();
 
+    /// <summary>Entry point used by the tray menu after the window has been shown.</summary>
+    public void BeginNewEvent() => OpenNewEvent();
+
     /// <summary>
     /// Every "new event" entry point funnels here (sidebar New ▸ Event, N accelerator,
     /// command palette). The New flyout is hidden first so it can never float above the
@@ -531,6 +544,14 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
+
+    private void OnNewCountdownClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem { Tag: string tag } && int.TryParse(tag, out var minutes))
+        {
+            _ = App.Current.StartCountdownAsync(minutes);
+        }
+    }
 
     private void OnQuickAddClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
 

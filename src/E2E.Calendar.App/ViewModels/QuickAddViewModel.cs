@@ -7,6 +7,7 @@ using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
 using E2E.Calendar.Core.QuickAdd;
 using E2E.Calendar.Core.Services;
+using E2E.Calendar.Platform;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -21,7 +22,8 @@ public sealed partial class QuickAddViewModel : ObservableObject
 
     private readonly IClock _clock;
     private readonly EventService _events;
-    private readonly IReminderRepository _reminders;
+    private readonly ReminderEngine _engine;
+    private readonly ReminderNotificationService _scheduler;
     private readonly ICalendarRepository _calendarRepository;
 
     private ParsedItem? _parsed;
@@ -71,12 +73,14 @@ public sealed partial class QuickAddViewModel : ObservableObject
     public QuickAddViewModel(
         IClock clock,
         EventService events,
-        IReminderRepository reminders,
+        ReminderEngine engine,
+        ReminderNotificationService scheduler,
         ICalendarRepository calendarRepository)
     {
         _clock = clock;
         _events = events;
-        _reminders = reminders;
+        _engine = engine;
+        _scheduler = scheduler;
         _calendarRepository = calendarRepository;
 
         CalendarChoices = new ObservableCollection<CalendarOption>(FallbackCalendars);
@@ -188,17 +192,25 @@ public sealed partial class QuickAddViewModel : ObservableObject
         {
             var now = _clock.UtcNow;
 
-            await _reminders.UpsertAsync(new Reminder
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                Title = parsed.Title,
-                DueUtc = parsed.StartUtc,
-                TimeZoneId = _clock.LocalTimeZone.ToIanaId(),
-                Priority = parsed.Priority,
-                RRule = parsed.RRule,
-                CreatedUtc = now,
-                UpdatedUtc = now,
-            });
+            // Persist the reminder together with its alert so the planner can fire it;
+            // "in 25 minutes" therefore becomes a real one-shot countdown reminder.
+            await _engine.CreateStandaloneAsync(
+                new Reminder
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    Title = parsed.Title,
+                    DueUtc = parsed.StartUtc,
+                    TimeZoneId = _clock.LocalTimeZone.ToIanaId(),
+                    Priority = parsed.Priority,
+                    RRule = parsed.RRule,
+                    CreatedUtc = now,
+                    UpdatedUtc = now,
+                },
+                alertOffsetMinutes: parsed.AlertOffsetsMinutes.Count > 0
+                    ? parsed.AlertOffsetsMinutes[0]
+                    : 0);
+
+            _scheduler.Wake();
         }
         else
         {

@@ -20,6 +20,7 @@ public sealed class ReminderNotificationService : BackgroundService
     private readonly ITaskRepository _tasks;
     private readonly IClock _clock;
     private readonly ReminderPlanner _planner;
+    private readonly ReminderEngine _engine;
     private readonly ILogger<ReminderNotificationService> _logger;
     private readonly SemaphoreSlim _wake = new(0, 1);
 
@@ -30,6 +31,7 @@ public sealed class ReminderNotificationService : BackgroundService
         ITaskRepository tasks,
         IClock clock,
         ReminderPlanner planner,
+        ReminderEngine engine,
         ILogger<ReminderNotificationService> logger)
     {
         _alerts = alerts;
@@ -38,6 +40,7 @@ public sealed class ReminderNotificationService : BackgroundService
         _tasks = tasks;
         _clock = clock;
         _planner = planner;
+        _engine = engine;
         _logger = logger;
     }
 
@@ -149,9 +152,19 @@ public sealed class ReminderNotificationService : BackgroundService
             // On startup, alerts that came due long before the app ran are retired as
             // missed instead of being toasted (past alerts must not toast at startup).
             // A short grace window still fires alerts that came due just before launch.
+            // Persistent chains survive this by queueing their next repeat from now.
             if (catchUp && instance.FireAtUtc < _clock.UtcNow - FreshWindow)
             {
                 await _alerts.MarkMissedAsync(instance.Id, _clock.UtcNow, cancellationToken);
+                await _engine.TryScheduleRepeatAsync(instance, _clock.UtcNow, cancellationToken);
+                continue;
+            }
+
+            // A repeat that was queued while the user was away must not nag a reminder
+            // that has since been completed or deleted.
+            if (!await _engine.ShouldFireAsync(instance, cancellationToken))
+            {
+                await _alerts.MarkDoneAsync(instance.Id, _clock.UtcNow, cancellationToken);
                 continue;
             }
 
@@ -160,6 +173,7 @@ public sealed class ReminderNotificationService : BackgroundService
                 continue;
             }
 
+            await _engine.TryScheduleRepeatAsync(instance, _clock.UtcNow, cancellationToken);
             await ShowToastAsync(instance, catchUp ? "Missed reminder" : "Reminder");
         }
     }
@@ -169,16 +183,53 @@ public sealed class ReminderNotificationService : BackgroundService
         try
         {
             var notifier = ToastNotificationManager.CreateToastNotifier();
-            notifier.Show(new ToastNotification(
+            var toast = new ToastNotification(
                 await CreateToastXmlAsync(instance, heading, CancellationToken.None))
             {
                 Tag = instance.Id,
                 Group = ToastCleanup.Group,
-            });
+            };
+
+            toast.Dismissed += OnToastDismissed;
+            notifier.Show(toast);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Could not display reminder notification for {InstanceId}.", instance.Id);
+        }
+    }
+
+    private void OnToastDismissed(ToastNotification sender, ToastDismissedEventArgs args)
+    {
+        // Dismissing the toast itself must end a persistent chain; a timeout must not.
+        if (args.Reason != ToastDismissalReason.UserCanceled || string.IsNullOrEmpty(sender.Tag))
+        {
+            return;
+        }
+
+        _ = StopRepeatChainAsync(sender.Tag);
+    }
+
+    private async Task StopRepeatChainAsync(string instanceId)
+    {
+        try
+        {
+            var instance = await _alerts.GetInstanceByIdAsync(instanceId);
+
+            // Programmatic history cleanup can surface as a dismissal too; only a toast
+            // that is still the live fired instance may end its repeat chain.
+            if (instance is not null && instance.State == AlertState.Fired)
+            {
+                await _engine.StopRepeatChainAsync(instance);
+                ToastCleanup.RemoveByTag(ReminderEngine.RepeatInstanceId(
+                    instance.AlertId,
+                    instance.OccurrenceUtc,
+                    instance.RepeatCount + 1));
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not stop the repeat chain for {InstanceId}.", instanceId);
         }
     }
 

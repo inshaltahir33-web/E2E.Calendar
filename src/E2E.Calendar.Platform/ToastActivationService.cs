@@ -1,6 +1,7 @@
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Windows.AppNotifications;
 
@@ -21,17 +22,20 @@ public sealed class ToastActivationService
     private readonly IAlertRepository _alerts;
     private readonly IClock _clock;
     private readonly ReminderNotificationService _scheduler;
+    private readonly ReminderEngine _engine;
     private readonly ILogger<ToastActivationService> _logger;
 
     public ToastActivationService(
         IAlertRepository alerts,
         IClock clock,
         ReminderNotificationService scheduler,
+        ReminderEngine engine,
         ILogger<ToastActivationService> logger)
     {
         _alerts = alerts;
         _clock = clock;
         _scheduler = scheduler;
+        _engine = engine;
         _logger = logger;
     }
 
@@ -107,6 +111,10 @@ public sealed class ToastActivationService
 
         // Retire the original instance and materialise the snoozed one. The copy keeps
         // SnoozedUntilUtc set so the planner never mistakes it for a plannable instance.
+        // Any repeat queued for the original chain is dropped first so snoozing cannot
+        // leave two nagging chains running.
+        await _engine.StopRepeatChainAsync(instance);
+        ToastCleanup.RemoveByTag(QueuedRepeatTag(instance));
         await _alerts.MarkSnoozedAsync(instance.Id, fireAt);
         await _alerts.UpsertInstanceAsync(instance with
         {
@@ -121,13 +129,28 @@ public sealed class ToastActivationService
         _scheduler.Wake();
     }
 
-    /// <summary>Marks the alert done and removes its toast.</summary>
+    /// <summary>Marks the alert done and removes its toast and any queued repeats.</summary>
     public async Task MarkDoneAsync(string instanceId)
     {
+        var instance = await _alerts.GetInstanceByIdAsync(instanceId);
+
         await _alerts.MarkDoneAsync(instanceId, _clock.UtcNow);
+
+        if (instance is not null)
+        {
+            await _engine.StopRepeatChainAsync(instance);
+            ToastCleanup.RemoveByTag(QueuedRepeatTag(instance));
+        }
+
         ToastCleanup.RemoveByTag(instanceId);
         _scheduler.Wake();
     }
+
+    private static string QueuedRepeatTag(AlertInstance instance) =>
+        ReminderEngine.RepeatInstanceId(
+            instance.AlertId,
+            instance.OccurrenceUtc,
+            instance.RepeatCount + 1);
 
     public static string SnoozeInstanceId(string instanceId, DateTimeOffset fireAtUtc) =>
         $"{instanceId}:snooze:{fireAtUtc.UtcTicks}";

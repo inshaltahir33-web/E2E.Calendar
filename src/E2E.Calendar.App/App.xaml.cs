@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using E2E.Calendar.App.Services;
 using E2E.Calendar.App.ViewModels;
+using E2E.Calendar.Core;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Recurrence;
 using E2E.Calendar.Core.Services;
@@ -32,6 +33,7 @@ public partial class App : Application
     private Views.QuickAddView? _quickAddWindow;
     private Services.HotkeyService? _hotkey;
     private CrashReportingService? _crashReporter;
+    private TrayService? _tray;
 
     public App()
     {
@@ -44,6 +46,8 @@ public partial class App : Application
     public static new App Current => (App)Application.Current;
 
     public MainWindow? MainWindow => _mainWindow;
+
+    internal bool IsExiting { get; private set; }
 
     private void RespectReducedMotion()
     {
@@ -91,12 +95,32 @@ public partial class App : Application
                 appearance.Attach(root);
             }
 
-            _mainWindow.Activate();
+            // The tray owns the app's lifetime: closing the window only hides it, so the
+            // reminder scheduler (a hosted service) keeps running. A login launch goes
+            // straight to the tray; if the icon cannot be created we still show the
+            // window so the app is never unreachable.
+            _tray = _host.Services.GetRequiredService<TrayService>();
+            var trayStarted = _tray.Start();
+            var startInTray = trayStarted && IsStartupLaunch();
+
+            if (startInTray)
+            {
+                _mainWindow.AppWindow.Hide();
+            }
+            else
+            {
+                _mainWindow.Activate();
+            }
 
             _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
             _hotkey.Pressed += OnQuickAddHotkey;
 
             var windowHandle = WindowNative.GetWindowHandle(_mainWindow);
+
+            // Store purchase UI is parented to the main window; the call is fire-and-forget
+            // so licensing (and its network read) never delays showing the window.
+            _ = _host.Services.GetRequiredService<StoreEntitlementService>().InitializeAsync(windowHandle);
+
             if (!_hotkey.TryRegister(windowHandle))
             {
                 Log.Warning("Global hotkey Win+Alt+C could not be registered.");
@@ -155,7 +179,105 @@ public partial class App : Application
     {
         // Toast activation arrives on a background (COM) thread; the window must be
         // touched from the UI thread.
-        _mainWindow?.DispatcherQueue.TryEnqueue(() => _window?.Activate());
+        _mainWindow?.DispatcherQueue.TryEnqueue(ShowMainWindow);
+    }
+
+    public void ShowMainWindow()
+    {
+        if (_mainWindow is null)
+        {
+            return;
+        }
+
+        _mainWindow.AppWindow.Show();
+        _mainWindow.Activate();
+    }
+
+    public void ShowNewEvent()
+    {
+        ShowMainWindow();
+
+        if (_mainWindow is { } mainWindow)
+        {
+            mainWindow.DispatcherQueue.TryEnqueue(mainWindow.BeginNewEvent);
+        }
+    }
+
+    /// <summary>
+    /// "Remind me in N minutes" from the New menu: creates a one-shot standalone
+    /// reminder at now+N and wakes the scheduler so it is planned immediately.
+    /// </summary>
+    public async Task StartCountdownAsync(int minutes)
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        var clock = _host.Services.GetRequiredService<IClock>();
+        var engine = _host.Services.GetRequiredService<ReminderEngine>();
+
+        await engine.CreateCountdownAsync(minutes, clock.UtcNow, clock.LocalTimeZone.ToIanaId());
+        _host.Services.GetRequiredService<ReminderNotificationService>().Wake();
+    }
+
+    public async Task QuitAsync()
+    {
+        if (IsExiting)
+        {
+            return;
+        }
+
+        IsExiting = true;
+
+        _tray?.Dispose();
+        _tray = null;
+
+        _quickAddWindow?.Close();
+        _quickAddWindow = null;
+
+        if (_host is not null)
+        {
+            try
+            {
+                await _host.StopAsync(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "The host did not stop cleanly.");
+            }
+
+            _host.Dispose();
+            _host = null;
+        }
+
+        _mainWindow?.Close();
+        _mainWindow = null;
+        _window = null;
+
+        Exit();
+    }
+
+    private static bool IsStartupLaunch()
+    {
+        try
+        {
+            // Packaged apps get a dedicated activation kind from the startup task.
+            if (Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent()
+                    .GetActivatedEventArgs().Kind ==
+                Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask)
+            {
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+            // No package identity (unpackaged dev build) or lifecycle unavailable.
+        }
+
+        // Win32 startup tasks also pass -startup on the command line.
+        return Environment.GetCommandLineArgs()
+            .Any(argument => string.Equals(argument, "-startup", StringComparison.OrdinalIgnoreCase));
     }
 
     public void ShowQuickAdd()
@@ -212,6 +334,10 @@ public partial class App : Application
                 // so it is intentionally not registered. Re-register when the widget host is wired up.
                 services.AddSingleton<WeatherService>();
                 services.AddSingleton<CrashReportingService>();
+                services.AddSingleton<StartupTaskService>();
+                services.AddSingleton<TrayIconService>();
+                services.AddSingleton<TrayService>();
+                services.AddTransient<Views.TrayFlyoutWindow>();
                 services.AddHostedService<UpdateCheckService>();
 
                 // Registered as a singleton first so ToastActivationService can wake the
@@ -228,6 +354,7 @@ public partial class App : Application
                 services.AddSingleton<IEventRepository, EventRepository>();
                 services.AddSingleton<IAccountRepository, AccountRepository>();
                 services.AddSingleton<ICalendarRepository, CalendarRepository>();
+                services.AddSingleton<ICalendarSubscriptionRepository, CalendarSubscriptionRepository>();
                 services.AddSingleton<IReminderRepository, ReminderRepository>();
                 services.AddSingleton<ITaskRepository, TaskRepository>();
                 services.AddSingleton<IAlertRepository, AlertRepository>();
@@ -269,7 +396,16 @@ public partial class App : Application
                 services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<TodoService>();
                 services.AddSingleton<ReminderPlanner>();
-                services.AddSingleton<IEntitlementService, FreeEntitlementService>();
+                services.AddSingleton<ReminderEngine>();
+                // Store licensing reads the WinRT license; FreeEntitlementService stays the
+                // fallback for sideloaded/unpackaged builds and offline launches.
+                services.AddSingleton<FreeEntitlementService>();
+                services.AddSingleton<StoreEntitlementService>();
+                services.AddSingleton<IEntitlementService>(serviceProvider =>
+                    serviceProvider.GetRequiredService<StoreEntitlementService>());
+                services.AddSingleton<IPaywallService, PaywallService>();
+                services.AddTransient<PaywallViewModel>();
+                services.AddTransient<Views.PaywallDialog>();
                 // Google two-way sync stays opt-in until our Google OAuth app is approved.
                 // Enable with: dotnet build -p:GoogleSyncEnabled=true
 #if GoogleSyncEnabled
@@ -287,6 +423,7 @@ public partial class App : Application
                     serviceProvider.GetRequiredService<CalDavProvider>());
                 services.AddSingleton<SyncCoordinator>();
                 services.AddSingleton<IcsService>();
+                services.AddSingleton<IcsSubscriptionService>();
                 services.AddSingleton<CalendarStateViewModel>();
                 services.AddSingleton<NavigationService>();
                 services.AddSingleton<MainWindowViewModel>();
@@ -301,6 +438,9 @@ public partial class App : Application
                 services.AddHostedService<AppStartupService>();
                 services.AddHostedService<NavigationRegistrationService>();
                 services.AddHostedService<ReminderNotificationService>();
+                // Starts after AppStartupService so the database is migrated before the
+                // first subscription refresh pass runs.
+                services.AddHostedService<IcsSubscriptionRefreshService>();
 
 #if DEBUG
                 if (string.Equals(

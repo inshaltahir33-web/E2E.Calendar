@@ -385,6 +385,28 @@
                                             KeyboardAcceleratorTextOverride="R"
                                             Style="{StaticResource AppMenuFlyoutItemStyle}"
                                             Text="Reminder" />
+                                        <MenuFlyoutSubItem
+                                            AutomationProperties.Name="Remind me in"
+                                            Text="Remind me in">
+                                            <MenuFlyoutItem
+                                                AutomationProperties.Name="Remind me in 10 minutes"
+                                                Click="OnNewCountdownClick"
+                                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                                Tag="10"
+                                                Text="10 minutes" />
+                                            <MenuFlyoutItem
+                                                AutomationProperties.Name="Remind me in 30 minutes"
+                                                Click="OnNewCountdownClick"
+                                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                                Tag="30"
+                                                Text="30 minutes" />
+                                            <MenuFlyoutItem
+                                                AutomationProperties.Name="Remind me in 60 minutes"
+                                                Click="OnNewCountdownClick"
+                                                Style="{StaticResource AppMenuFlyoutItemStyle}"
+                                                Tag="60"
+                                                Text="60 minutes" />
+                                        </MenuFlyoutSubItem>
                                         <MenuFlyoutItem
                                             AutomationProperties.Name="New task"
                                             Click="OnNewTaskClick"
