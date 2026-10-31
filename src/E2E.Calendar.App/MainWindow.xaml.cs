@@ -173,6 +173,10 @@ public sealed partial class MainWindow : Window
 
             this.InitializeComponent();
 
+            ShowRemindersAndTasksToggle.IsChecked = _settings.Current.ShowRemindersAndTasks;
+            _settings.Changed += (_, updated) =>
+                ShowRemindersAndTasksToggle.IsChecked = updated.ShowRemindersAndTasks;
+
             SyncMenuItem.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
             SyncStatusText.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
             InvitationInfoBar.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
@@ -1382,6 +1386,21 @@ public sealed partial class MainWindow : Window
         }
 
         _ = _settings.UpdateAsync(_settings.Current with { ShowWeekNumbers = item.IsChecked });
+    }
+
+    private void OnShowRemindersAndTasksClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleMenuFlyoutItem item)
+        {
+            return;
+        }
+
+        if (_settings.Current.ShowRemindersAndTasks == item.IsChecked)
+        {
+            return;
+        }
+
+        _ = _settings.UpdateAsync(_settings.Current with { ShowRemindersAndTasks = item.IsChecked });
     }
 
     private static string FormatSearchResult(CalendarItem item)

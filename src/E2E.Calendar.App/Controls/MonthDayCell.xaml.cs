@@ -258,6 +258,7 @@ public sealed partial class MonthDayCell : UserControl
                 Title = chip.Title,
                 Color = chip.Color,
                 ItemId = chip.Id,
+                IsLight = chip.IsReminder || chip.IsTask,
             };
 
             // MonthChipView already installs its own DragStarting handler and

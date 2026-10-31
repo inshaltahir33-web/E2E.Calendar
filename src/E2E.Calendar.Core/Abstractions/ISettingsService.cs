@@ -12,6 +12,7 @@ public interface ISettingsService : INotifyPropertyChanged
     bool ShowWeekends { get; }
     bool ShowWeekNumbersWeek { get; }
     bool ShowWeekNumbersMonth { get; }
+    bool ShowRemindersAndTasks { get; }
     bool ShowSecondaryTimeZone { get; }
     string? SecondaryTimeZoneId { get; }
 

@@ -21,6 +21,12 @@ public sealed partial class MonthChipView : UserControl
         typeof(MonthChipView),
         new PropertyMetadata(null, OnVisualChanged));
 
+    public static readonly DependencyProperty IsLightProperty = DependencyProperty.Register(
+        nameof(IsLight),
+        typeof(bool),
+        typeof(MonthChipView),
+        new PropertyMetadata(false, OnVisualChanged));
+
     public static readonly DependencyProperty ItemIdProperty = DependencyProperty.Register(
         nameof(ItemId),
         typeof(string),
@@ -54,6 +60,12 @@ public sealed partial class MonthChipView : UserControl
         set => SetValue(ColorProperty, value);
     }
 
+    public bool IsLight
+    {
+        get => (bool)GetValue(IsLightProperty);
+        set => SetValue(IsLightProperty, value);
+    }
+
     public string ItemId
     {
         get => (string)GetValue(ItemIdProperty);
@@ -72,9 +84,26 @@ public sealed partial class MonthChipView : UserControl
     {
         TitleText.Text = Title;
         var chipBrushes = EventColorService.GetChipBrushes(Color, ActualTheme);
-        TitleText.Foreground = chipBrushes.Text;
-        AccentEdge.Background = chipBrushes.Stripe;
-        ChipBorder.Background = chipBrushes.Fill;
+
+        if (IsLight)
+        {
+            ChipBorder.Height = 22;
+            ChipBorder.Background = ThemeBrushes.Get(this, "ControlFillColorTransparentBrush");
+            ChipBorder.BorderBrush = ThemeBrushes.Get(this, "App.DividerBrush");
+            ChipBorder.BorderThickness = new Thickness(1);
+            AccentEdge.Visibility = Visibility.Collapsed;
+            TitleText.Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush");
+        }
+        else
+        {
+            ChipBorder.Height = 18;
+            ChipBorder.Background = chipBrushes.Fill;
+            ChipBorder.BorderBrush = null;
+            ChipBorder.BorderThickness = new Thickness(0);
+            AccentEdge.Background = chipBrushes.Stripe;
+            AccentEdge.Visibility = Visibility.Visible;
+            TitleText.Foreground = chipBrushes.Text;
+        }
 
         AutomationProperties.SetName(this, Title);
         AutomationProperties.SetItemStatus(this, Color);
@@ -82,6 +111,15 @@ public sealed partial class MonthChipView : UserControl
 
     private void ApplyHover(bool hovered)
     {
+        if (IsLight)
+        {
+            ChipBorder.BorderBrush = ThemeBrushes.Get(
+                this,
+                hovered ? "App.DividerStrongBrush" : "App.DividerBrush");
+
+            return;
+        }
+
         // The chip has no border, so hover feedback is a small press-in of the pastel fill.
         ChipBorder.Opacity = hovered ? 0.88 : 1d;
     }

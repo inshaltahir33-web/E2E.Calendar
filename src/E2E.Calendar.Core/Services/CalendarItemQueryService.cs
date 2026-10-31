@@ -31,9 +31,18 @@ public sealed class CalendarItemQueryService
     public async Task<IReadOnlyList<CalendarItem>> GetItemsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
+        bool includeRemindersAndTasks = true,
         CancellationToken cancellationToken = default)
     {
         var items = (await _events.GetItemsAsync(fromUtc, toUtc, cancellationToken: cancellationToken)).ToList();
+
+        if (!includeRemindersAndTasks)
+        {
+            return items
+                .OrderBy(item => item.StartUtc)
+                .ThenBy(item => item.Id, StringComparer.Ordinal)
+                .ToList();
+        }
 
         foreach (var reminder in await _reminders.GetInRangeAsync(fromUtc, toUtc, cancellationToken))
         {

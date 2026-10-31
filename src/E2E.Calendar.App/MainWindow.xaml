@@ -296,6 +296,12 @@
                                 Style="{StaticResource AppToggleMenuFlyoutItemStyle}"
                                 Text="Show weekends" />
                             <muxc:ToggleMenuFlyoutItem
+                                x:Name="ShowRemindersAndTasksToggle"
+                                AutomationProperties.Name="Show reminders and tasks"
+                                Click="OnShowRemindersAndTasksClick"
+                                Style="{StaticResource AppToggleMenuFlyoutItemStyle}"
+                                Text="Show reminders and tasks" />
+                            <muxc:ToggleMenuFlyoutItem
                                 x:Name="ShowWeekNumbersToggle"
                                 AutomationProperties.Name="Show week numbers"
                                 Click="OnShowWeekNumbersClick"

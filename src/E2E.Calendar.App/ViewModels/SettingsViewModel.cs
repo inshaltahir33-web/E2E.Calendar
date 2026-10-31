@@ -399,6 +399,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         },
         ShowWeekends = ShowWeekends,
         ShowWeekNumbers = ShowWeekNumbers,
+        ShowRemindersAndTasks = _settings.Current.ShowRemindersAndTasks,
         ShowSecondaryTimeZone = ShowSecondaryTimeZone,
         SecondaryTimeZoneId = TimeZoneCatalog.Common[Math.Clamp(SecondaryTimeZoneIndex, 0, TimeZoneCatalog.Common.Count - 1)].Id,
         ShowBirthdays = ShowBirthdays,

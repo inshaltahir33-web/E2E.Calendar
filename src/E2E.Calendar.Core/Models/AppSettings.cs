@@ -47,6 +47,8 @@ public sealed record AppSettings
 
     public bool ShowWeekNumbers { get; init; }
 
+    public bool ShowRemindersAndTasks { get; init; } = true;
+
     public bool ShowSecondaryTimeZone { get; init; }
 
     public bool ShowBirthdays { get; init; }

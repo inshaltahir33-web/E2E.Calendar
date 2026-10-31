@@ -21,6 +21,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
     private readonly ITaskRepository _tasks;
     private readonly CalendarItemQueryService _items;
     private readonly IClock _clock;
+    private bool _showRemindersAndTasks;
 
     [ObservableProperty]
     private IReadOnlyList<MonthDay> _days = Array.Empty<MonthDay>();
@@ -40,7 +41,8 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         IEventRepository repository,
         IReminderRepository reminders,
         ITaskRepository tasks,
-        IClock clock)
+        IClock clock,
+        SettingsService settings)
         : base(state, query, cache)
     {
         _events = events;
@@ -49,6 +51,19 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         _tasks = tasks;
         _items = items;
         _clock = clock;
+        _showRemindersAndTasks = settings.Current.ShowRemindersAndTasks;
+        settings.Changed += OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        if (_showRemindersAndTasks == settings.ShowRemindersAndTasks)
+        {
+            return;
+        }
+
+        _showRemindersAndTasks = settings.ShowRemindersAndTasks;
+        _ = RefreshAsync();
     }
 
     public override async Task RefreshAsync()
@@ -66,7 +81,8 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
             var gridEnd = gridStart.AddDays(42);
             var items = await _items.GetItemsAsync(
                 timeZone.ToUtc(gridStart.ToDateTime(TimeOnly.MinValue)),
-                timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)));
+                timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)),
+                _showRemindersAndTasks);
 
             // Recurring occurrences share the series id, so key the layout by the
             // occurrence itself to keep one bar/chip per occurrence.

@@ -18,6 +18,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     private const string WeekStartKey = "general.week_start";
     private const string ShowWeekendsKey = "general.show_weekends";
     private const string ShowWeekNumbersKey = "general.show_week_numbers";
+    private const string ShowRemindersAndTasksKey = "general.show_reminders_and_tasks";
     private const string ShowSecondaryTimeZoneKey = "general.show_secondary_time_zone";
     private const string ShowBirthdaysKey = "calendars.show_birthdays";
     private const string SecondaryTimeZoneIdKey = "general.secondary_time_zone_id";
@@ -55,6 +56,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     public bool ShowWeekends => _current.ShowWeekends;
     public bool ShowWeekNumbersWeek => _current.ShowWeekNumbers;
     public bool ShowWeekNumbersMonth => _current.ShowWeekNumbers;
+    public bool ShowRemindersAndTasks => _current.ShowRemindersAndTasks;
     public bool ShowSecondaryTimeZone => _current.ShowSecondaryTimeZone;
     public string? SecondaryTimeZoneId => _current.SecondaryTimeZoneId;
     public bool StartMinimizedToTray => _current.StartMinimizedToTray;
@@ -84,6 +86,10 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
         await _repository.SetAsync(WeekStartKey, settings.WeekStart.ToString(), cancellationToken);
         await _repository.SetAsync(ShowWeekendsKey, settings.ShowWeekends ? "1" : "0", cancellationToken);
         await _repository.SetAsync(ShowWeekNumbersKey, settings.ShowWeekNumbers ? "1" : "0", cancellationToken);
+        await _repository.SetAsync(
+            ShowRemindersAndTasksKey,
+            settings.ShowRemindersAndTasks ? "1" : "0",
+            cancellationToken);
         await _repository.SetAsync(
             ShowSecondaryTimeZoneKey,
             settings.ShowSecondaryTimeZone ? "1" : "0",
@@ -133,6 +139,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
         PropertyChanged?.Invoke(this, new(nameof(ShowWeekends)));
         PropertyChanged?.Invoke(this, new(nameof(ShowWeekNumbersWeek)));
         PropertyChanged?.Invoke(this, new(nameof(ShowWeekNumbersMonth)));
+        PropertyChanged?.Invoke(this, new(nameof(ShowRemindersAndTasks)));
         PropertyChanged?.Invoke(this, new(nameof(ShowSecondaryTimeZone)));
         PropertyChanged?.Invoke(this, new(nameof(SecondaryTimeZoneId)));
         PropertyChanged?.Invoke(this, new(nameof(StartMinimizedToTray)));
@@ -152,6 +159,10 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             WeekStart = ParseEnum(values, WeekStartKey, defaults.WeekStart),
             ShowWeekends = ParseBool(values, ShowWeekendsKey, defaults.ShowWeekends),
             ShowWeekNumbers = ParseBool(values, ShowWeekNumbersKey, defaults.ShowWeekNumbers),
+            ShowRemindersAndTasks = ParseBool(
+                values,
+                ShowRemindersAndTasksKey,
+                defaults.ShowRemindersAndTasks),
             ShowSecondaryTimeZone = ParseBool(values, ShowSecondaryTimeZoneKey, defaults.ShowSecondaryTimeZone),
             ShowBirthdays = ParseBool(values, ShowBirthdaysKey, defaults.ShowBirthdays),
             SecondaryTimeZoneId = Get(values, SecondaryTimeZoneIdKey),

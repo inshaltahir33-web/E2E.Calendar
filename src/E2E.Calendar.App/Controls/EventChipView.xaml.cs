@@ -223,8 +223,12 @@ public sealed partial class EventChipView : UserControl
             ? ThemeBrushes.Get(this, "ControlFillColorTransparentBrush")
             : chipBrushes.Fill;
 
-        TitleText.Foreground = chipBrushes.Text;
-        TimeTextBlock.Foreground = chipBrushes.Text;
+        TitleText.Foreground = isTickable
+            ? ThemeBrushes.Get(this, "App.TextPrimaryBrush")
+            : chipBrushes.Text;
+        TimeTextBlock.Foreground = isTickable
+            ? ThemeBrushes.Get(this, "App.TextSecondaryBrush")
+            : chipBrushes.Text;
         TimeTextBlock.Opacity = 0.8;
 
         if (IsSelected)

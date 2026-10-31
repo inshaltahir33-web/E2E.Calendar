@@ -16,6 +16,7 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
     private readonly CalendarItemQueryService _items;
     private readonly IReminderRepository _reminders;
     private readonly ITaskRepository _tasks;
+    private bool _showRemindersAndTasks;
 
     protected TimeGridViewModel(
         CalendarStateViewModel state,
@@ -33,6 +34,7 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
         _items = items;
         _reminders = reminders;
         _tasks = tasks;
+        _showRemindersAndTasks = _settings.Current.ShowRemindersAndTasks;
 
         ApplySettings(_settings.Current);
 
@@ -76,7 +78,10 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
         await LoadPeriodAsync(async () =>
         {
             var period = State.Period;
-            var items = await _items.GetItemsAsync(period.FromUtc, period.ToUtc);
+            var items = await _items.GetItemsAsync(
+                period.FromUtc,
+                period.ToUtc,
+                _showRemindersAndTasks);
             var timeZone = TimeZoneInfo.Local;
             var today = State.LocalDate;
 
@@ -143,6 +148,10 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
 
     private void ApplySettings(AppSettings settings)
     {
+        var showRemindersAndTasks = settings.ShowRemindersAndTasks;
+        var visibilityChanged = _showRemindersAndTasks != showRemindersAndTasks;
+        _showRemindersAndTasks = showRemindersAndTasks;
+
         ClockFormat = settings.ClockFormat;
         ShowSecondaryTimeZone = settings.ShowSecondaryTimeZone;
         SecondaryTimeZoneId = settings.SecondaryTimeZoneId ?? State.LocalTimeZoneId;
@@ -150,6 +159,11 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
         WeekStart = settings.WeekStart;
 
         OnSettingsApplied(settings);
+
+        if (visibilityChanged)
+        {
+            _ = RefreshAsync();
+        }
     }
 
     protected virtual void OnSettingsApplied(AppSettings settings)

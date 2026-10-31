@@ -965,9 +965,11 @@ public sealed partial class TimeGrid : UserControl
                 var chip = CreateChip(item, days[dayIndex]);
 
                 var top = (placement.VisualStart - dayStart).TotalHours * HourHeight;
-                var height = Math.Max(
-                    MinChipHeight,
-                    (placement.VisualEnd - placement.VisualStart).TotalHours * HourHeight - 2);
+                var height = item.IsTickable
+                    ? MinChipHeight
+                    : Math.Max(
+                        MinChipHeight,
+                        (placement.VisualEnd - placement.VisualStart).TotalHours * HourHeight - 2);
                 var columnCount = Math.Max(1, placement.ColumnCount);
                 var sliceWidth = _columnWidth / columnCount;
 
