@@ -51,6 +51,7 @@ public sealed partial class MainWindow : Window
     private bool _rsvpInProgress;
     private bool _isClosingEditor;
     private bool _syncingViewSwitcher;
+    private bool _isCalendarViewPage = true;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -172,6 +173,13 @@ public sealed partial class MainWindow : Window
             _dialogs = dialogs;
 
             this.InitializeComponent();
+
+            // On Settings / Reminders / Tasks the switcher keeps its previous selection but paints
+            // no highlight, so clicking that same tab raises no SelectionChanged. Tapped covers it.
+            foreach (var item in ViewSwitcher.Items.OfType<SelectorBarItem>())
+            {
+                item.Tapped += OnViewSwitcherItemTapped;
+            }
 
             ShowRemindersAndTasksToggle.IsChecked = _settings.Current.ShowRemindersAndTasks;
             _settings.Changed += (_, updated) =>
@@ -487,6 +495,16 @@ public sealed partial class MainWindow : Window
 
         if (element.DataContext is NavigationListItem item)
         {
+            // Clicking the reminder smart view that is already open toggles back to the
+            // calendar; another reminder view just switches the filter as before.
+            if (item.IsSelected &&
+                item.TargetKey == NavigationKeys.Reminders &&
+                _navigation.CurrentViewKey == NavigationKeys.Reminders)
+            {
+                ReturnToLastCalendarView();
+                return;
+            }
+
             ViewModel.SelectItem(item);
 
             if (item.TargetKey == NavigationKeys.Tags)
@@ -529,6 +547,25 @@ public sealed partial class MainWindow : Window
         {
             ShowView(mode, NavigationKeyFor(mode));
         }
+    }
+
+    /// <summary>
+    /// Non-calendar pages show no selected tab, so re-clicking the tab that is still selected
+    /// internally fires no SelectionChanged. Only that case is handled here; a click on any
+    /// other tab goes through SelectionChanged, so nothing runs twice.
+    /// </summary>
+    private void OnViewSwitcherItemTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (_isCalendarViewPage ||
+            sender is not SelectorBarItem item ||
+            !Equals(item, ViewSwitcher.SelectedItem) ||
+            item.Tag is not string tag ||
+            !Enum.TryParse<CalendarViewMode>(tag, out var mode))
+        {
+            return;
+        }
+
+        ShowView(mode, NavigationKeyFor(mode));
     }
 
     private void OnNewSplitButtonClick(object sender, RoutedEventArgs e) => OpenNewEvent();
@@ -771,7 +808,30 @@ public sealed partial class MainWindow : Window
 
     private void OnTasksClick(object sender, RoutedEventArgs e) => OpenTodo(TodoService.Inbox);
 
-    private void OnSettingsClick(object sender, RoutedEventArgs e) => _navigation.NavigateTo(NavigationKeys.Settings);
+    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        if (_navigation.CurrentViewKey == NavigationKeys.Settings)
+        {
+            ReturnToLastCalendarView();
+            return;
+        }
+
+        _navigation.NavigateTo(NavigationKeys.Settings);
+    }
+
+    /// <summary>Leaves Settings / Reminders for the calendar view that was open before them.</summary>
+    private void ReturnToLastCalendarView()
+    {
+        var mode = _navigation.LastCalendarViewKey switch
+        {
+            NavigationKeys.Day => CalendarViewMode.Day,
+            NavigationKeys.Month => CalendarViewMode.Month,
+            NavigationKeys.Agenda => CalendarViewMode.Agenda,
+            _ => CalendarViewMode.Week,
+        };
+
+        ShowView(mode, NavigationKeyFor(mode));
+    }
 
     private void OnSidebarToggleClick(object sender, RoutedEventArgs e) =>
         ApplySidebarCollapsed(!ViewModel.IsSidebarCollapsed);
@@ -836,7 +896,9 @@ public sealed partial class MainWindow : Window
     {
         foreach (var item in ViewSwitcher.Items.OfType<SelectorBarItem>())
         {
-            var selected = Equals(item, ViewSwitcher.SelectedItem);
+            // Reminders / Settings keep the internal selection so returning to a calendar view
+            // restores it, but paint every tab neutral while those pages are shown.
+            var selected = _isCalendarViewPage && Equals(item, ViewSwitcher.SelectedItem);
             item.Background = selected
                 ? ThemeBrushes.Get(RootGrid, "Accent")
                 : ThemeBrushes.Get(RootGrid, "App.TransparentBrush");
@@ -1559,8 +1621,9 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Calendar views keep the period navigation and view switcher. Settings and the
-    /// Tasks/Reminders page replace them with a single page title.
+    /// The top bar (Today, arrows, view switcher, search) stays visible on every page. On
+    /// Settings and the Tasks/Reminders page only the period label is swapped for a page title
+    /// and no view tab is highlighted; clicking any tab still opens that calendar view.
     /// </summary>
     private void UpdateChromeForView(string key)
     {
@@ -1573,15 +1636,10 @@ public sealed partial class MainWindow : Window
             _ => (CalendarViewMode?)null,
         };
         var isCalendarView = mode is not null;
+        _isCalendarViewPage = isCalendarView;
 
-        PeriodNavigationPanel.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
+        PeriodLabelText.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
         PageTitleText.Visibility = isCalendarView ? Visibility.Collapsed : Visibility.Visible;
-
-        // The switcher is invisible (not collapsed) on other pages so the search box and
-        // overflow button keep their position; it is restored on every calendar navigation.
-        ViewSwitcher.Opacity = isCalendarView ? 1 : 0;
-        ViewSwitcher.IsHitTestVisible = isCalendarView;
-        ViewSwitcher.IsEnabled = isCalendarView;
 
         if (mode is { } current)
         {
@@ -1597,6 +1655,8 @@ public sealed partial class MainWindow : Window
             NavigationKeys.Tags => "Tags",
             _ => "Calendar",
         };
+
+        ApplyViewSwitcherSelection();
     }
 
     private async void OnStateViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

@@ -102,57 +102,58 @@
                     <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE700;" />
                 </Button>
 
-                <Grid VerticalAlignment="Center">
-                    <StackPanel
-                        x:Name="PeriodNavigationPanel"
-                        Orientation="Horizontal"
+                <StackPanel
+                    x:Name="PeriodNavigationPanel"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Spacing="{StaticResource SpaceXS}">
+                    <Button
+                        Click="OnTodayClick"
+                        Content="Today"
+                        Style="{StaticResource GhostButtonStyle}"
                         VerticalAlignment="Center"
-                        Spacing="{StaticResource SpaceXS}">
-                        <Button
-                            Click="OnTodayClick"
-                            Content="Today"
-                            Style="{StaticResource GhostButtonStyle}"
-                            VerticalAlignment="Center"
-                            AutomationProperties.Name="Go to today"
-                            ToolTipService.ToolTip="Go to today (T)" />
-                        <Button
-                            Click="OnPreviousClick"
-                            Style="{StaticResource GhostButtonStyle}"
-                            AutomationProperties.Name="Previous period"
-                            ToolTipService.ToolTip="Previous period (Left arrow)">
-                            <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
-                        </Button>
-                        <Button
-                            Click="OnNextClick"
-                            Style="{StaticResource GhostButtonStyle}"
-                            AutomationProperties.Name="Next period"
-                            ToolTipService.ToolTip="Next period (Right arrow)">
-                            <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
-                        </Button>
-                        <!-- Title is computed from the state view model (visible period + view mode),
-                             so it follows the arrows, the view switcher and Today. -->
-                        <TextBlock
-                            x:Name="PeriodLabelText"
-                            MinWidth="160"
-                            Margin="{StaticResource MarginPeriodLabel}"
-                            VerticalAlignment="Center"
-                            FontSize="{StaticResource FontSizeSubtitle}"
-                            FontWeight="SemiBold"
-                            Text="{x:Bind StateViewModel.PeriodLabel, Mode=OneWay}"
-                            TextTrimming="CharacterEllipsis"
-                            AutomationProperties.Name="Current period" />
-                    </StackPanel>
+                        AutomationProperties.Name="Go to today"
+                        ToolTipService.ToolTip="Go to today (T)" />
+                    <Button
+                        Click="OnPreviousClick"
+                        Style="{StaticResource GhostButtonStyle}"
+                        AutomationProperties.Name="Previous period"
+                        ToolTipService.ToolTip="Previous period (Left arrow)">
+                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72B;" />
+                    </Button>
+                    <Button
+                        Click="OnNextClick"
+                        Style="{StaticResource GhostButtonStyle}"
+                        AutomationProperties.Name="Next period"
+                        ToolTipService.ToolTip="Next period (Right arrow)">
+                        <FontIcon FontSize="{StaticResource IconSizeMedium}" Glyph="&#xE72A;" />
+                    </Button>
+                    <!-- Title is computed from the state view model (visible period + view mode),
+                         so it follows the arrows, the view switcher and Today. -->
+                    <TextBlock
+                        x:Name="PeriodLabelText"
+                        MinWidth="160"
+                        Margin="{StaticResource MarginPeriodLabel}"
+                        VerticalAlignment="Center"
+                        FontSize="{StaticResource FontSizeSubtitle}"
+                        FontWeight="SemiBold"
+                        Text="{x:Bind StateViewModel.PeriodLabel, Mode=OneWay}"
+                        TextTrimming="CharacterEllipsis"
+                        AutomationProperties.Name="Current period" />
 
-                    <!-- Shown instead of the period navigation on Settings / Tasks / Reminders. -->
+                    <!-- Settings / Tasks / Reminders swap only the period label for a page title;
+                         Today and the arrows stay visible on every page. -->
                     <TextBlock
                         x:Name="PageTitleText"
+                        MinWidth="160"
+                        Margin="{StaticResource MarginPeriodLabel}"
                         VerticalAlignment="Center"
                         FontSize="{StaticResource FontSizeSubtitle}"
                         FontWeight="SemiBold"
                         TextTrimming="CharacterEllipsis"
                         Visibility="Collapsed"
                         AutomationProperties.Name="Page title" />
-                </Grid>
+                </StackPanel>
             </StackPanel>
 
             <!-- RIGHT: view switcher, search (with filter), overflow. -->

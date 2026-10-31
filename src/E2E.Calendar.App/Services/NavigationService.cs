@@ -20,6 +20,12 @@ public sealed class NavigationService
 
     public string? CurrentViewKey { get; private set; }
 
+    /// <summary>
+    /// The last Day/Week/Month/Agenda view that was opened, so pages like Settings can toggle
+    /// back to the calendar instead of jumping to a fixed default view.
+    /// </summary>
+    public string LastCalendarViewKey { get; private set; } = NavigationKeys.Week;
+
     public event EventHandler<string>? Navigated;
 
     public IReadOnlyCollection<string> RegisteredViews => _views.Keys.Concat(_factories.Keys).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -43,6 +49,11 @@ public sealed class NavigationService
     public bool NavigateTo(string key, object? parameter = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        if (IsCalendarViewKey(key))
+        {
+            LastCalendarViewKey = key;
+        }
 
         CurrentViewKey = key;
         UpdateShellState(key, parameter);
@@ -69,6 +80,9 @@ public sealed class NavigationService
 
         return _views.ContainsKey(key) || _factories.ContainsKey(key);
     }
+
+    public static bool IsCalendarViewKey(string key) =>
+        key is NavigationKeys.Day or NavigationKeys.Week or NavigationKeys.Month or NavigationKeys.Agenda;
 
     private void UpdateShellState(string key, object? parameter)
     {
