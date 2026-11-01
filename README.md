@@ -1,21 +1,29 @@
-# E2E Calendar (Windows) — Project Pack
+# E2E Calendar (Windows)
 
-Native Windows 10/11 calendar + reminders + tasks app. Publisher: E2E Dev.
-Stack: .NET 8, WinUI 3 (Windows App SDK), SQLite(SQLCipher), MSIX.
+A native Windows 10/11 calendar, reminders, and task management application built with modern Microsoft technologies.
 
-## Is pack me kya hai
-| File | Kaam |
-|---|---|
-| AGENTS.md | OpenCode/agents ke liye rules (repo root me rakho) |
-| opencode.json | OpenCode config |
-| docs/01-ONE-DAY-PLAN.md | Ek din ka hour-by-hour plan |
-| docs/02-ARCHITECTURE.md | Layers, DB schema, algorithms, security (A-Z) |
-| docs/03-UI-UX.md | Layout wireframes, design tokens, screens |
-| docs/04-FEATURES-HOWTO.md | Har feature kaise banega + done criteria |
-| docs/05-GIT-WORKFLOW.md | Git/GitHub commands, branches, CI |
-| prompts/P00..P12 | OpenCode ko order me dene wale prompts |
+## Tech Stack
+* **Framework:** WinUI 3 (Windows App SDK) / .NET 8
+* **Language:** C#
+* **Database:** SQLite (SQLCipher)
+* **Packaging:** msix
 
-## Quick start
-1. Windows PC pe install: VS 2022 (Workload: ".NET desktop" + "Windows App SDK C# templates"), .NET 8 SDK, Git, Node (OpenCode ke liye), VS Code.
-2. `npm i -g opencode-ai` phir repo folder me `opencode`.
-3. Is pack ko repo root me copy karo, `git init`, phir prompts P00 se shuru karo.
+
+## Project Structure
+
+| File / Folder | Description |
+| :--- | :--- |
+| `AGENTS.md` | OpenCode development rules and agent guidelines |
+| `opencode.json` | OpenCode configuration file |
+| `docs/` | Comprehensive architecture documentation, UI/UX wireframes, and feature specifications |
+| `prompts/` | Structured prompt sequences and historical development logs |
+| `src/` | Main application source code |
+| `tests/` | Unit and performance test suites |
+
+## Quick Start
+
+1. **Prerequisites:** Ensure you have Windows 10/11, .NET 8 SDK, and Visual Studio 2022 (with the *Desktop development with .NET* and *Windows App SDK C# templates* workloads) installed.
+2. **Clone & Open:** Clone the repository and open `E2E.Calendar.sln` in Visual Studio or VS Code.
+3. **Build & Run:** Run the application via Visual Studio or use the .NET CLI:
+   ```bash
+   dotnet build E2E.Calendar.sln -c Debug -p:Platform=x64
