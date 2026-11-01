@@ -19,6 +19,7 @@
             HourHeight="{x:Bind ViewModel.HourHeight, Mode=OneWay}"
             ShowSecondaryTimeZone="{x:Bind ViewModel.ShowSecondaryTimeZone, Mode=OneWay}"
             SecondaryTimeZoneId="{x:Bind ViewModel.SecondaryTimeZoneId, Mode=OneWay}"
+            ShowRemindersAndTasks="{x:Bind ViewModel.ShowRemindersAndTasks, Mode=OneWay}"
             WeatherText="{x:Bind ViewModel.WeatherText, Mode=OneWay}" />
 
         <ctrl:SkeletonView

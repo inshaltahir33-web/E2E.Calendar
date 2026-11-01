@@ -72,6 +72,12 @@ public sealed partial class TimeGrid : UserControl
         typeof(TimeGrid),
         new PropertyMetadata(null, OnLayoutSourceChanged));
 
+    public static readonly DependencyProperty ShowRemindersAndTasksProperty = DependencyProperty.Register(
+        nameof(ShowRemindersAndTasks),
+        typeof(bool),
+        typeof(TimeGrid),
+        new PropertyMetadata(false, OnShowRemindersAndTasksChanged));
+
     public static readonly DependencyProperty WeatherTextProperty = DependencyProperty.Register(
         nameof(WeatherText),
         typeof(string),
@@ -83,6 +89,11 @@ public sealed partial class TimeGrid : UserControl
     private const int WeekViewMaxColumns = 3;
     private const int DayViewMaxColumns = 4;
     private const double MinChipHeight = 22;
+
+    /// <summary>Reminder and task chips live in a narrow lane on the right edge, never in event columns.</summary>
+    private const double ChipLaneWidthRatio = 0.20;
+
+    private const double ChipLaneMaxWidth = 120;
     private const double MaxDayBlockWidth = 640;
     private const double ResizeEdgeInPixels = 6;
     private const double SecondaryColumnWidth = 72;
@@ -200,6 +211,12 @@ public sealed partial class TimeGrid : UserControl
         set => SetValue(SelectedItemIdProperty, value);
     }
 
+    public bool ShowRemindersAndTasks
+    {
+        get => (bool)GetValue(ShowRemindersAndTasksProperty);
+        set => SetValue(ShowRemindersAndTasksProperty, value);
+    }
+
     public string? WeatherText
     {
         get => (string?)GetValue(WeatherTextProperty);
@@ -262,6 +279,14 @@ public sealed partial class TimeGrid : UserControl
         if (sender is TimeGrid grid)
         {
             grid.RenderWeatherChip();
+        }
+    }
+
+    private static void OnShowRemindersAndTasksChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (sender is TimeGrid grid)
+        {
+            grid.RequestRebuild();
         }
     }
 
@@ -970,6 +995,7 @@ public sealed partial class TimeGrid : UserControl
             DaySignature(days),
             _layoutRevision,
             SelectedItemId,
+            ShowRemindersAndTasks,
             ClockFormat,
             Math.Round(_columnWidth, 1),
             Math.Round(HourHeight, 1));
@@ -1043,6 +1069,11 @@ public sealed partial class TimeGrid : UserControl
                 canvas.Children.Add(chip);
             }
 
+            if (ShowRemindersAndTasks)
+            {
+                RenderChipLane(canvas, day);
+            }
+
             if (day.OverflowCount > 0)
             {
                 var more = CreateOverflowButton(
@@ -1062,6 +1093,102 @@ public sealed partial class TimeGrid : UserControl
 
     private CalendarItem? ResolveItem(LayoutOccurrence occurrence) =>
         _itemsById.TryGetValue(occurrence.Id, out var item) ? item : null;
+
+    /// <summary>
+    /// Reminder and task chips occupy a narrow lane on the right edge of a day column.
+    /// Timed events keep their full width; chips are drawn on top and never reflow them.
+    /// Chips that would sit on top of each other are pushed down just enough to stay readable.
+    /// </summary>
+    private void RenderChipLane(Canvas canvas, DayColumnLayout day)
+    {
+        if (day.Chips.Count == 0)
+        {
+            return;
+        }
+
+        var laneWidth = Math.Min(_columnWidth * ChipLaneWidthRatio, ChipLaneMaxWidth);
+        var left = Math.Max(2, _columnWidth - laneWidth - 2);
+        var dayStart = day.Date.ToDateTime(TimeOnly.MinValue);
+        var nextTop = 0d;
+
+        foreach (var placement in day.Chips)
+        {
+            var item = ResolveItem(placement.Occurrence);
+
+            if (item is null)
+            {
+                continue;
+            }
+
+            var timeTop = (placement.VisualStart - dayStart).TotalHours * HourHeight;
+            var maxTop = (HoursPerDay * HourHeight) - MinChipHeight;
+            var top = Math.Min(Math.Max(timeTop, nextTop), maxTop);
+            nextTop = top + MinChipHeight + 2;
+
+            var chip = CreateReminderChip(item);
+            Canvas.SetLeft(chip, left);
+            Canvas.SetTop(chip, top);
+            chip.Width = laneWidth;
+            chip.Height = MinChipHeight;
+            canvas.Children.Add(chip);
+        }
+    }
+
+    private Button CreateReminderChip(CalendarItem item)
+    {
+        var chipBrushes = EventColorService.GetChipBrushes(item.Color, ActualTheme);
+        var content = new Grid();
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var stripe = new Border { Background = chipBrushes.Stripe };
+        Grid.SetColumn(stripe, 0);
+        content.Children.Add(stripe);
+
+        var title = new TextBlock
+        {
+            Text = item.Title,
+            FontSize = Tokens.Double("FontSizeChipMeta", 10d),
+            Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush"),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 3, 0),
+        };
+
+        Grid.SetColumn(title, 1);
+        content.Children.Add(title);
+
+        var chip = new Button
+        {
+            Content = content,
+            Padding = new Thickness(0),
+            MinWidth = 0,
+            MinHeight = 0,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
+            Background = chipBrushes.Fill,
+            BorderBrush = ThemeBrushes.Get(this, "App.DividerBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(Tokens.Double("RadiusChip", 6d)),
+            Tag = item,
+            Opacity = item.IsDone ? 0.55 : 1,
+        };
+
+        AutomationProperties.SetName(chip, item.Title);
+        ToolTipService.SetToolTip(chip, BuildTooltip(item));
+        chip.Click += OnReminderChipClick;
+
+        return chip;
+    }
+
+    private void OnReminderChipClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: CalendarItem item } chip)
+        {
+            ItemActivated?.Invoke(this, new TimeGridItemEventArgs(item, chip));
+        }
+    }
 
     private List<HiddenItemRow> BuildBannerFlyoutRows(IEnumerable<BannerPlacement> hidden) =>
         hidden
@@ -1301,7 +1428,8 @@ public sealed partial class TimeGrid : UserControl
         }
 
         var hasContent = _layout.Weeks.Any(week => week.Banners.Count > 0)
-            || _layout.Days.Any(day => day.Items.Count > 0);
+            || _layout.Days.Any(day => day.Items.Count > 0)
+            || (ShowRemindersAndTasks && _layout.Days.Any(day => day.Chips.Count > 0));
 
         EmptyHint.Visibility = hasContent ? Visibility.Collapsed : Visibility.Visible;
         PositionEmptyHint();

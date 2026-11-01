@@ -13,11 +13,14 @@ public static class EventColorService
     {
         var source = ResolveSource(calendarColor, theme);
         var surface = ResourceColor(theme, "App.SurfaceRaisedBrush");
-        var fillAlpha = theme == ElementTheme.Dark ? 0.28 : 0.16;
-        var fill = Blend(source, surface, fillAlpha);
+
+        // Event blocks are a light wash of the calendar colour: the surface dominates
+        // and the calendar colour only tints it, which keeps dark text readable.
+        var tintAmount = theme == ElementTheme.Dark ? 0.34 : 0.14;
+        var fill = Blend(surface, source, tintAmount);
         var text = theme == ElementTheme.Dark
-            ? Blend(source, ResourceColor(theme, "App.ContrastLightBrush"), 0.55)
-            : Blend(source, ResourceColor(theme, "App.ContrastDarkBrush"), 0.45);
+            ? Blend(source, ResourceColor(theme, "App.ContrastLightBrush"), 0.7)
+            : Blend(source, ResourceColor(theme, "App.ContrastDarkBrush"), 0.6);
 
         text = EnsureContrast(text, fill, theme == ElementTheme.Dark);
 

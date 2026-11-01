@@ -16,6 +16,9 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
     private readonly CalendarItemQueryService _items;
     private readonly IReminderRepository _reminders;
     private readonly ITaskRepository _tasks;
+
+    /// <summary>Reminders and tasks are hidden in Day/Week until this setting is turned on.</summary>
+    [ObservableProperty]
     private bool _showRemindersAndTasks;
 
     protected TimeGridViewModel(
@@ -34,7 +37,6 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
         _items = items;
         _reminders = reminders;
         _tasks = tasks;
-        _showRemindersAndTasks = _settings.Current.ShowRemindersAndTasks;
 
         ApplySettings(_settings.Current);
 
@@ -81,7 +83,7 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
             var items = await _items.GetItemsAsync(
                 period.FromUtc,
                 period.ToUtc,
-                _showRemindersAndTasks);
+                ShowRemindersAndTasks);
             var timeZone = TimeZoneInfo.Local;
             var today = State.LocalDate;
 
@@ -149,8 +151,8 @@ public abstract partial class TimeGridViewModel : CalendarPageViewModel
     private void ApplySettings(AppSettings settings)
     {
         var showRemindersAndTasks = settings.ShowRemindersAndTasks;
-        var visibilityChanged = _showRemindersAndTasks != showRemindersAndTasks;
-        _showRemindersAndTasks = showRemindersAndTasks;
+        var visibilityChanged = ShowRemindersAndTasks != showRemindersAndTasks;
+        ShowRemindersAndTasks = showRemindersAndTasks;
 
         ClockFormat = settings.ClockFormat;
         ShowSecondaryTimeZone = settings.ShowSecondaryTimeZone;

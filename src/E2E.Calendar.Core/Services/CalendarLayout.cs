@@ -17,8 +17,9 @@ public static class CalendarLayout
     /// All-day events and events longer than a day become week banners; everything else is split into timed
     /// blocks per calendar day it touches. A timed item that only crosses midnight (for example 22:00-02:00)
     /// is split across both days instead of becoming a banner.
-    /// Reminders and tasks are always a single-day 30-minute block at their due time, whatever end
-    /// date or duration their data carries.
+    /// Reminders and tasks never take part in event overlap grouping or column packing: they are returned
+    /// as separate <see cref="DayColumnLayout.Chips"/> at their due time, whatever end date or duration
+    /// their data carries.
     /// </summary>
     public static CalendarLayoutResult Build(
         IEnumerable<LayoutOccurrence> occurrences,
@@ -47,6 +48,7 @@ public static class CalendarLayout
 
         var banners = new List<BannerSpan>();
         var timedByDay = new Dictionary<DateOnly, List<TimedSegment>>();
+        var chipsByDay = new Dictionary<DateOnly, List<ChipPlacement>>();
 
         foreach (var occurrence in occurrences)
         {
@@ -55,9 +57,15 @@ public static class CalendarLayout
                 continue;
             }
 
-            var isChip = occurrence.Kind is CalendarItemKind.Reminder or CalendarItemKind.Task;
+            // Reminders and tasks sit in their own lane, so they can never open a
+            // column gap or steal width from a timed event.
+            if (occurrence.Kind is CalendarItemKind.Reminder or CalendarItemKind.Task)
+            {
+                AddChip(occurrence, rangeStart, rangeEnd, chipsByDay);
+                continue;
+            }
 
-            if (occurrence.IsAllDay && !isChip)
+            if (occurrence.IsAllDay)
             {
                 var startDay = DateOnly.FromDateTime(occurrence.StartLocal);
                 var endDay = occurrence.EndLocal > occurrence.StartLocal
@@ -68,26 +76,14 @@ public static class CalendarLayout
                 continue;
             }
 
-            var end = isChip
-                ? occurrence.StartLocal + ReminderVisualDuration
-                : occurrence.EndLocal;
+            var end = occurrence.EndLocal;
 
             if (end <= occurrence.StartLocal)
             {
                 continue;
             }
 
-            if (isChip)
-            {
-                // A chip belongs to the day it is due on, even when it is due near midnight.
-                var dayEnd = DateOnly.FromDateTime(occurrence.StartLocal).ToDateTime(TimeOnly.MinValue).AddDays(1);
-
-                if (end > dayEnd)
-                {
-                    end = dayEnd;
-                }
-            }
-            else if (end - occurrence.StartLocal > OneDay)
+            if (end - occurrence.StartLocal > OneDay)
             {
                 var startDay = DateOnly.FromDateTime(occurrence.StartLocal);
 
@@ -100,7 +96,7 @@ public static class CalendarLayout
 
         return new CalendarLayoutResult(
             BuildWeeks(banners, rangeStart, rangeEnd, weekStart, maxBannerLanes),
-            BuildDays(timedByDay, rangeStart, rangeEnd, maxColumns));
+            BuildDays(timedByDay, chipsByDay, rangeStart, rangeEnd, maxColumns));
     }
 
     /// <summary>
@@ -129,6 +125,40 @@ public static class CalendarLayout
             : DateOnly.FromDateTime(end);
 
     private static DateOnly MaxDate(DateOnly a, DateOnly b) => a > b ? a : b;
+
+    /// <summary>
+    /// A reminder or task belongs to the single day it is due on, even near midnight,
+    /// and only needs a visual time range for ordering and tooltips.
+    /// </summary>
+    private static void AddChip(
+        LayoutOccurrence occurrence,
+        DateOnly rangeStart,
+        DateOnly rangeEnd,
+        Dictionary<DateOnly, List<ChipPlacement>> chipsByDay)
+    {
+        var day = DateOnly.FromDateTime(occurrence.StartLocal);
+
+        if (day < rangeStart || day > rangeEnd)
+        {
+            return;
+        }
+
+        var end = occurrence.StartLocal + ReminderVisualDuration;
+        var dayEnd = day.ToDateTime(TimeOnly.MinValue).AddDays(1);
+
+        if (end > dayEnd)
+        {
+            end = dayEnd;
+        }
+
+        if (!chipsByDay.TryGetValue(day, out var chips))
+        {
+            chips = [];
+            chipsByDay[day] = chips;
+        }
+
+        chips.Add(new ChipPlacement(occurrence, occurrence.StartLocal, end));
+    }
 
     private static void AddTimedSegments(
         LayoutOccurrence occurrence,
@@ -297,6 +327,7 @@ public static class CalendarLayout
 
     private static List<DayColumnLayout> BuildDays(
         Dictionary<DateOnly, List<TimedSegment>> timedByDay,
+        Dictionary<DateOnly, List<ChipPlacement>> chipsByDay,
         DateOnly rangeStart,
         DateOnly rangeEnd,
         int maxColumns)
@@ -343,7 +374,14 @@ public static class CalendarLayout
                 }
             }
 
-            days.Add(new DayColumnLayout(day, placements, overflow, hidden));
+            var chips = chipsByDay.TryGetValue(day, out var dayChips)
+                ? dayChips
+                    .OrderBy(chip => chip.VisualStart)
+                    .ThenBy(chip => chip.Occurrence.Id, StringComparer.Ordinal)
+                    .ToList()
+                : [];
+
+            days.Add(new DayColumnLayout(day, placements, overflow, hidden, chips));
         }
 
         return days;
@@ -455,7 +493,14 @@ public sealed record DayColumnLayout(
     DateOnly Date,
     IReadOnlyList<TimedPlacement> Items,
     int OverflowCount,
-    IReadOnlyList<TimedPlacement> Hidden);
+    IReadOnlyList<TimedPlacement> Hidden,
+    IReadOnlyList<ChipPlacement> Chips);
+
+/// <summary>A reminder or task drawn as a fixed-height chip in the day's side lane.</summary>
+public sealed record ChipPlacement(
+    LayoutOccurrence Occurrence,
+    DateTime VisualStart,
+    DateTime VisualEnd);
 
 public sealed record TimedPlacement(
     LayoutOccurrence Occurrence,

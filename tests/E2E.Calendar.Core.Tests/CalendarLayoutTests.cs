@@ -30,6 +30,7 @@ public sealed class CalendarLayoutTests
         day.Date.Should().Be(Wednesday);
         day.OverflowCount.Should().Be(0);
         day.Items.Should().HaveCount(2);
+        day.Chips.Should().BeEmpty();
 
         var byId = day.Items.ToDictionary(item => item.Occurrence.Id);
 
@@ -41,7 +42,50 @@ public sealed class CalendarLayoutTests
     }
 
     [Fact]
-    public void Three_reminders_at_the_same_time_use_three_columns_and_thirty_minutes()
+    public void Events_in_separate_overlap_groups_each_keep_the_full_width()
+    {
+        var result = CalendarLayout.Build(
+            [
+                Event("a", Wednesday, 9, 10),
+                Event("b", Wednesday, 10, 11),
+                Event("c", Wednesday, 11, 12),
+            ],
+            Wednesday,
+            Wednesday);
+
+        var day = result.Days.Should().ContainSingle().Subject;
+
+        day.Items.Should().HaveCount(3);
+        day.Items.Should().OnlyContain(item => item.Column == 0 && item.ColumnCount == 1);
+    }
+
+    [Fact]
+    public void A_reminder_never_narrows_an_overlapping_event()
+    {
+        var result = CalendarLayout.Build(
+            [
+                Event("a", Wednesday, 9, 11),
+                Reminder("r", Wednesday, 10, 0),
+            ],
+            Wednesday,
+            Wednesday);
+
+        var day = result.Days.Should().ContainSingle().Subject;
+
+        var timed = day.Items.Should().ContainSingle().Subject;
+        timed.Occurrence.Id.Should().Be("a");
+        timed.Column.Should().Be(0);
+        timed.ColumnCount.Should().Be(1);
+        timed.VisualStart.Should().Be(At(Wednesday, 9));
+        timed.VisualEnd.Should().Be(At(Wednesday, 11));
+
+        var chip = day.Chips.Should().ContainSingle().Subject;
+        chip.Occurrence.Id.Should().Be("r");
+        chip.VisualStart.Should().Be(At(Wednesday, 10));
+    }
+
+    [Fact]
+    public void Three_reminders_at_the_same_time_are_three_chips_with_no_event_columns()
     {
         var result = CalendarLayout.Build(
             [
@@ -54,12 +98,12 @@ public sealed class CalendarLayoutTests
 
         var day = result.Days.Should().ContainSingle().Subject;
 
-        day.Items.Should().HaveCount(3);
-        day.Items.Select(item => item.Column).Should().BeEquivalentTo([0, 1, 2]);
-        day.Items.Should().OnlyContain(item => item.ColumnCount == 3);
-        day.Items.Should().OnlyContain(item => item.VisualStart == At(Wednesday, 17).AddMinutes(21));
-        day.Items.Should().OnlyContain(item => item.VisualEnd == At(Wednesday, 17).AddMinutes(51));
+        day.Items.Should().BeEmpty();
         day.OverflowCount.Should().Be(0);
+        day.Chips.Should().HaveCount(3);
+        day.Chips.Select(chip => chip.Occurrence.Id).Should().BeEquivalentTo(["a", "b", "c"]);
+        day.Chips.Should().OnlyContain(chip => chip.VisualStart == At(Wednesday, 17).AddMinutes(21));
+        day.Chips.Should().OnlyContain(chip => chip.VisualEnd == At(Wednesday, 17).AddMinutes(51));
     }
 
     [Fact]
@@ -127,7 +171,7 @@ public sealed class CalendarLayoutTests
     }
 
     [Fact]
-    public void Forty_reminders_in_one_day_overflow_past_max_columns()
+    public void Forty_reminders_in_one_day_are_chips_and_never_overflow_event_columns()
     {
         var reminders = Enumerable.Range(0, 40)
             .Select(index => Reminder($"r{index:00}", Wednesday, 17, 21))
@@ -143,12 +187,11 @@ public sealed class CalendarLayoutTests
 
         var day = result.Days.Should().ContainSingle().Subject;
 
-        day.Items.Should().HaveCount(3);
-        day.Items.Select(item => item.Column).Should().BeEquivalentTo([0, 1, 2]);
-        day.Items.Should().OnlyContain(item => item.ColumnCount == 3);
-        day.OverflowCount.Should().Be(37);
-        day.Hidden.Should().HaveCount(37);
-        day.Hidden.Select(item => item.Occurrence.Id).Should().OnlyHaveUniqueItems();
+        day.Items.Should().BeEmpty();
+        day.Hidden.Should().BeEmpty();
+        day.OverflowCount.Should().Be(0);
+        day.Chips.Should().HaveCount(40);
+        day.Chips.Select(chip => chip.Occurrence.Id).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
@@ -250,13 +293,14 @@ public sealed class CalendarLayoutTests
             WeekEnd);
 
         result.Weeks.Should().OnlyContain(week => week.Banners.Count == 0 && week.HiddenPlacements.Count == 0);
+        result.Days.Should().OnlyContain(day => day.Items.Count == 0);
 
-        var withItems = result.Days.Where(day => day.Items.Count > 0).ToList();
-        withItems.Should().ContainSingle();
+        var withChips = result.Days.Where(day => day.Chips.Count > 0).ToList();
+        withChips.Should().ContainSingle();
 
-        withItems[0].Date.Should().Be(Wednesday);
+        withChips[0].Date.Should().Be(Wednesday);
 
-        var chip = withItems[0].Items.Should().ContainSingle().Subject;
+        var chip = withChips[0].Chips.Should().ContainSingle().Subject;
         chip.Occurrence.Kind.Should().Be(CalendarItemKind.Reminder);
         chip.VisualStart.Should().Be(At(Wednesday, 17).AddMinutes(21));
         chip.VisualEnd.Should().Be(At(Wednesday, 17).AddMinutes(51));
@@ -272,12 +316,13 @@ public sealed class CalendarLayoutTests
 
         result.Weeks.Should().OnlyContain(week => week.Banners.Count == 0);
 
-        var withItems = result.Days.Where(day => day.Items.Count > 0).ToList();
-        withItems.Should().ContainSingle();
+        var withChips = result.Days.Where(day => day.Chips.Count > 0).ToList();
+        withChips.Should().ContainSingle();
 
-        withItems[0].Date.Should().Be(Wednesday);
+        withChips[0].Date.Should().Be(Wednesday);
+        withChips[0].Items.Should().BeEmpty();
 
-        var chip = withItems[0].Items.Should().ContainSingle().Subject;
+        var chip = withChips[0].Chips.Should().ContainSingle().Subject;
         chip.Occurrence.Kind.Should().Be(CalendarItemKind.Task);
         chip.VisualStart.Should().Be(At(Wednesday, 9));
         chip.VisualEnd.Should().Be(At(Wednesday, 9).AddMinutes(30));
@@ -295,11 +340,13 @@ public sealed class CalendarLayoutTests
 
         result.Days.Should().HaveCount(2);
 
-        var chip = result.Days[0].Items.Should().ContainSingle().Subject;
+        var chip = result.Days[0].Chips.Should().ContainSingle().Subject;
         chip.VisualStart.Should().Be(due);
         chip.VisualEnd.Should().Be(Wednesday.AddDays(1).ToDateTime(TimeOnly.MinValue));
 
+        result.Days[0].Items.Should().BeEmpty();
         result.Days[1].Items.Should().BeEmpty();
+        result.Days[1].Chips.Should().BeEmpty();
     }
 
     [Fact]
@@ -324,8 +371,9 @@ public sealed class CalendarLayoutTests
 
         var day = result.Days[0];
         day.Date.Should().Be(Wednesday);
+        day.Items.Should().BeEmpty();
 
-        var chip = day.Items.Should().ContainSingle().Subject;
+        var chip = day.Chips.Should().ContainSingle().Subject;
         chip.VisualStart.Should().Be(At(Wednesday, 9));
         chip.VisualEnd.Should().Be(At(Wednesday, 9).AddMinutes(30));
     }
