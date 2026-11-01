@@ -92,7 +92,7 @@ public sealed class DailyDigestNotificationService : BackgroundService
     private async Task SendIfDueAsync(CancellationToken cancellationToken)
     {
         var settings = _settings.Current;
-        if (!settings.DailyDigestEnabled)
+        if (!settings.NotificationsEnabled || !settings.DailyDigestEnabled)
         {
             return;
         }

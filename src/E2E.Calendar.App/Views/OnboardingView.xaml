@@ -12,9 +12,9 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Step 1: Connect account  -->
+        <!--  Step 1: Welcome (text only; sync is not part of onboarding)  -->
         <StackPanel
-            x:Name="StepConnect"
+            x:Name="StepWelcome"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Spacing="{StaticResource SpaceMD}">
@@ -25,19 +25,19 @@
             <TextBlock
                 HorizontalAlignment="Center"
                 Style="{ThemeResource SubtitleTextBlockStyle}"
-                Text="Your calendars, in one place"
+                Text="Welcome to E2E Calendar"
                 TextAlignment="Center" />
             <TextBlock
                 MaxWidth="380"
                 HorizontalAlignment="Center"
                 Style="{StaticResource SettingsCardDescriptionStyle}"
-                Text="E2E Calendar works fully offline. You can add Google, Microsoft or CalDAV accounts later from Settings."
+                Text="Your events, tasks and reminders stay on this PC."
                 TextAlignment="Center" />
             <TextBlock
                 MaxWidth="380"
                 HorizontalAlignment="Center"
                 Style="{StaticResource SettingsCardDescriptionStyle}"
-                Text="No account is required to get started."
+                Text="Everything works offline. No account is needed."
                 TextAlignment="Center" />
         </StackPanel>
 
@@ -100,6 +100,7 @@
         <!--  Footer  -->
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto">
             <Button
+                x:Name="SkipButton"
                 Grid.Column="0"
                 Click="OnSkipClick"
                 AutomationProperties.Name="Skip onboarding"

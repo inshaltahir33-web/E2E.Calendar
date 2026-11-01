@@ -543,6 +543,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         SecondaryTimeZoneId = TimeZoneCatalog.Common[Math.Clamp(SecondaryTimeZoneIndex, 0, TimeZoneCatalog.Common.Count - 1)].Id,
         ShowBirthdays = ShowBirthdays,
         DefaultSnoozeMinutes = SnoozeMinuteOptions[Math.Clamp(DefaultSnoozeIndex, 0, SnoozeMinuteOptions.Length - 1)],
+        NotificationsEnabled = _settings.Current.NotificationsEnabled,
         PersistentRepeatMinutes = RepeatMinuteOptions[Math.Clamp(PersistentRepeatIndex, 0, RepeatMinuteOptions.Length - 1)],
         DailyDigestEnabled = DailyDigestEnabled,
         DailyDigestTime = DailyDigestTime,

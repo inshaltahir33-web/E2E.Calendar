@@ -57,6 +57,8 @@ public sealed record AppSettings
 
     public int DefaultSnoozeMinutes { get; init; } = 10;
 
+    public bool NotificationsEnabled { get; init; } = true;
+
     public bool DailyDigestEnabled { get; init; }
 
     public TimeSpan DailyDigestTime { get; init; } = new(8, 0, 0);

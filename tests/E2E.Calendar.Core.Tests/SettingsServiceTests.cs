@@ -66,6 +66,7 @@ public sealed class SettingsServiceTests
         var settings = await new SettingsService(new FakeSettingsRepository()).LoadAsync();
 
         settings.DefaultSnoozeMinutes.Should().Be(10);
+        settings.NotificationsEnabled.Should().BeTrue();
         settings.DailyDigestEnabled.Should().BeFalse();
         settings.DailyDigestTime.Should().Be(new TimeSpan(8, 0, 0));
         settings.CriticalBreaksThroughDoNotDisturb.Should().BeTrue();
@@ -81,6 +82,7 @@ public sealed class SettingsServiceTests
         await service.UpdateAsync(new AppSettings
         {
             DefaultSnoozeMinutes = 30,
+            NotificationsEnabled = false,
             DailyDigestEnabled = true,
             DailyDigestTime = new TimeSpan(7, 45, 0),
             CriticalBreaksThroughDoNotDisturb = false,
@@ -90,6 +92,7 @@ public sealed class SettingsServiceTests
         var reloaded = await new SettingsService(repository).LoadAsync();
 
         reloaded.DefaultSnoozeMinutes.Should().Be(30);
+        reloaded.NotificationsEnabled.Should().BeFalse();
         reloaded.DailyDigestEnabled.Should().BeTrue();
         reloaded.DailyDigestTime.Should().Be(new TimeSpan(7, 45, 0));
         reloaded.CriticalBreaksThroughDoNotDisturb.Should().BeFalse();

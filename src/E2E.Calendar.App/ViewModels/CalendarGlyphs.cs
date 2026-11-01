@@ -4,7 +4,11 @@ public static class CalendarGlyphs
 {
     public static string Today { get; } = Glyph(0xE787);
 
+    public static string Upcoming { get; } = Glyph(0xE787);
+
     public static string Scheduled { get; } = Glyph(0xE823);
+
+    public static string NoDate { get; } = Glyph(0xE894);
 
     public static string Overdue { get; } = Glyph(0xE783);
 

@@ -641,7 +641,8 @@ public sealed partial class TimeGrid : UserControl
 
     private void RenderHeader(IReadOnlyList<TimeGridDay> days)
     {
-        var signature = DaySignature(days);
+        var signature = DaySignature(days)
+            + (ShowSecondaryTimeZone ? $"|{ResolveSecondaryTimeZone().Id}" : string.Empty);
 
         if (_headerCells.Count > 0 && _headerSignature == signature)
         {
@@ -657,25 +658,26 @@ public sealed partial class TimeGrid : UserControl
 
         _headerCells.Clear();
 
-        var tzLabel = new TextBlock
+        if (ShowSecondaryTimeZone)
         {
-            Text = FormatTimeZoneOffset(LocalTimeZone),
-            // 10px keeps the whole "UTC+05:00" inside the 56px gutter instead of clipping to "TC+05:00".
-            FontSize = Tokens.Double("FontSizeChipMeta", 10d),
-            Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Bottom,
-            TextAlignment = TextAlignment.Right,
-            TextTrimming = TextTrimming.None,
-            TextWrapping = TextWrapping.NoWrap,
-            Width = Math.Max(0, GutterWidth - 4),
-            Margin = new Thickness(0, 0, 4, 6),
-        };
+            var tzLabel = new TextBlock
+            {
+                Text = FormatTimeZoneOffset(ResolveSecondaryTimeZone()),
+                FontSize = Tokens.Double("FontSizeChipMeta", 10d),
+                Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextWrapping = TextWrapping.NoWrap,
+                Margin = new Thickness(4, 0, 4, 6),
+            };
 
-        Grid.SetRow(tzLabel, 1);
-        Grid.SetColumn(tzLabel, 0);
-        RootLayout.Children.Add(tzLabel);
-        _headerCells.Add(tzLabel);
+            Grid.SetRow(tzLabel, 1);
+            Grid.SetColumn(tzLabel, days.Count + 1);
+            RootLayout.Children.Add(tzLabel);
+            _headerCells.Add(tzLabel);
+        }
 
         for (var index = 0; index < days.Count; index++)
         {

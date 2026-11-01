@@ -45,13 +45,18 @@ public sealed record TodoGroup(string? Header, IReadOnlyList<TodoRow> Rows);
 public sealed class TodoService
 {
     public const string Today = "Today";
+    public const string Next7Days = "Next 7 days";
     public const string Scheduled = "Scheduled";
+    public const string NoDate = "No date";
     public const string Overdue = "Overdue";
     public const string Completed = "Completed";
     public const string Flagged = "Flagged";
     public const string Inbox = "Inbox";
 
-    private static readonly string[] SmartFilters = { Today, Scheduled, Overdue, Completed, Flagged, Inbox };
+    private static readonly string[] SmartFilters =
+    {
+        Today, Next7Days, Scheduled, NoDate, Overdue, Completed, Flagged, Inbox,
+    };
 
     private readonly IReminderRepository _reminders;
     private readonly ITaskRepository _tasks;
@@ -93,17 +98,17 @@ public sealed class TodoService
     /// <summary>True for Inbox and every named list; smart views filter reminders instead.</summary>
     public static bool IsTaskList(string? filter) =>
         !string.IsNullOrWhiteSpace(filter)
-        && Normalize(filter) is not (Today or Scheduled or Overdue or Completed or Flagged);
+        && Normalize(filter) is not (Today or Next7Days or Scheduled or NoDate or Overdue or Completed or Flagged);
 
     /// <summary>Names that cannot be used for a user list because they are built-in views or Inbox.</summary>
     public static bool IsReservedListName(string? name) =>
         !string.IsNullOrWhiteSpace(name)
         && SmartFilters.Contains(name.Trim(), StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Overdue, Completed and Flagged are read-only views: no add box.</summary>
+    /// <summary>Overdue, Completed, Flagged and the date-window views are read-only: no add box.</summary>
     public static bool CanAdd(string? filter) => Normalize(filter) switch
     {
-        Overdue or Completed or Flagged => false,
+        Next7Days or NoDate or Overdue or Completed or Flagged => false,
         _ => true,
     };
 
@@ -186,7 +191,7 @@ public sealed class TodoService
         var rows = await LoadAsync(filter);
         var name = Normalize(filter);
 
-        if (name == Scheduled)
+        if (name is Scheduled or Next7Days)
         {
             return rows
                 .GroupBy(row => LocalDate(row.DueUtc))
@@ -585,10 +590,17 @@ public sealed class TodoService
         {
             Completed => row.IsDone,
             Flagged => !row.IsDone && row.IsFlagged,
+
+            // Unfinished dated tasks stay in Overdue and also surface on Today, where
+            // the row carries an Overdue badge instead of disappearing until completed.
             Today => !row.IsDone && row.DueUtc is { } due
-                && DateOnly.FromDateTime(timeZone.ToLocal(due)) == today,
+                && (DateOnly.FromDateTime(timeZone.ToLocal(due)) == today
+                    || (row.Kind == TodoKind.Task && due < now)),
+            Next7Days => !row.IsDone && row.DueUtc is { } due
+                && due >= now && due < now.AddDays(7),
             Scheduled => !row.IsDone && row.DueUtc is { } due
                 && DateOnly.FromDateTime(timeZone.ToLocal(due)) > today,
+            NoDate => !row.IsDone && row.DueUtc is null,
             Overdue => !row.IsDone && row.DueUtc is { } due && due < now,
             _ => !row.IsDone && row.Kind == TodoKind.Task
                 && string.Equals(row.ListName, filter, StringComparison.OrdinalIgnoreCase),

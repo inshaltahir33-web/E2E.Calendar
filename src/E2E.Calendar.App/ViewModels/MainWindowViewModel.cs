@@ -49,9 +49,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         SharedCalendars = calendars.Calendars;
 
-        ReminderLists.Add(new NavigationListItem { Label = "Today", Glyph = CalendarGlyphs.Today, TargetKey = NavigationKeys.Reminders });
-        ReminderLists.Add(new NavigationListItem { Label = "Scheduled", Glyph = CalendarGlyphs.Scheduled, TargetKey = NavigationKeys.Reminders });
-        ReminderLists.Add(new NavigationListItem { Label = "Overdue", Glyph = CalendarGlyphs.Overdue, TargetKey = NavigationKeys.Reminders });
+        ReminderLists.Add(new NavigationListItem { Label = TodoService.Today, Glyph = CalendarGlyphs.Today, TargetKey = NavigationKeys.Reminders });
+        ReminderLists.Add(new NavigationListItem { Label = TodoService.Next7Days, Glyph = CalendarGlyphs.Upcoming, TargetKey = NavigationKeys.Reminders });
+        ReminderLists.Add(new NavigationListItem { Label = TodoService.Scheduled, Glyph = CalendarGlyphs.Scheduled, TargetKey = NavigationKeys.Reminders });
+        ReminderLists.Add(new NavigationListItem { Label = TodoService.NoDate, Glyph = CalendarGlyphs.NoDate, TargetKey = NavigationKeys.Reminders });
+        ReminderLists.Add(new NavigationListItem { Label = TodoService.Overdue, Glyph = CalendarGlyphs.Overdue, TargetKey = NavigationKeys.Reminders });
         ReminderLists.Add(new NavigationListItem { Label = "Completed", Glyph = CalendarGlyphs.Completed, TargetKey = NavigationKeys.Reminders });
         ReminderLists.Add(new NavigationListItem { Label = "Flagged", Glyph = CalendarGlyphs.Flagged, TargetKey = NavigationKeys.Reminders });
 

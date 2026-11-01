@@ -210,6 +210,13 @@ public sealed class ReminderNotificationService : BackgroundService
 
     private async Task<bool> ProcessDueAsync(CancellationToken cancellationToken, DuePass pass)
     {
+        // Notifications off: keep due instances pending so nothing is lost, and report
+        // deferred so the loop waits instead of spinning on rows that stay due.
+        if (!_settings.Current.NotificationsEnabled)
+        {
+            return true;
+        }
+
         var now = _clock.UtcNow;
         var due = await _alerts.GetPendingInstancesAsync(now, cancellationToken);
         if (due.Count == 0)

@@ -143,7 +143,7 @@ public sealed class ToastActivationService
 
         var now = _clock.UtcNow;
         var fireAt = SnoozeSchedule.TryParse(choice, out var snoozeChoice)
-            ? SnoozeSchedule.Resolve(snoozeChoice, now, _clock.LocalTimeZone)
+            ? SnoozeSchedule.Resolve(snoozeChoice, now)
             : now.AddMinutes(Math.Max(1, _settings.Current.DefaultSnoozeMinutes));
 
         // Retire the original instance and materialise the snoozed one. The copy keeps

@@ -15,7 +15,8 @@ using Windows.System;
 namespace E2E.Calendar.App.Views;
 
 /// <summary>
-/// Reminders and tasks page: Today, Scheduled, Overdue, Completed, Flagged and the task lists (Inbox, Work).
+/// Reminders and tasks page: Today, Next 7 days, Scheduled, No date, Overdue, Completed,
+/// Flagged and the task lists (Inbox, Work).
 /// Shows real data, lets the user add, complete, flag and delete items, and keeps sidebar counts in sync.
 /// </summary>
 public sealed partial class TodoView : Page
@@ -113,8 +114,10 @@ public sealed partial class TodoView : Page
         HintText.Visibility = canAdd ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = filter switch
         {
-            TodoService.Today => "Reminders due today",
+            TodoService.Today => "Reminders due today, plus unfinished tasks that are overdue",
+            TodoService.Next7Days => "Everything due in the next 7 days",
             TodoService.Scheduled => "Upcoming reminders",
+            TodoService.NoDate => "Reminders and tasks without a due date",
             TodoService.Inbox => "Quick capture. Add anything here and sort it later.",
             _ => TodoService.IsTaskList(filter)
                 ? "Tasks in this list. New items are added here."
@@ -123,7 +126,9 @@ public sealed partial class TodoView : Page
         EmptyText.Text = filter switch
         {
             TodoService.Today => "Nothing left for today.",
+            TodoService.Next7Days => "Nothing due in the next 7 days.",
             TodoService.Scheduled => "Nothing scheduled. Add one above.",
+            TodoService.NoDate => "Everything here has a due date.",
             TodoService.Overdue => "Nothing overdue.",
             TodoService.Completed => "Nothing completed yet.",
             TodoService.Flagged => "Nothing flagged.",
@@ -177,6 +182,8 @@ public sealed partial class TodoView : Page
         {
             NoAddText.Text = filter switch
             {
+                TodoService.Next7Days => "This view is read-only. Add items from Today or Scheduled.",
+                TodoService.NoDate => "This view is read-only. Add items from a list or from Scheduled.",
                 TodoService.Overdue => "Overdue items are read-only. Complete or reschedule them from Today or Scheduled.",
                 TodoService.Completed => "Completed items are read-only.",
                 _ => "Flagged items are read-only. Flag or unflag them from another list.",
@@ -320,7 +327,8 @@ public sealed partial class TodoView : Page
         Grid.SetColumn(list, 2);
         grid.Children.Add(list);
 
-        // The right edge shows the due chip; hovering the row swaps it for the actions.
+        // The right edge shows an Overdue badge (on Today) next to the due chip;
+        // hovering the row swaps both for the actions.
         var hasDue = !string.IsNullOrEmpty(row.DueText);
 
         var right = new Grid
@@ -332,24 +340,50 @@ public sealed partial class TodoView : Page
         Grid.SetColumn(right, 3);
         grid.Children.Add(right);
 
-        var dueChip = new Border
+        var dueHost = new StackPanel
         {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
             HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Visibility = hasDue ? Visibility.Visible : Visibility.Collapsed,
+        };
+        right.Children.Add(dueHost);
+
+        if (row.IsOverdue && string.Equals(Filter, TodoService.Today, StringComparison.OrdinalIgnoreCase))
+        {
+            dueHost.Children.Add(new Border
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(6, 2, 6, 2),
+                CornerRadius = new CornerRadius(6),
+                Background = ThemeBrushes.Get(this, "App.CardBackgroundBrush"),
+                BorderBrush = ThemeBrushes.Get(this, "App.DangerBrush"),
+                BorderThickness = new Thickness(1),
+                Child = new TextBlock
+                {
+                    Text = "Overdue",
+                    Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+                    Foreground = ThemeBrushes.Get(this, "App.DangerBrush"),
+                },
+            });
+        }
+
+        dueHost.Children.Add(new Border
+        {
             VerticalAlignment = VerticalAlignment.Center,
             Padding = new Thickness(8, 2, 8, 2),
             CornerRadius = new CornerRadius(6),
             Background = ThemeBrushes.Get(this, "App.CardBackgroundBrush"),
             BorderBrush = ThemeBrushes.Get(this, row.IsOverdue ? "App.DangerBrush" : "App.DividerBrush"),
             BorderThickness = new Thickness(1),
-            Visibility = hasDue ? Visibility.Visible : Visibility.Collapsed,
             Child = new TextBlock
             {
                 Text = row.DueText,
                 Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
                 Foreground = ThemeBrushes.Get(this, row.IsOverdue ? "App.DangerBrush" : "App.TextSecondaryBrush"),
             },
-        };
-        right.Children.Add(dueChip);
+        });
 
         var actions = new StackPanel
         {
@@ -398,7 +432,7 @@ public sealed partial class TodoView : Page
         outer.PointerEntered += (_, _) =>
         {
             grid.Background = ThemeBrushes.Get(this, "App.HoverBrush");
-            dueChip.Visibility = Visibility.Collapsed;
+            dueHost.Visibility = Visibility.Collapsed;
             actions.Visibility = Visibility.Visible;
         };
 
@@ -406,7 +440,7 @@ public sealed partial class TodoView : Page
         {
             grid.Background = ThemeBrushes.Get(this, "App.TransparentBrush");
             actions.Visibility = Visibility.Collapsed;
-            dueChip.Visibility = hasDue ? Visibility.Visible : Visibility.Collapsed;
+            dueHost.Visibility = hasDue ? Visibility.Visible : Visibility.Collapsed;
         };
 
         return outer;

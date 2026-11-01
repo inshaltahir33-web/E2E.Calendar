@@ -97,18 +97,21 @@
                     AutomationProperties.Name="New event"
                     Click="OnNewEventClick"
                     Content="New event"
+                    MinWidth="0"
                     Style="{StaticResource SecondaryButtonStyle}" />
                 <Button
                     Grid.Column="1"
                     AutomationProperties.Name="New reminder"
                     Click="OnNewReminderClick"
                     Content="New reminder"
+                    MinWidth="0"
                     Style="{StaticResource SecondaryButtonStyle}" />
                 <Button
                     Grid.Column="2"
                     AutomationProperties.Name="Open calendar"
                     Click="OnOpenClick"
                     Content="Open"
+                    MinWidth="0"
                     Style="{StaticResource AccentButtonStyle}" />
             </Grid>
         </Grid>

@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace E2E.Calendar.App.Views;
 
 /// <summary>
-/// Three-step, skippable first-run experience: connect an account, pick a theme,
+/// Three-step, skippable first-run experience: welcome text, pick a theme,
 /// enable notifications. The chosen values are returned to the caller, which
 /// persists them via <c>SettingsService</c>.
 /// </summary>
@@ -21,7 +21,7 @@ public sealed partial class OnboardingView : UserControl
     {
         InitializeComponent();
 
-        _steps = [StepConnect, StepTheme, StepNotifications];
+        _steps = [StepWelcome, StepTheme, StepNotifications];
 
         UpdateStep();
     }
@@ -64,6 +64,7 @@ public sealed partial class OnboardingView : UserControl
             _ = settings.UpdateAsync(current with
             {
                 Theme = view.SelectedTheme,
+                NotificationsEnabled = view.NotificationsEnabled,
                 OnboardingComplete = true,
             });
 

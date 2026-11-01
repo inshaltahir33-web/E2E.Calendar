@@ -15,38 +15,18 @@ public sealed class SnoozeScheduleTests
     [InlineData(SnoozeChoice.OneHour, 60)]
     public void Minute_options_are_relative_to_now(SnoozeChoice choice, int minutes)
     {
-        var fireAt = SnoozeSchedule.Resolve(choice, Now, TimeZoneInfo.Utc);
+        var fireAt = SnoozeSchedule.Resolve(choice, Now);
 
         fireAt.Should().Be(Now.AddMinutes(minutes));
     }
 
     [Fact]
-    public void Tomorrow_at_nine_uses_local_nine_am_not_twenty_four_hours()
-    {
-        var timeZone = TimeZoneInfo.CreateCustomTimeZone("test+2", TimeSpan.FromHours(2), "test+2", "test+2");
-        var nowLocal = new DateTimeOffset(2026, 11, 1, 23, 30, 0, TimeSpan.FromHours(2));
-        var nowUtc = nowLocal.ToUniversalTime();
-
-        var fireAt = SnoozeSchedule.Resolve(SnoozeChoice.TomorrowAtNine, nowUtc, timeZone);
-
-        var expectedLocal = new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.FromHours(2));
-        fireAt.Should().Be(expectedLocal.ToUniversalTime());
-    }
-
-    [Fact]
-    public void Tomorrow_at_nine_returns_utc_and_keeps_the_local_wall_clock()
-    {
-        var fireAt = SnoozeSchedule.Resolve(SnoozeChoice.TomorrowAtNine, Now, TimeZoneInfo.Utc);
-
-        fireAt.Should().Be(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
-    }
-
-    [Fact]
     public void Every_choice_has_a_unique_round_tripping_key_and_label()
     {
-        SnoozeSchedule.Choices.Should().HaveCount(5);
+        SnoozeSchedule.Choices.Should().HaveCount(4);
         SnoozeSchedule.Choices.Select(SnoozeSchedule.ToKey).Should().OnlyHaveUniqueItems();
         SnoozeSchedule.Choices.Select(SnoozeSchedule.ToLabel).Should().OnlyHaveUniqueItems();
+        SnoozeSchedule.Choices.Select(SnoozeSchedule.ToLabel).Should().NotContain("Tomorrow 9 AM");
 
         foreach (var choice in SnoozeSchedule.Choices)
         {

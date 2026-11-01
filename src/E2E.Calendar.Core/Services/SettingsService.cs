@@ -23,6 +23,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     private const string ShowBirthdaysKey = "calendars.show_birthdays";
     private const string SecondaryTimeZoneIdKey = "general.secondary_time_zone_id";
     private const string DefaultSnoozeMinutesKey = "notifications.default_snooze_minutes";
+    private const string NotificationsEnabledKey = "notifications.enabled";
     private const string DailyDigestEnabledKey = "notifications.daily_digest_enabled";
     private const string DailyDigestTimeKey = "notifications.daily_digest_time";
     private const string CriticalBreaksThroughDoNotDisturbKey = "notifications.critical_break_through_dnd";
@@ -98,6 +99,10 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
         await _repository.SetAsync(SecondaryTimeZoneIdKey, settings.SecondaryTimeZoneId, cancellationToken);
         await _repository.SetAsync(DefaultSnoozeMinutesKey, settings.DefaultSnoozeMinutes.ToString(), cancellationToken);
         await _repository.SetAsync(
+            NotificationsEnabledKey,
+            settings.NotificationsEnabled ? "1" : "0",
+            cancellationToken);
+        await _repository.SetAsync(
             DailyDigestEnabledKey,
             settings.DailyDigestEnabled ? "1" : "0",
             cancellationToken);
@@ -172,6 +177,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
                 defaults.DefaultSnoozeMinutes,
                 1,
                 1440),
+            NotificationsEnabled = ParseBool(values, NotificationsEnabledKey, defaults.NotificationsEnabled),
             DailyDigestEnabled = ParseBool(values, DailyDigestEnabledKey, defaults.DailyDigestEnabled),
             DailyDigestTime = ParseTimeOfDay(values, DailyDigestTimeKey, defaults.DailyDigestTime),
             CriticalBreaksThroughDoNotDisturb = ParseBool(
