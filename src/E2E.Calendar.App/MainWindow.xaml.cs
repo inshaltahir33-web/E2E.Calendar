@@ -53,7 +53,6 @@ public sealed partial class MainWindow : Window
     private bool _rsvpInProgress;
     private bool _isClosingEditor;
     private bool _syncingViewSwitcher;
-    private bool _isCalendarViewPage = true;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -178,13 +177,6 @@ public sealed partial class MainWindow : Window
             _deletion = deletion;
 
             this.InitializeComponent();
-
-            // On Settings / Reminders / Tasks the switcher keeps its previous selection but paints
-            // no highlight, so clicking that same tab raises no SelectionChanged. Tapped covers it.
-            foreach (var item in ViewSwitcher.Items.OfType<SelectorBarItem>())
-            {
-                item.Tapped += OnViewSwitcherItemTapped;
-            }
 
             ShowRemindersAndTasksToggle.IsChecked = _settings.Current.ShowRemindersAndTasks;
             _settings.Changed += (_, updated) =>
@@ -558,25 +550,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Non-calendar pages show no selected tab, so re-clicking the tab that is still selected
-    /// internally fires no SelectionChanged. Only that case is handled here; a click on any
-    /// other tab goes through SelectionChanged, so nothing runs twice.
-    /// </summary>
-    private void OnViewSwitcherItemTapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (_isCalendarViewPage ||
-            sender is not SelectorBarItem item ||
-            !Equals(item, ViewSwitcher.SelectedItem) ||
-            item.Tag is not string tag ||
-            !Enum.TryParse<CalendarViewMode>(tag, out var mode))
-        {
-            return;
-        }
-
-        ShowView(mode, NavigationKeyFor(mode));
-    }
-
     private void OnNewSplitButtonClick(object sender, RoutedEventArgs e) => OpenNewEvent();
 
     private void OnNewEventClick(object sender, RoutedEventArgs e) => OpenNewEvent();
@@ -864,7 +837,10 @@ public sealed partial class MainWindow : Window
         {
             StateViewModel.SetViewModeCommand.Execute(mode);
         }
-        else if (_navigation.CurrentViewKey != key)
+
+        // Never trust the selector or the state to say the view is already open: after
+        // Reminders / Settings the calendar page must be put back on screen.
+        if (!_navigation.IsCalendarView || _navigation.CurrentViewKey != key)
         {
             _navigation.NavigateTo(key);
         }
@@ -907,17 +883,44 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Drops the switcher's internal selection while a page without a calendar view is shown.
+    /// Keeping it would make a click on that same tab raise no SelectionChanged, so the tab
+    /// could never open its view again.
+    /// </summary>
+    private void ClearViewSwitcherSelection()
+    {
+        if (ViewSwitcher.SelectedItem is null)
+        {
+            return;
+        }
+
+        _syncingViewSwitcher = true;
+
+        try
+        {
+            ViewSwitcher.SelectedItem = null;
+        }
+        finally
+        {
+            _syncingViewSwitcher = false;
+        }
+    }
+
+    /// <summary>
     /// Selected switcher tab renders as an Accent filled pill with white text; every other tab
-    /// stays transparent. All paths that change the view (selector, keyboard shortcuts and
-    /// state-driven updates) funnel through SelectViewInSwitcher, so the highlight always follows.
+    /// stays transparent. The highlight follows the view the navigation service actually shows,
+    /// so a stale tab selection can never keep a pill lit on another page.
     /// </summary>
     private void ApplyViewSwitcherSelection()
     {
+        var currentKey = _navigation.CurrentViewKey;
+
         foreach (var item in ViewSwitcher.Items.OfType<SelectorBarItem>())
         {
-            // Reminders / Settings keep the internal selection so returning to a calendar view
-            // restores it, but paint every tab neutral while those pages are shown.
-            var selected = _isCalendarViewPage && Equals(item, ViewSwitcher.SelectedItem);
+            // Reminders / Settings have no calendar view, so every tab stays neutral there.
+            var selected = _navigation.IsCalendarView &&
+                           item.Tag is string tag &&
+                           string.Equals(tag, currentKey, StringComparison.OrdinalIgnoreCase);
             item.Background = selected
                 ? ThemeBrushes.Get(RootGrid, "Accent")
                 : ThemeBrushes.Get(RootGrid, "App.TransparentBrush");
@@ -1707,7 +1710,6 @@ public sealed partial class MainWindow : Window
             _ => (CalendarViewMode?)null,
         };
         var isCalendarView = mode is not null;
-        _isCalendarViewPage = isCalendarView;
 
         PeriodLabelText.Visibility = isCalendarView ? Visibility.Visible : Visibility.Collapsed;
         PageTitleText.Visibility = isCalendarView ? Visibility.Collapsed : Visibility.Visible;
@@ -1727,6 +1729,7 @@ public sealed partial class MainWindow : Window
             _ => "Calendar",
         };
 
+        ClearViewSwitcherSelection();
         ApplyViewSwitcherSelection();
     }
 

@@ -21,6 +21,12 @@ public sealed class NavigationService
     public string? CurrentViewKey { get; private set; }
 
     /// <summary>
+    /// True while the frame shows Day, Week, Month or Agenda. The top bar paints its selected
+    /// tab from this, so a tab can never stay lit once Reminders / Settings is open.
+    /// </summary>
+    public bool IsCalendarView => IsCalendarViewKey(CurrentViewKey ?? string.Empty);
+
+    /// <summary>
     /// The last Day/Week/Month/Agenda view that was opened, so pages like Settings can toggle
     /// back to the calendar instead of jumping to a fixed default view.
     /// </summary>
