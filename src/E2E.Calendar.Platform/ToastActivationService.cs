@@ -15,9 +15,10 @@ namespace E2E.Calendar.Platform;
 /// <see cref="AppNotificationManager.NotificationInvoked"/> after
 /// <see cref="Register"/> has been called.
 ///
-/// Toast payloads use flat key/value arguments: action=snooze|done|join|open, id=instance.
-/// Snooze reads the chosen option from the toast's snooze menu (UserInput) and falls
-/// back to the default snooze from settings when the menu is unavailable.
+/// Toast payloads use flat key/value arguments: action=snooze|done|join|open|open-overdue,
+/// id=instance (absent from the catch-up summary). Snooze reads the chosen option from the
+/// toast's snooze menu (UserInput) and falls back to the default snooze from settings when
+/// the menu is unavailable.
 /// </summary>
 public sealed class ToastActivationService
 {
@@ -50,6 +51,9 @@ public sealed class ToastActivationService
     /// <summary>Raised when the user taps the toast body or the Open button.</summary>
     public event EventHandler? OpenRequested;
 
+    /// <summary>Raised when the user opens the wake-from-sleep missed-reminder summary.</summary>
+    public event EventHandler? OverdueRequested;
+
     /// <summary>
     /// Registers toast activation. Safe to call once at startup, before any toast is
     /// shown; failures are logged and never break app startup.
@@ -77,6 +81,12 @@ public sealed class ToastActivationService
             arguments.TryGetValue("id", out var instanceId);
 
             _logger.LogInformation("Toast action: {Action} {InstanceId}", action ?? "open", instanceId);
+
+            if (string.Equals(action, "open-overdue", StringComparison.Ordinal))
+            {
+                OverdueRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(instanceId))
             {

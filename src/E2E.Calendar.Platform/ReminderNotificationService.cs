@@ -24,6 +24,12 @@ public sealed class ReminderNotificationService : BackgroundService
     private readonly ILogger<ReminderNotificationService> _logger;
     private readonly SemaphoreSlim _wake = new(0, 1);
 
+    // Planning and firing run from the tick loop and from wake-from-sleep catch-up;
+    // serialising them keeps one pass from toasting instances the other just retired.
+    private readonly SemaphoreSlim _processing = new(1, 1);
+    private CancellationToken _stoppingToken = CancellationToken.None;
+    private volatile bool _resumePending;
+
     public ReminderNotificationService(
         IAlertRepository alerts,
         IEventRepository events,
@@ -48,12 +54,67 @@ public sealed class ReminderNotificationService : BackgroundService
 
     public void Wake() => _wake.ReleaseIfAvailable();
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    /// <summary>
+    /// Wake-from-sleep catch-up: retire everything that came due while the PC slept and
+    /// show one summary toast instead of one toast per item, then re-plan immediately.
+    /// The pending flag lets the tick loop run the same catch-up if it wins the race for
+    /// the processing gate, so the backlog is never toasted item by item.
+    /// </summary>
+    public async Task ResumeCatchUpAsync()
     {
+        _resumePending = true;
+        var cancellationToken = _stoppingToken;
+
         try
         {
-            await PlanAndScheduleAsync(stoppingToken);
-            await ProcessDueAsync(stoppingToken, catchUp: true);
+            await _processing.WaitAsync(cancellationToken);
+            try
+            {
+                if (_resumePending)
+                {
+                    _resumePending = false;
+                    await CatchUpAfterResumeAsync(cancellationToken);
+                }
+            }
+            finally
+            {
+                _processing.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Reminder catch-up after resume failed.");
+        }
+    }
+
+    private async Task CatchUpAfterResumeAsync(CancellationToken cancellationToken)
+    {
+        // Retire due rows before planning: the planner deletes pending instances whose
+        // fire time fell outside its catch-up window, and after sleep those are exactly
+        // the missed reminders the summary has to count.
+        await ProcessDueAsync(cancellationToken, DuePass.Resume);
+        await PlanAndScheduleAsync(cancellationToken);
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _stoppingToken = stoppingToken;
+
+        try
+        {
+            await _processing.WaitAsync(stoppingToken);
+            try
+            {
+                await PlanAndScheduleAsync(stoppingToken);
+                await ProcessDueAsync(stoppingToken, DuePass.Startup);
+            }
+            finally
+            {
+                _processing.Release();
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -90,8 +151,24 @@ public sealed class ReminderNotificationService : BackgroundService
                     TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds, 60)),
                     stoppingToken);
 
-                await PlanAndScheduleAsync(stoppingToken);
-                await ProcessDueAsync(stoppingToken, catchUp: false);
+                await _processing.WaitAsync(stoppingToken);
+                try
+                {
+                    if (_resumePending)
+                    {
+                        _resumePending = false;
+                        await CatchUpAfterResumeAsync(stoppingToken);
+                    }
+                    else
+                    {
+                        await PlanAndScheduleAsync(stoppingToken);
+                        await ProcessDueAsync(stoppingToken, DuePass.Normal);
+                    }
+                }
+                finally
+                {
+                    _processing.Release();
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -118,13 +195,16 @@ public sealed class ReminderNotificationService : BackgroundService
         _logger.LogInformation("Reminder plan: {Planned} instance(s) planned.", planned);
     }
 
-    private async Task ProcessDueAsync(CancellationToken cancellationToken, bool catchUp)
+    private async Task ProcessDueAsync(CancellationToken cancellationToken, DuePass pass)
     {
-        var due = await _alerts.GetPendingInstancesAsync(_clock.UtcNow, cancellationToken);
+        var now = _clock.UtcNow;
+        var due = await _alerts.GetPendingInstancesAsync(now, cancellationToken);
         if (due.Count == 0)
         {
             return;
         }
+
+        var missed = new List<AlertInstance>();
 
         foreach (var instance in due)
         {
@@ -132,10 +212,10 @@ public sealed class ReminderNotificationService : BackgroundService
             // missed instead of being toasted (past alerts must not toast at startup).
             // A short grace window still fires alerts that came due just before launch.
             // Persistent chains survive this by queueing their next repeat from now.
-            if (catchUp && instance.FireAtUtc < _clock.UtcNow - FreshWindow)
+            if (pass == DuePass.Startup && instance.FireAtUtc < now - FreshWindow)
             {
-                await _alerts.MarkMissedAsync(instance.Id, _clock.UtcNow, cancellationToken);
-                await _engine.TryScheduleRepeatAsync(instance, _clock.UtcNow, cancellationToken);
+                await _alerts.MarkMissedAsync(instance.Id, now, cancellationToken);
+                await _engine.TryScheduleRepeatAsync(instance, now, cancellationToken);
                 continue;
             }
 
@@ -143,24 +223,52 @@ public sealed class ReminderNotificationService : BackgroundService
             // that has since been completed or deleted.
             if (!await _engine.ShouldFireAsync(instance, cancellationToken))
             {
-                await _alerts.MarkDoneAsync(instance.Id, _clock.UtcNow, cancellationToken);
+                await _alerts.MarkDoneAsync(instance.Id, now, cancellationToken);
                 continue;
             }
 
-            if (!await _alerts.TryMarkFiredAsync(instance.Id, _clock.UtcNow, cancellationToken))
+            // After sleep every pending instance is missed: retire it without a toast and
+            // let one summary cover the whole wake-up. Persistent chains still queue their
+            // next repeat from now, so an unfinished nagging reminder keeps nagging.
+            if (pass == DuePass.Resume)
+            {
+                await _alerts.MarkMissedAsync(instance.Id, now, cancellationToken);
+                await _engine.TryScheduleRepeatAsync(instance, now, cancellationToken);
+                missed.Add(instance);
+                continue;
+            }
+
+            if (!await _alerts.TryMarkFiredAsync(instance.Id, now, cancellationToken))
             {
                 continue;
             }
 
             _logger.LogInformation(
-                "Reminder fired: {InstanceId} at {FireAtUtc} (catch-up: {CatchUp}).",
+                "Reminder fired: {InstanceId} at {FireAtUtc} (startup: {Startup}).",
                 instance.Id,
                 instance.FireAtUtc,
-                catchUp);
+                pass == DuePass.Startup);
 
-            await _engine.TryScheduleRepeatAsync(instance, _clock.UtcNow, cancellationToken);
-            await ShowToastAsync(instance, catchUp ? "Missed reminder" : "Reminder");
+            await _engine.TryScheduleRepeatAsync(instance, now, cancellationToken);
+            await ShowToastAsync(instance, pass == DuePass.Startup ? "Missed reminder" : "Reminder");
         }
+
+        if (missed.Count > 0)
+        {
+            var count = MissedReminderSummary.Count(missed);
+            _logger.LogInformation(
+                "Resume catch-up retired {Instances} instance(s) as {Missed} missed reminder(s).",
+                missed.Count,
+                count);
+            ShowMissedSummary(count);
+        }
+    }
+
+    private enum DuePass
+    {
+        Normal,
+        Startup,
+        Resume,
     }
 
     private async Task ShowToastAsync(AlertInstance instance, string heading)
@@ -215,6 +323,35 @@ public sealed class ReminderNotificationService : BackgroundService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Could not display reminder notification for {InstanceId}.", instance.Id);
+        }
+    }
+
+    /// <summary>
+    /// One catch-up toast for the whole wake-up. Tag reuse means a later resume replaces
+    /// the previous summary instead of stacking another one.
+    /// </summary>
+    private void ShowMissedSummary(int count)
+    {
+        try
+        {
+            var builder = new AppNotificationBuilder()
+                .AddArgument("action", "open-overdue")
+                .SetTag(ToastCleanup.SummaryTag)
+                .SetGroup(ToastCleanup.Group)
+                .AddText(MissedReminderSummary.Title(count))
+                .AddText("Tap to review them in Overdue.");
+
+            var open = new AppNotificationButton("Open Overdue");
+            open.AddArgument("action", "open-overdue");
+            builder.AddButton(open);
+
+            AppNotificationManager.Default.Show(builder.BuildNotification());
+
+            _logger.LogInformation("Missed reminder summary toast shown for {Count} reminder(s).", count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Could not display the missed reminder summary.");
         }
     }
 

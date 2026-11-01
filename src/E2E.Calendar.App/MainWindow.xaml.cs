@@ -802,6 +802,16 @@ public sealed partial class MainWindow : Window
         _navigation.NavigateTo(NavigationKeys.Tasks, filter);
     }
 
+    /// <summary>
+    /// Opens the Reminders page on the Overdue smart list. Used by the wake-from-sleep
+    /// "N missed reminders" toast.
+    /// </summary>
+    public void ShowOverdue()
+    {
+        ViewModel.SelectItem(ViewModel.ReminderLists.FirstOrDefault(item => item.Label == TodoService.Overdue));
+        _navigation.NavigateTo(NavigationKeys.Reminders, TodoService.Overdue);
+    }
+
     private void OnDayViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Day, NavigationKeys.Day);
 
     private void OnWeekViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Week, NavigationKeys.Week);

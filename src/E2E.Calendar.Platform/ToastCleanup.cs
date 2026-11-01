@@ -12,6 +12,9 @@ internal static class ToastCleanup
 {
     public const string Group = "reminders";
 
+    /// <summary>Tag of the wake-from-sleep catch-up toast; reused so a later resume replaces it.</summary>
+    public const string SummaryTag = "missed-summary";
+
     /// <summary>
     /// Windows caps a toast tag at 16 characters. Hashing keeps the tag unique per
     /// instance; truncating the raw id made instances with a shared prefix collide.

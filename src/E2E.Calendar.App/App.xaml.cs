@@ -34,6 +34,7 @@ public partial class App : Application
     private Services.HotkeyService? _hotkey;
     private CrashReportingService? _crashReporter;
     private TrayService? _tray;
+    private PowerResumeService? _powerResume;
 
     public App()
     {
@@ -76,6 +77,7 @@ public partial class App : Application
             // work both at startup (app launched by a toast) and while running.
             var toastActivation = _host.Services.GetRequiredService<ToastActivationService>();
             toastActivation.OpenRequested += OnToastOpenRequested;
+            toastActivation.OverdueRequested += OnToastOverdueRequested;
             toastActivation.Register();
 
             await _host.StartAsync();
@@ -102,6 +104,16 @@ public partial class App : Application
             _tray = _host.Services.GetRequiredService<TrayService>();
             var trayStarted = _tray.Start();
             var startInTray = trayStarted && IsStartupLaunch();
+
+            // The power window must live on the UI thread so its window messages are pumped;
+            // Resumed then fires there and the scheduler re-checks its plan immediately.
+            _powerResume = _host.Services.GetRequiredService<PowerResumeService>();
+            _powerResume.Resumed += OnPowerResumed;
+
+            if (!_powerResume.Start())
+            {
+                Log.Warning("Wake-from-sleep notifications could not be registered.");
+            }
 
             if (startInTray)
             {
@@ -182,6 +194,21 @@ public partial class App : Application
         _mainWindow?.DispatcherQueue.TryEnqueue(ShowMainWindow);
     }
 
+    private void OnToastOverdueRequested(object? sender, EventArgs e)
+    {
+        _mainWindow?.DispatcherQueue.TryEnqueue(() =>
+        {
+            ShowMainWindow();
+            _mainWindow?.ShowOverdue();
+        });
+    }
+
+    private void OnPowerResumed(object? sender, EventArgs e)
+    {
+        // Raised on the UI thread that owns the power window; the catch-up itself is async.
+        _ = _host?.Services.GetRequiredService<ReminderNotificationService>().ResumeCatchUpAsync();
+    }
+
     public void ShowMainWindow()
     {
         if (_mainWindow is null)
@@ -232,6 +259,9 @@ public partial class App : Application
 
         _tray?.Dispose();
         _tray = null;
+
+        _powerResume?.Dispose();
+        _powerResume = null;
 
         _quickAddWindow?.Close();
         _quickAddWindow = null;
@@ -345,6 +375,7 @@ public partial class App : Application
                 services.AddSingleton<StartupTaskService>();
                 services.AddSingleton<TrayIconService>();
                 services.AddSingleton<TrayService>();
+                services.AddSingleton<PowerResumeService>();
                 services.AddTransient<Views.TrayFlyoutWindow>();
                 services.AddHostedService<UpdateCheckService>();
 
