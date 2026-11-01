@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet("x64", "ARM64")]
     [string]$Architecture = "x64",
@@ -51,6 +51,7 @@ function New-PackagePayload {
     Copy-Item (Join-Path $packaging "Package.appxmanifest") (Join-Path $publishDir "AppxManifest.xml") -Force
 
     & (Join-Path $packaging "Generate-Assets.ps1") -OutputDirectory (Join-Path $packaging "Assets")
+    New-Item -ItemType Directory -Path (Join-Path $publishDir "Assets") | Out-Null
     Copy-Item (Join-Path $packaging "Assets\*.png") (Join-Path $publishDir "Assets") -Force
 
     $referenced = Select-String -Path (Join-Path $packaging "Package.appxmanifest") -Pattern 'Assets\\[A-Za-z0-9._-]+\.(png|jpg|jpeg)' -AllMatches |
@@ -102,7 +103,7 @@ function Assert-ValidPackage {
     $forbidden = Get-ForbiddenFiles -PackageRoot $PackageRoot
 
     if (@($forbidden).Count -gt 0) {
-        throw "Refusing to pack E2E.Calendar-$Arch: package contains forbidden files: $(@($forbidden) -join ', ')."
+        throw "Refusing to pack E2E.Calendar-${Arch}: package contains forbidden files: $(@($forbidden) -join ', ')."
     }
 }
 
@@ -132,3 +133,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Unsigned MSIX bundle created at $(Join-Path $output 'E2E.Calendar.msixbundle')"
 Write-Host "MSIX per-architecture artifacts: $($bundles -join ', ')"
+
