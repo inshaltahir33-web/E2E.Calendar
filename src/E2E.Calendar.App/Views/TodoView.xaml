@@ -23,7 +23,7 @@
 
         <!-- The add row follows the page: reminder chips, a task due date, or no box. -->
         <Grid Grid.Row="1" Margin="0,12,0,4">
-            <Grid x:Name="AddArea" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <Grid x:Name="AddArea" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
                 <Border
                     Grid.Column="0"
                     Background="{ThemeResource App.CardBackgroundBrush}"
@@ -68,6 +68,15 @@
                     MinWidth="150"
                     ClockIdentifier="24HourClock"
                     AutomationProperties.Name="Due time" />
+
+                <ComboBox
+                    x:Name="RepeatChip"
+                    Grid.Column="3"
+                    MinWidth="150"
+                    DisplayMemberPath="Label"
+                    PlaceholderText="Repeat until done"
+                    AutomationProperties.Name="Repeat until done"
+                    ToolTipService.ToolTip="Repeat until done" />
             </Grid>
 
             <TextBlock

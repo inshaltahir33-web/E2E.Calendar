@@ -304,7 +304,8 @@ public sealed class TodoService
         string? filter,
         string? title = null,
         DateOnly? dueDate = null,
-        TimeOnly? dueTime = null)
+        TimeOnly? dueTime = null,
+        int? repeatEveryMinutes = null)
     {
         var raw = (text ?? string.Empty).Trim();
         var name = Normalize(filter);
@@ -376,7 +377,8 @@ public sealed class TodoService
                 },
                 alertOffsetMinutes: parsed is { } item && item.AlertOffsetsMinutes.Count > 0
                     ? item.AlertOffsetsMinutes[0]
-                    : 0);
+                    : 0,
+                repeatEveryMinutes: repeatEveryMinutes is > 0 ? repeatEveryMinutes : null);
 
             _logger.LogInformation("Reminder created: {Title} due {DueUtc}.", cleanTitle, dueUtc);
             _scheduler.Wake();

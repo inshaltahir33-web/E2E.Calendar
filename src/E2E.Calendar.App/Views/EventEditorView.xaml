@@ -354,7 +354,7 @@
                                     <DataTemplate x:DataType="vm:AlertRow">
                                         <Grid
                                             Margin="0,0,0,4"
-                                            ColumnDefinitions="*,Auto"
+                                            ColumnDefinitions="*,*,Auto"
                                             ColumnSpacing="{StaticResource SpaceXS}">
                                             <ComboBox
                                                 HorizontalAlignment="Stretch"
@@ -362,8 +362,16 @@
                                                 DisplayMemberPath="Label"
                                                 ItemsSource="{x:Bind Options, Mode=OneWay}"
                                                 SelectedItem="{x:Bind Option, Mode=TwoWay}" />
-                                            <Button
+                                            <ComboBox
                                                 Grid.Column="1"
+                                                HorizontalAlignment="Stretch"
+                                                AutomationProperties.Name="Repeat until done"
+                                                DisplayMemberPath="Label"
+                                                ItemsSource="{x:Bind RepeatChoices, Mode=OneWay}"
+                                                SelectedItem="{x:Bind Repeat, Mode=TwoWay}"
+                                                ToolTipService.ToolTip="Repeat until done" />
+                                            <Button
+                                                Grid.Column="2"
                                                 Click="OnRemoveAlertClick"
                                                 Style="{StaticResource ToolbarButtonStyle}"
                                                 AutomationProperties.Name="Remove the alert">

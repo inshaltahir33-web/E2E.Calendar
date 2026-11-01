@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 
 namespace E2E.Calendar.App.ViewModels;
 
@@ -24,6 +25,9 @@ public sealed partial class AlertRow : ObservableObject
     [ObservableProperty]
     private AlertOption _option = AlertOption.All[3];
 
+    [ObservableProperty]
+    private RepeatChoice _repeat = RepeatSchedule.Choices[0];
+
     public required string Id { get; init; }
 
     public required OwnerType OwnerType { get; init; }
@@ -32,5 +36,10 @@ public sealed partial class AlertRow : ObservableObject
 
     public IReadOnlyList<AlertOption> Options => AlertOption.All;
 
+    public IReadOnlyList<RepeatChoice> RepeatChoices => RepeatSchedule.Choices;
+
     public int OffsetMinutes => Option.Minutes;
+
+    /// <summary>Null fires once; a positive interval makes the alert nag until Done or Snooze.</summary>
+    public int? RepeatEveryMinutes => Repeat.Minutes;
 }

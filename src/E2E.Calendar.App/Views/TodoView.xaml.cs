@@ -5,6 +5,7 @@ using E2E.Calendar.App.Services;
 using E2E.Calendar.App.Utilities;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -38,6 +39,9 @@ public sealed partial class TodoView : Page
         InitializeComponent();
 
         ApplyClockFormat();
+
+        RepeatChip.ItemsSource = RepeatSchedule.Choices;
+        RepeatChip.SelectedIndex = -1;
 
         _shell.PropertyChanged += OnShellPropertyChanged;
         _settings.PropertyChanged += OnSettingsPropertyChanged;
@@ -191,12 +195,15 @@ public sealed partial class TodoView : Page
         // Task lists only need a title; Today is always today; Scheduled picks both.
         DueDateChip.Visibility = isTaskList || isToday ? Visibility.Collapsed : Visibility.Visible;
         DueTimeChip.Visibility = isTaskList ? Visibility.Collapsed : Visibility.Visible;
+        RepeatChip.Visibility = isTaskList ? Visibility.Collapsed : Visibility.Visible;
 
         ResetChips();
     }
 
     private void ResetChips()
     {
+        RepeatChip.SelectedIndex = -1;
+
         if (TodoService.IsTaskList(Filter))
         {
             SetChips(null, null);
@@ -525,6 +532,7 @@ public sealed partial class TodoView : Page
         var isToday = string.Equals(Filter, TodoService.Today, StringComparison.OrdinalIgnoreCase);
         DateOnly? dueDate;
         TimeOnly? dueTime;
+        int? repeatMinutes;
 
         if (isTaskList)
         {
@@ -532,6 +540,7 @@ public sealed partial class TodoView : Page
             // Tasks are day-based, so no time is kept.
             dueDate = preview.Date;
             dueTime = null;
+            repeatMinutes = null;
         }
         else
         {
@@ -539,11 +548,12 @@ public sealed partial class TodoView : Page
                 ? DateOnly.FromDateTime(picked.Date)
                 : isToday ? _todo.GetAddDefault(Filter).Date : null;
             dueTime = TimeOnly.FromTimeSpan(DueTimeChip.Time);
+            repeatMinutes = RepeatSchedule.MinutesAt(RepeatChip.SelectedIndex);
         }
 
         try
         {
-            var added = await _todo.AddAsync(text, Filter, preview.Title, dueDate, dueTime);
+            var added = await _todo.AddAsync(text, Filter, preview.Title, dueDate, dueTime, repeatMinutes);
 
             if (added)
             {

@@ -188,7 +188,12 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     public string AlertSummary => AlertRows.Count == 0
         ? "No alerts"
-        : string.Join(" · ", AlertRows.Select(row => row.Option.Label));
+        : string.Join(" · ", AlertRows.Select(DescribeAlert));
+
+    private static string DescribeAlert(AlertRow row) =>
+        row.RepeatEveryMinutes is null
+            ? row.Option.Label
+            : $"{row.Option.Label}, {row.Repeat.Label.ToLowerInvariant()}";
 
     public bool HasTemplates => Templates.Count > 0;
 
@@ -231,7 +236,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         RecurrenceEnd,
         RepeatEndDate?.UtcTicks ?? 0,
         OccurrenceCount,
-        string.Join(',', AlertRows.Select(row => row.OffsetMinutes)));
+        string.Join(',', AlertRows.Select(row => $"{row.OffsetMinutes}:{row.RepeatEveryMinutes}")));
 
     private void SetCleanBaseline()
     {
@@ -996,6 +1001,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
             OwnerId = alert.OwnerId,
             Option = AlertOption.All.FirstOrDefault(option => option.Minutes == alert.TriggerOffsetMinutes)
                 ?? new AlertOption($"{alert.TriggerOffsetMinutes} minutes before", alert.TriggerOffsetMinutes ?? 0),
+            Repeat = RepeatSchedule.ForMinutes(alert.RepeatEveryMinutes),
         }).ToList();
 
         foreach (var row in rows)
@@ -1018,6 +1024,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
                 OwnerId = ownerId,
                 TriggerOffsetMinutes = row.OffsetMinutes,
                 Priority = Priority.Normal,
+                Persistent = row.RepeatEveryMinutes is > 0,
+                RepeatEveryMinutes = row.RepeatEveryMinutes,
             });
         }
     }
