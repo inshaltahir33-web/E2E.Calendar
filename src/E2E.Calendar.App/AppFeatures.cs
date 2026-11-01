@@ -10,6 +10,8 @@ public static class AppFeatures
 
     public static string PrivacyPolicyUrl = "https://example.com/privacy";
 
+    public static string HolidayOverridesUrl = "https://raw.githubusercontent.com/OWNER/REPO/main/holiday-overrides.json";
+
     public static bool DemoEnabled = string.Equals(
         Environment.GetEnvironmentVariable("E2E_DEMO"),
         "1",

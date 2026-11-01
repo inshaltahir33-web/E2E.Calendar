@@ -18,16 +18,18 @@ public sealed class TrayService : IDisposable
 {
     private const uint NewEventCommand = 1;
     private const uint NewReminderCommand = 2;
-    private const uint Remind10Command = 3;
-    private const uint Remind30Command = 4;
-    private const uint Remind60Command = 5;
-    private const uint OpenCommand = 6;
-    private const uint QuitCommand = 7;
+    private const uint TodayAgendaCommand = 3;
+    private const uint Remind10Command = 4;
+    private const uint Remind30Command = 5;
+    private const uint Remind60Command = 6;
+    private const uint OpenCommand = 7;
+    private const uint QuitCommand = 8;
 
     private static readonly IReadOnlyList<TrayMenuEntry> Menu =
     [
         new(NewEventCommand, "New event"),
         new(NewReminderCommand, "New reminder"),
+        new(TodayAgendaCommand, "Today's agenda"),
         new(0, string.Empty, IsSeparator: true),
         new(Remind10Command, "Remind me in 10 min"),
         new(Remind30Command, "Remind me in 30 min"),
@@ -42,6 +44,8 @@ public sealed class TrayService : IDisposable
     private readonly ReminderEngine _engine;
     private readonly ReminderNotificationService _scheduler;
     private readonly IClock _clock;
+    private readonly IEventRepository _events;
+    private readonly IReminderRepository _reminders;
     private readonly ILogger<TrayService> _logger;
     private TrayFlyoutWindow? _flyout;
 
@@ -51,6 +55,8 @@ public sealed class TrayService : IDisposable
         ReminderEngine engine,
         ReminderNotificationService scheduler,
         IClock clock,
+        IEventRepository events,
+        IReminderRepository reminders,
         ILogger<TrayService> logger)
     {
         _services = services;
@@ -58,6 +64,8 @@ public sealed class TrayService : IDisposable
         _engine = engine;
         _scheduler = scheduler;
         _clock = clock;
+        _events = events;
+        _reminders = reminders;
         _logger = logger;
 
         _icon.Activated += OnIconActivated;
@@ -67,7 +75,17 @@ public sealed class TrayService : IDisposable
 
     public bool IsActive => _icon.IsVisible;
 
-    public bool Start() => _icon.Start();
+    public bool Start()
+    {
+        var started = _icon.Start();
+
+        if (started)
+        {
+            _ = RefreshTooltipAsync();
+        }
+
+        return started;
+    }
 
     private void OnIconActivated(object? sender, EventArgs e) => ToggleFlyout();
 
@@ -99,6 +117,10 @@ public sealed class TrayService : IDisposable
 
                 case NewReminderCommand:
                     App.Current.ShowQuickAdd(reminderMode: true);
+                    break;
+
+                case TodayAgendaCommand:
+                    ToggleFlyout();
                     break;
 
                 case Remind10Command:
@@ -136,6 +158,53 @@ public sealed class TrayService : IDisposable
             _clock.LocalTimeZone.ToIanaId());
 
         _scheduler.Wake();
+    }
+
+    public async Task RefreshTooltipAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var now = _clock.UtcNow;
+            var horizon = now.AddHours(24);
+
+            var events = await _events.GetInRangeAsync(null, now, horizon, cancellationToken);
+            var reminders = await _reminders.GetInRangeAsync(now, horizon, cancellationToken);
+
+            DateTimeOffset? nextTime = null;
+            string? nextTitle = null;
+
+            foreach (var item in events)
+            {
+                if (!item.Deleted && (nextTime is null || item.StartUtc < nextTime))
+                {
+                    nextTime = item.StartUtc;
+                    nextTitle = item.Title;
+                }
+            }
+
+            foreach (var reminder in reminders)
+            {
+                if (reminder.DoneUtc is null && (nextTime is null || reminder.DueUtc < nextTime))
+                {
+                    nextTime = reminder.DueUtc;
+                    nextTitle = reminder.Title;
+                }
+            }
+
+            if (nextTime is null || string.IsNullOrWhiteSpace(nextTitle))
+            {
+                _icon.SetTooltip("E2E Calendar");
+                return;
+            }
+
+            var local = TimeZoneInfo.ConvertTime(nextTime.Value, _clock.LocalTimeZone);
+            _icon.SetTooltip($"Next: {nextTitle} {local:t}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "The tray tooltip could not be refreshed.");
+            _icon.SetTooltip("E2E Calendar");
+        }
     }
 
     public void Dispose()

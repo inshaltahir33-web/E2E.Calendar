@@ -121,6 +121,7 @@ public partial class App : Application
             // window so the app is never unreachable.
             _tray = _host.Services.GetRequiredService<TrayService>();
             var trayStarted = _tray.Start();
+            _ = _host.Services.GetRequiredService<TaskbarJumpListService>().InitializeAsync();
             var startInTray = trayStarted && IsStartupLaunch();
 
             // The power window must live on the UI thread so its window messages are pumped;
@@ -397,8 +398,10 @@ public partial class App : Application
                 // so it is intentionally not registered. Re-register when the widget host is wired up.
                 services.AddSingleton<WeatherService>();
                 services.AddSingleton<HolidayCalendarService>();
+                services.AddHostedService<HolidayOverrideRefreshService>();
                 services.AddSingleton<CrashReportingService>();
                 services.AddSingleton<StartupTaskService>();
+                services.AddSingleton<TaskbarJumpListService>();
                 services.AddSingleton<TrayIconService>();
                 services.AddSingleton<TrayService>();
                 services.AddSingleton<PowerResumeService>();

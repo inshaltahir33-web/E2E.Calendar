@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Core.Services;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
@@ -201,6 +202,12 @@ public sealed class IcsService
 
         return string.Join(",", formatted);
     }
+
+    public IReadOnlyList<CoreCalendarEvent> ApplyHolidayOverrides(
+        IEnumerable<CoreCalendarEvent> holidays,
+        IEnumerable<HolidayOverride> overrides,
+        string? countryCode = null) =>
+        HolidayOverrideApplier.Apply(holidays, overrides, countryCode).ToList();
 
     public IReadOnlyList<CoreCalendarEvent> Import(string ics, string calendarId, DateTimeOffset nowUtc)
     {

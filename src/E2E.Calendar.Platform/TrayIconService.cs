@@ -28,6 +28,7 @@ public sealed class TrayIconService : IDisposable
     private const int NinKeySelect = 0x0401;
 
     private const uint NimAdd = 0x00000000;
+    private const uint NimModify = 0x00000001;
     private const uint NimDelete = 0x00000002;
     private const uint NifMessage = 0x00000001;
     private const uint NifIcon = 0x00000002;
@@ -156,6 +157,28 @@ public sealed class TrayIconService : IDisposable
         finally
         {
             DestroyMenu(menu);
+        }
+    }
+
+    public void SetTooltip(string tooltip)
+    {
+        if (!_started)
+        {
+            return;
+        }
+
+        try
+        {
+            var data = CreateIconData();
+            data.szTip = string.IsNullOrWhiteSpace(tooltip)
+                ? "E2E Calendar"
+                : (tooltip.Length > 127 ? tooltip[..127] : tooltip);
+
+            Shell_NotifyIcon(NimModify, ref data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "The tray tooltip could not be updated.");
         }
     }
 
