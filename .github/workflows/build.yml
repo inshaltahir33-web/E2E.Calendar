@@ -13,15 +13,20 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
       - name: Publish MSIX Package
         run: |
           dotnet publish src/E2E.Calendar.App/E2E.Calendar.App.csproj -c Release -p:WindowsPackageType=MSIX -p:UapAppxPackageBuildMode=SideloadOnly -p:AppxBundle=Always
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: '**/AppPackages/**/*.msixbundle'
+          files: |
+            **/*.msixbundle
+            **/AppPackages/**/*.msixbundle
