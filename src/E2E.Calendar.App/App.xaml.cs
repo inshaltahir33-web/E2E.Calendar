@@ -140,7 +140,10 @@ public partial class App : Application
             }
             else
             {
-                _mainWindow.Activate();
+                // Bounds and maximised state are restored, and the window stays hidden
+                // until the first view has rendered, so startup shows no blank frame.
+                // Not awaited: hotkey/store setup below must not wait on the reveal.
+                _ = _mainWindow.ShowAfterFirstViewAsync();
             }
 
             _hotkey = _host.Services.GetRequiredService<Services.HotkeyService>();
@@ -235,8 +238,7 @@ public partial class App : Application
             return;
         }
 
-        _mainWindow.AppWindow.Show();
-        _mainWindow.Activate();
+        _ = _mainWindow.ShowAfterFirstViewAsync();
     }
 
     private void OnAppInstanceActivated(object? sender, Microsoft.Windows.AppLifecycle.AppActivationArguments e)

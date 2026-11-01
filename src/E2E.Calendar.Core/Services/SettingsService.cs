@@ -36,6 +36,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
     private const string WindowTopKey = "window.top";
     private const string WindowWidthKey = "window.width";
     private const string WindowHeightKey = "window.height";
+    private const string WindowMaximizedKey = "window.maximized";
 
     private readonly ISettingsRepository _repository;
 
@@ -131,6 +132,10 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
         await _repository.SetAsync(WindowTopKey, settings.WindowTop?.ToString(), cancellationToken);
         await _repository.SetAsync(WindowWidthKey, settings.WindowWidth?.ToString(), cancellationToken);
         await _repository.SetAsync(WindowHeightKey, settings.WindowHeight?.ToString(), cancellationToken);
+        await _repository.SetAsync(
+            WindowMaximizedKey,
+            settings.WindowMaximized ? "1" : "0",
+            cancellationToken);
 
         Changed?.Invoke(this, _current);
     }
@@ -197,6 +202,7 @@ public sealed class SettingsService : ISettingsService, System.ComponentModel.IN
             WindowTop = ParseNullableInt(values, WindowTopKey),
             WindowWidth = ParseNullableInt(values, WindowWidthKey),
             WindowHeight = ParseNullableInt(values, WindowHeightKey),
+            WindowMaximized = ParseBool(values, WindowMaximizedKey, defaults.WindowMaximized),
         };
     }
 

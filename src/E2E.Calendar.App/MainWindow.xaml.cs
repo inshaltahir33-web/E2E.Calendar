@@ -31,6 +31,13 @@ public sealed partial class MainWindow : Window
     private const double CompactWidthThreshold = 900;
     private const int SidebarCollapseDurationMs = 167;
 
+    // Smallest layout the week grid and sidebar still work in; enforced by the presenter.
+    private const int MinWindowWidth = 900;
+    private const int MinWindowHeight = 600;
+
+    // If the first layout pass stalls, reveal the window anyway so it is never unreachable.
+    private static readonly TimeSpan RevealTimeout = TimeSpan.FromSeconds(3);
+
     private readonly NavigationService _navigation;
     private readonly CalendarService _calendars;
     private readonly IReminderRepository _reminders;
@@ -53,6 +60,14 @@ public sealed partial class MainWindow : Window
     private bool _rsvpInProgress;
     private bool _isClosingEditor;
     private bool _syncingViewSwitcher;
+
+    /// <summary>Completes after the first view has navigated and had a layout pass.</summary>
+    private readonly TaskCompletionSource _firstViewRendered =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private bool _windowPrepared;
+    private bool _initialNavigationDone;
+    private bool _revealing;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -180,6 +195,13 @@ public sealed partial class MainWindow : Window
 
             this.InitializeComponent();
 
+            // Hard floor for the layout: below 900x600 the week grid stops being usable.
+            if (this.AppWindow.Presenter is OverlappedPresenter presenter)
+            {
+                presenter.PreferredMinimumWidth = MinWindowWidth;
+                presenter.PreferredMinimumHeight = MinWindowHeight;
+            }
+
             ShowRemindersAndTasksToggle.IsChecked = _settings.Current.ShowRemindersAndTasks;
             _settings.Changed += (_, updated) =>
                 ShowRemindersAndTasksToggle.IsChecked = updated.ShowRemindersAndTasks;
@@ -202,6 +224,10 @@ public sealed partial class MainWindow : Window
 
             _navigation.Frame = ContentFrame;
             _navigation.Navigated += OnNavigated;
+
+            // Build the Week page before the window is shown so the first painted frame
+            // is the real shell instead of an empty content frame.
+            NavigateToInitialView();
 
             StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
@@ -363,10 +389,18 @@ public sealed partial class MainWindow : Window
         {
             Motion.Refresh();
 
+            // Navigate before any data work so the shell (title bar, sidebar, toolbar,
+            // grid) is laid out immediately; each view then shows its own skeleton
+            // while its data loads.
+            NavigateToInitialView();
+
             await RefreshTaskListsAsync();
             await RefreshCalendarsAsync();
             _countsRefresh.Start();
-            _navigation.NavigateTo(NavigationKeys.Week);
+
+            // The first view now has pixels; the window may be shown.
+            await WaitForLayoutPassAsync();
+            _firstViewRendered.TrySetResult();
 
             if (!_settings.Current.OnboardingComplete)
             {
@@ -377,6 +411,94 @@ public sealed partial class MainWindow : Window
         {
             _logger.LogError(ex, "Initial window load failed");
             ShowStatus("Calendar data could not be loaded. Try Sync now or restart the app.", InfoBarSeverity.Error);
+            _firstViewRendered.TrySetResult();
+        }
+    }
+
+    /// <summary>
+    /// First launch lands on the Week view anchored at today; later launches keep the
+    /// Week view as the entry point too, with the selected date reset to today.
+    /// </summary>
+    private void NavigateToInitialView()
+    {
+        if (_initialNavigationDone)
+        {
+            return;
+        }
+
+        _initialNavigationDone = true;
+
+        StateViewModel.SetViewMode(CalendarViewMode.Week);
+
+        if (!_settings.Current.OnboardingComplete)
+        {
+            StateViewModel.GoToToday();
+        }
+
+        _navigation.NavigateTo(NavigationKeys.Week);
+    }
+
+    /// <summary>
+    /// Waits until the dispatcher has finished layout for the freshly navigated view, so
+    /// the window is never revealed over an empty frame.
+    /// </summary>
+    private Task WaitForLayoutPassAsync()
+    {
+        var settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                RootGrid.UpdateLayout();
+                settled.TrySetResult();
+            }))
+        {
+            settled.TrySetResult();
+        }
+
+        return settled.Task;
+    }
+
+    /// <summary>
+    /// Shows the window only once the first view has rendered. Bounds and maximised state
+    /// are applied before the window becomes visible so it never jumps on screen.
+    /// </summary>
+    public async Task ShowAfterFirstViewAsync()
+    {
+        if (_revealing)
+        {
+            return;
+        }
+
+        _revealing = true;
+
+        try
+        {
+            if (!_windowPrepared)
+            {
+                _windowPrepared = true;
+                RestoreWindowBounds();
+            }
+
+            if (AppWindow.IsVisible)
+            {
+                Activate();
+                return;
+            }
+
+            // Activate builds the visual tree and starts the initial load. The native window
+            // is hidden straight back so the empty frame is never painted; the reveal below
+            // happens after the first layout pass.
+            Activate();
+            AppWindow.Hide();
+
+            await Task.WhenAny(_firstViewRendered.Task, Task.Delay(RevealTimeout));
+
+            AppWindow.Show();
+            Activate();
+        }
+        finally
+        {
+            _revealing = false;
         }
     }
 
@@ -398,8 +520,8 @@ public sealed partial class MainWindow : Window
         try
         {
             var settings = _settings.Current;
-            var width = settings.WindowWidth ?? 1280;
-            var height = settings.WindowHeight ?? 800;
+            var width = Math.Max(MinWindowWidth, settings.WindowWidth ?? 1280);
+            var height = Math.Max(MinWindowHeight, settings.WindowHeight ?? 800);
             int x = 0;
             int y = 0;
             var hasSaved = settings.WindowLeft.HasValue && settings.WindowTop.HasValue &&
@@ -412,6 +534,7 @@ public sealed partial class MainWindow : Window
                 var display = DisplayArea.GetFromRect(new RectInt32(x, y, width, height), DisplayAreaFallback.None);
                 if (display is null)
                 {
+                    // The monitor the window was saved on is gone; recentre on the primary one.
                     hasSaved = false;
                 }
             }
@@ -419,13 +542,21 @@ public sealed partial class MainWindow : Window
             if (!hasSaved)
             {
                 var area = DisplayArea.Primary.WorkArea;
-                width = Math.Clamp(width, 800, Math.Max(800, area.Width));
-                height = Math.Clamp(height, 600, Math.Max(600, area.Height));
+                width = Math.Clamp(width, MinWindowWidth, Math.Max(MinWindowWidth, area.Width));
+                height = Math.Clamp(height, MinWindowHeight, Math.Max(MinWindowHeight, area.Height));
                 x = area.X + Math.Max(0, (area.Width - width) / 2);
                 y = area.Y + Math.Max(0, (area.Height - height) / 2);
             }
 
             this.AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+
+            // Restoring the maximised state after the restore bounds means un-maximising
+            // later returns to a sensible size instead of the maximised rectangle.
+            if (settings.WindowMaximized &&
+                this.AppWindow.Presenter is OverlappedPresenter presenter)
+            {
+                presenter.Maximize();
+            }
         }
         catch
         {
@@ -437,16 +568,28 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            var position = this.AppWindow.Position;
-            var size = this.AppWindow.Size;
             var current = _settings.Current;
-            _ = _settings.UpdateAsync(current with
+            var state = (this.AppWindow.Presenter as OverlappedPresenter)?.State;
+
+            // Bounds are only meaningful in the normal state: while maximised keep the
+            // last normal rectangle, and while minimised leave everything untouched.
+            if (state == OverlappedPresenterState.Maximized)
             {
-                WindowLeft = position.X,
-                WindowTop = position.Y,
-                WindowWidth = size.Width,
-                WindowHeight = size.Height,
-            });
+                _ = _settings.UpdateAsync(current with { WindowMaximized = true });
+            }
+            else if (state != OverlappedPresenterState.Minimized)
+            {
+                var position = this.AppWindow.Position;
+                var size = this.AppWindow.Size;
+                _ = _settings.UpdateAsync(current with
+                {
+                    WindowLeft = position.X,
+                    WindowTop = position.Y,
+                    WindowWidth = size.Width,
+                    WindowHeight = size.Height,
+                    WindowMaximized = false,
+                });
+            }
         }
         catch
         {

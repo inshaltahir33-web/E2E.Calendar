@@ -80,4 +80,7 @@ public sealed record AppSettings
     public int? WindowWidth { get; init; }
 
     public int? WindowHeight { get; init; }
+
+    /// <summary>True when the window was maximised the last time it closed.</summary>
+    public bool WindowMaximized { get; init; }
 }
