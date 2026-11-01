@@ -28,5 +28,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
+            src/E2E.Calendar.App/bin/Release/**/*.msixbundle
+            src/E2E.Calendar.App/AppPackages/**/*.msixbundle
             **/*.msixbundle
-            **/AppPackages/**/*.msixbundle
