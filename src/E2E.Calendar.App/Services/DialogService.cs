@@ -64,6 +64,9 @@ public sealed class DialogService : IDialogService
         // Remember who opened the dialog so focus goes back there once it closes.
         var opener = OverlayFocus.Capture(dialog.XamlRoot);
 
+        // One dialog transition for the whole app: 150 ms fade in, 100 ms fade out.
+        OverlayCoordinator.AnimateDialog(dialog);
+
         try
         {
             return await dialog.ShowAsync();

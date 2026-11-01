@@ -43,7 +43,11 @@ internal static class OverlayFocus
         });
     }
 
-    /// <summary>Shows a flyout and returns focus to the control that opened it when it closes.</summary>
+    /// <summary>
+    /// Shows a flyout and returns focus to the control that opened it when it closes.
+    /// Every flyout goes through <see cref="OverlayCoordinator"/> so only one drawer or
+    /// flyout is ever open and open/close use the shared 150/100 ms motion.
+    /// </summary>
     public static void ShowAt(
         FlyoutBase flyout,
         FrameworkElement target,
@@ -65,14 +69,7 @@ internal static class OverlayFocus
 
         flyout.Closed += OnClosed;
 
-        if (options is null)
-        {
-            flyout.ShowAt(target);
-        }
-        else
-        {
-            flyout.ShowAt(target, options);
-        }
+        OverlayCoordinator.ShowFlyout(flyout, target, options);
     }
 
     /// <summary>

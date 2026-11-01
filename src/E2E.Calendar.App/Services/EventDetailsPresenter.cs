@@ -56,12 +56,18 @@ public sealed class EventDetailsPresenter
         card.EditRequested += async (_, _) =>
         {
             flyout.Hide();
+
+            // Let the shared 100 ms close finish before the 150 ms drawer open starts.
+            await Task.Delay(OverlayCoordinator.CloseDurationMs);
+
             await _editor.OpenAsync(item.Id);
         };
 
         card.DeleteRequested += async (_, _) =>
         {
             flyout.Hide();
+
+            await Task.Delay(OverlayCoordinator.CloseDurationMs);
             await _eventService.SoftDeleteAsync(item.Id);
             await refresh();
         };

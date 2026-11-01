@@ -16,6 +16,15 @@ public static class Motion
     public const int MediumDurationMs = 167;
     public const int SlowDurationMs = 250;
 
+    /// <summary>One open duration for every transient surface (drawer, card, dialog).</summary>
+    public const int OverlayOpenMs = 150;
+
+    /// <summary>One close duration for every transient surface; quicker than opening.</summary>
+    public const int OverlayCloseMs = 100;
+
+    /// <summary>Total length of a Day/Week/Month/Agenda/Settings/Reminders switch.</summary>
+    public const int ViewCrossFadeMs = 120;
+
     public const double SlideOffsetPixels = 8;
 
     private static bool? _enabled;
@@ -66,6 +75,36 @@ public static class Motion
 
         animation.InsertKeyFrame(0f, 0f);
         animation.InsertKeyFrame(1f, 1f);
+        animation.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+        visual.StartAnimation("Opacity", animation);
+
+        await Task.Delay(durationMs);
+    }
+
+    /// <summary>
+    /// Fades an element out to its hidden resting state. The base opacity is committed to 0
+    /// first so the end of the animation can never flash back to fully visible.
+    /// </summary>
+    public static async Task FadeOutAsync(UIElement element, int durationMs = OverlayCloseMs)
+    {
+        if (element is null)
+        {
+            return;
+        }
+
+        element.Opacity = 0;
+
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        var visual = ElementCompositionPreview.GetElementVisual(element);
+        var animation = visual.Compositor.CreateScalarKeyFrameAnimation();
+
+        animation.InsertKeyFrame(0f, 1f);
+        animation.InsertKeyFrame(1f, 0f);
         animation.Duration = TimeSpan.FromMilliseconds(durationMs);
 
         visual.StartAnimation("Opacity", animation);
@@ -127,7 +166,7 @@ public static class Motion
     public static async Task SlideInFromRightAsync(
         UIElement element,
         double offsetPixels,
-        int durationMs = FastDurationMs)
+        int durationMs = OverlayOpenMs)
     {
         if (element is null)
         {
@@ -180,7 +219,7 @@ public static class Motion
     public static async Task SlideOutToRightAsync(
         UIElement element,
         double offsetPixels,
-        int durationMs = FastDurationMs)
+        int durationMs = OverlayCloseMs)
     {
         if (element is null)
         {

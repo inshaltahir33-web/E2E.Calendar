@@ -68,6 +68,8 @@ public sealed partial class MainWindow : Window
     private bool _windowPrepared;
     private bool _initialNavigationDone;
     private bool _revealing;
+    private bool _crossFading;
+    private (string Key, object? Parameter)? _queuedNavigation;
 
     private readonly Dictionary<CalendarItem, string> _searchResults = new();
     private readonly DispatcherQueueTimer _searchDebounce;
@@ -239,6 +241,20 @@ public sealed partial class MainWindow : Window
             editor.CloseRequested += OnEditorCloseRequested;
             editor.SaveRequested += OnEditorSaveRequested;
             editor.DeleteRequested += OnEditorDeleteRequested;
+
+            // The drawer joins the shared overlay route: one surface at a time and Esc
+            // closes whichever surface was opened last.
+            OverlayCoordinator.RegisterDrawer(
+                isOpen: () => EditorHost.Visibility == Visibility.Visible && !_isClosingEditor,
+                close: () =>
+                {
+                    // Same close route as the drawer buttons: unsaved edits are confirmed
+                    // before the drawer goes away, no matter who asked to close it.
+                    _editor.RequestCloseCommand.Execute(null);
+                    return Task.CompletedTask;
+                },
+                dismiss: () => _editor.IsDirty ? Task.CompletedTask : CloseEditorAsync());
+            RootGrid.PreviewKeyDown += OnRootPreviewKeyDown;
 
             EditorHost.KeyDown += OnEditorKeyDown;
 
@@ -659,14 +675,14 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            _navigation.NavigateTo(item.TargetKey, item.Label);
+            Navigate(item.TargetKey, item.Label);
             return;
         }
 
         if (element.Tag is string targetKey)
         {
             ViewModel.SelectTarget(targetKey);
-            _navigation.NavigateTo(targetKey);
+            Navigate(targetKey);
         }
     }
 
@@ -929,7 +945,7 @@ public sealed partial class MainWindow : Window
     {
         ViewModel.SelectItem(ViewModel.TaskLists.FirstOrDefault(item => item.Label == filter)
             ?? ViewModel.ReminderLists.FirstOrDefault(item => item.Label == filter));
-        _navigation.NavigateTo(NavigationKeys.Tasks, filter);
+        Navigate(NavigationKeys.Tasks, filter);
     }
 
     /// <summary>
@@ -939,7 +955,7 @@ public sealed partial class MainWindow : Window
     public void ShowOverdue()
     {
         ViewModel.SelectItem(ViewModel.ReminderLists.FirstOrDefault(item => item.Label == TodoService.Overdue));
-        _navigation.NavigateTo(NavigationKeys.Reminders, TodoService.Overdue);
+        Navigate(NavigationKeys.Reminders, TodoService.Overdue);
     }
 
     private void OnDayViewClick(object sender, RoutedEventArgs e) => ShowView(CalendarViewMode.Day, NavigationKeys.Day);
@@ -960,7 +976,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _navigation.NavigateTo(NavigationKeys.Settings);
+        Navigate(NavigationKeys.Settings);
     }
 
     /// <summary>Leaves Settings / Reminders for the calendar view that was open before them.</summary>
@@ -994,7 +1010,7 @@ public sealed partial class MainWindow : Window
         // Reminders / Settings the calendar page must be put back on screen.
         if (!_navigation.IsCalendarView || _navigation.CurrentViewKey != key)
         {
-            _navigation.NavigateTo(key);
+            Navigate(key);
         }
     }
 
@@ -1231,6 +1247,9 @@ public sealed partial class MainWindow : Window
 
         CaptureEditorLayoutSnapshot();
 
+        // Only one drawer/flyout may be open: dismiss any card or menu first.
+        OverlayCoordinator.CloseFlyouts();
+
         EditorScrim.Visibility = Visibility.Visible;
         EditorHost.IsHitTestVisible = true;
         EditorHost.Visibility = Visibility.Visible;
@@ -1243,7 +1262,7 @@ public sealed partial class MainWindow : Window
             // same path and values as every later open (its right-aligned offset is known).
             EditorHost.UpdateLayout();
 
-            _ = Motion.SlideInFromRightAsync(EditorHost, EditorPaneWidth, Motion.FastDurationMs);
+            _ = Motion.SlideInFromRightAsync(EditorHost, EditorPaneWidth, Motion.OverlayOpenMs);
         }
 
         _logger.LogInformation(
@@ -1276,7 +1295,7 @@ public sealed partial class MainWindow : Window
             EditorScrim.Visibility = Visibility.Collapsed;
             InvitationInfoBar.IsOpen = false;
 
-            await Motion.SlideOutToRightAsync(EditorHost, EditorPaneWidth, Motion.FastDurationMs);
+            await Motion.SlideOutToRightAsync(EditorHost, EditorPaneWidth, Motion.OverlayCloseMs);
 
             EditorHost.Visibility = Visibility.Collapsed;
             _editor.NotifyClosed();
@@ -1370,6 +1389,24 @@ public sealed partial class MainWindow : Window
         {
             e.Handled = true;
             _editor.RequestSaveCommand.Execute(null);
+        }
+    }
+
+    /// <summary>
+    /// Esc closes the top-most transient surface through the shared overlay route:
+    /// the newest flyout first, then the event drawer. Dialogs and menus in their own
+    /// popups keep their native Esc handling.
+    /// </summary>
+    private void OnRootPreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != Windows.System.VirtualKey.Escape)
+        {
+            return;
+        }
+
+        if (OverlayCoordinator.TryCloseTopMost())
+        {
+            e.Handled = true;
         }
     }
 
@@ -1762,7 +1799,7 @@ public sealed partial class MainWindow : Window
         flyout.Items.Add(showOnly);
 
         var settings = new MenuFlyoutItem { Text = "Calendar settings" };
-        settings.Click += (_, _) => _navigation.NavigateTo(NavigationKeys.Settings);
+        settings.Click += (_, _) => Navigate(NavigationKeys.Settings);
         flyout.Items.Add(settings);
 
         return flyout;
@@ -1839,12 +1876,71 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnNavigated(object? sender, string key)    {
+    private void OnNavigated(object? sender, string key)
+    {
         _logger.LogInformation("Navigated to {ViewKey}", key);
         ViewModel.Status = key;
         ContentFrame.Visibility = Visibility.Visible;
         UpdateChromeForView(key);
-        _ = Motion.FadeInAsync(ContentFrame);
+    }
+
+    /// <summary>
+    /// The single view-switch route: a 120 ms crossfade (60 ms out, swap, 60 ms in) so
+    /// Day / Week / Month / Agenda / Reminders / Settings never flash an empty frame.
+    /// Repeated requests during the fade are coalesced into one queued switch.
+    /// </summary>
+    private void Navigate(string key, object? parameter = null)
+    {
+        if (_navigation.CurrentViewKey == key && parameter is null)
+        {
+            return;
+        }
+
+        if (!Motion.IsEnabled)
+        {
+            _navigation.NavigateTo(key, parameter);
+            return;
+        }
+
+        if (_crossFading)
+        {
+            _queuedNavigation = (key, parameter);
+            return;
+        }
+
+        _ = CrossFadeNavigateAsync(key, parameter);
+    }
+
+    private async Task CrossFadeNavigateAsync(string key, object? parameter)
+    {
+        _crossFading = true;
+
+        try
+        {
+            await Motion.FadeOutAsync(ContentFrame, Motion.ViewCrossFadeMs / 2);
+
+            _navigation.NavigateTo(key, parameter);
+            ContentFrame.UpdateLayout();
+
+            await Motion.FadeInAsync(ContentFrame, Motion.ViewCrossFadeMs / 2);
+        }
+        finally
+        {
+            _crossFading = false;
+
+            // Never leave the frame invisible: if navigation failed mid-fade the user would
+            // be staring at an empty content area.
+            if (ContentFrame.Opacity < 1)
+            {
+                ContentFrame.Opacity = 1;
+            }
+        }
+
+        if (_queuedNavigation is { } next)
+        {
+            _queuedNavigation = null;
+            Navigate(next.Key, next.Parameter);
+        }
     }
 
     /// <summary>
@@ -1907,7 +2003,7 @@ public sealed partial class MainWindow : Window
 
         if (_navigation.CurrentViewKey != key)
         {
-            _navigation.NavigateTo(key);
+            Navigate(key);
         }
 
         await SyncMiniCalendarAsync();
@@ -2034,7 +2130,7 @@ public sealed partial class MainWindow : Window
             new("Week view", () => ShowView(CalendarViewMode.Week, NavigationKeys.Week)),
             new("Month view", () => ShowView(CalendarViewMode.Month, NavigationKeys.Month)),
             new("Agenda view", () => ShowView(CalendarViewMode.Agenda, NavigationKeys.Agenda)),
-            new("Settings", () => _navigation.NavigateTo(NavigationKeys.Settings)),
+            new("Settings", () => Navigate(NavigationKeys.Settings)),
             new("Import .ics calendar file", () => _ = ImportIcsAsync()),
             new("Export calendar to .ics file", () => _ = ExportIcsAsync()),
             new("Toggle weekends", () => WeekViewModel.ShowWeekends = !WeekViewModel.ShowWeekends),
