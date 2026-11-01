@@ -132,7 +132,7 @@ public partial class MonthView : Page
             return;
         }
 
-        var hasEvents = days.Any(day => day.EventCount > 0);
+        var hasEvents = days.Any(day => day.EventCount > 0 || day.ReminderCount > 0);
 
         EmptyStateView.Visibility = hasEvents ? Visibility.Collapsed : Visibility.Visible;
 

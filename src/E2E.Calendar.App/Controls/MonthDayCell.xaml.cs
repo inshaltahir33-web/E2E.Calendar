@@ -87,6 +87,7 @@ public sealed partial class MonthDayCell : UserControl
     }
 
     private bool _suppressVisualUpdates;
+    private int _reminderCount;
 
     /// <summary>
     /// Applies a month day in a single visual pass. Setting the individual
@@ -108,6 +109,7 @@ public sealed partial class MonthDayCell : UserControl
             MoreVisible = day.MoreCount > 0;
             EventCount = day.EventCount;
             Date = day.Date;
+            _reminderCount = day.ReminderCount;
         }
         finally
         {
@@ -117,6 +119,10 @@ public sealed partial class MonthDayCell : UserControl
         UpdateVisuals();
         ChipsHost.Margin = new Thickness(0, day.LineOffset * LineHeight, 0, 0);
         SetChips(day.Chips);
+
+        ReminderSummaryText.Text = day.ReminderLabel;
+        ReminderSummaryText.Visibility = day.ReminderCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+
         Items = day.AllItems;
     }
 
@@ -238,6 +244,11 @@ public sealed partial class MonthDayCell : UserControl
             1 => "1 event",
             _ => $"{EventCount} events",
         };
+
+        if (_reminderCount > 0)
+        {
+            countText += _reminderCount == 1 ? ", 1 reminder" : $", {_reminderCount} reminders";
+        }
 
         var automationName = Date == default ? countText : $"{dateText}, {countText}";
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CellRoot, automationName);

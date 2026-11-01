@@ -21,7 +21,6 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
     private readonly ITaskRepository _tasks;
     private readonly CalendarItemQueryService _items;
     private readonly IClock _clock;
-    private bool _showRemindersAndTasks;
 
     [ObservableProperty]
     private IReadOnlyList<MonthDay> _days = Array.Empty<MonthDay>();
@@ -41,8 +40,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         IEventRepository repository,
         IReminderRepository reminders,
         ITaskRepository tasks,
-        IClock clock,
-        SettingsService settings)
+        IClock clock)
         : base(state, query, cache)
     {
         _events = events;
@@ -51,19 +49,6 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
         _tasks = tasks;
         _items = items;
         _clock = clock;
-        _showRemindersAndTasks = settings.Current.ShowRemindersAndTasks;
-        settings.Changed += OnSettingsChanged;
-    }
-
-    private void OnSettingsChanged(object? sender, AppSettings settings)
-    {
-        if (_showRemindersAndTasks == settings.ShowRemindersAndTasks)
-        {
-            return;
-        }
-
-        _showRemindersAndTasks = settings.ShowRemindersAndTasks;
-        _ = RefreshAsync();
     }
 
     public override async Task RefreshAsync()
@@ -81,15 +66,30 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
             var gridEnd = gridStart.AddDays(42);
             var items = await _items.GetItemsAsync(
                 timeZone.ToUtc(gridStart.ToDateTime(TimeOnly.MinValue)),
-                timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)),
-                _showRemindersAndTasks);
+                timeZone.ToUtc(gridEnd.ToDateTime(TimeOnly.MinValue)));
+
+            // Reminders and tasks never become chips in the month grid; they are
+            // summarised as one muted count line per day instead.
+            var events = items.Where(item => item.Kind == CalendarItemKind.Event).ToList();
+            var reminderCounts = new Dictionary<DateOnly, int>();
+
+            foreach (var item in items)
+            {
+                if (item.Kind == CalendarItemKind.Event)
+                {
+                    continue;
+                }
+
+                var date = DateOnly.FromDateTime(timeZone.ToLocal(item.StartUtc));
+                reminderCounts[date] = reminderCounts.GetValueOrDefault(date) + 1;
+            }
 
             // Recurring occurrences share the series id, so key the layout by the
             // occurrence itself to keep one bar/chip per occurrence.
-            var byOccurrence = new Dictionary<string, CalendarItem>(items.Count, StringComparer.Ordinal);
-            var occurrences = new List<LayoutOccurrence>(items.Count);
+            var byOccurrence = new Dictionary<string, CalendarItem>(events.Count, StringComparer.Ordinal);
+            var occurrences = new List<LayoutOccurrence>(events.Count);
 
-            foreach (var item in items)
+            foreach (var item in events)
             {
                 var key = $"{item.Id}|{item.StartUtc.UtcTicks}";
 
@@ -106,7 +106,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                 gridEnd.AddDays(-1),
                 State.WeekStart,
                 maxBannerLanes: MaxBannerLanes,
-                maxColumns: Math.Max(1, items.Count));
+                maxColumns: Math.Max(1, events.Count));
 
             var weeks = new List<MonthWeek>(layout.Weeks.Count);
 
@@ -149,10 +149,12 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                     .ThenBy(placement => placement.Occurrence.Id, StringComparer.Ordinal)
                     .ToList();
 
-                // A cell shows at most three lines; when something does not fit, the
-                // last line becomes "+N more" instead of spilling into the next row.
+                // A cell shows at most three lines; the muted reminder summary takes one,
+                // and when items still do not fit the last line becomes "+N more".
+                var reminderCount = reminderCounts.GetValueOrDefault(date);
                 var extraItems = timed.Count + hiddenBanners.Count + dayLayout.Hidden.Count;
-                var freeLines = Math.Max(0, MaxLinesPerCell - bannerLines);
+                var reminderLines = reminderCount > 0 ? 1 : 0;
+                var freeLines = Math.Max(0, MaxLinesPerCell - bannerLines - reminderLines);
                 var chipCount = extraItems <= freeLines
                     ? Math.Min(timed.Count, freeLines)
                     : Math.Max(0, freeLines - 1);
@@ -184,6 +186,7 @@ public sealed partial class MonthViewModel : CalendarPageViewModel
                     AllItems = allItems,
                     MoreCount = allItems.Count - visibleBanners.Count - visibleTimed.Count,
                     EventCount = allItems.Count,
+                    ReminderCount = reminderCount,
                     LineOffset = bannerLines,
                 });
             }

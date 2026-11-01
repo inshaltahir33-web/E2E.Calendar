@@ -27,10 +27,15 @@ public sealed partial class MonthDay : ObservableObject
 
     public required int EventCount { get; init; }
 
+    /// <summary>Reminders and tasks due on this day; shown as a muted count, never as chips.</summary>
+    public required int ReminderCount { get; init; }
+
     /// <summary>Number of top lines reserved by the week's banner bars in this cell.</summary>
     public required int LineOffset { get; init; }
 
     public string MoreLabel => $"+{MoreCount} more";
+
+    public string ReminderLabel => ReminderCount == 1 ? "1 reminder" : $"{ReminderCount} reminders";
 
     public Visibility SelectionVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 

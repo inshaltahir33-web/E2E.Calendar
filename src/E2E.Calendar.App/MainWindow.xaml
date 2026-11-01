@@ -307,10 +307,10 @@
                                 Text="Show weekends" />
                             <muxc:ToggleMenuFlyoutItem
                                 x:Name="ShowRemindersAndTasksToggle"
-                                AutomationProperties.Name="Show reminders and tasks"
+                                AutomationProperties.Name="Show reminders and tasks on calendar"
                                 Click="OnShowRemindersAndTasksClick"
                                 Style="{StaticResource AppToggleMenuFlyoutItemStyle}"
-                                Text="Show reminders and tasks" />
+                                Text="Show reminders and tasks on calendar" />
                             <muxc:ToggleMenuFlyoutItem
                                 x:Name="ShowWeekNumbersToggle"
                                 AutomationProperties.Name="Show week numbers"

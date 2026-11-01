@@ -79,6 +79,15 @@
 
             <StackPanel x:Name="ChipsHost" Spacing="1" />
 
+            <!-- Reminders and tasks are never chips in Month: one muted count line instead. -->
+            <TextBlock
+                x:Name="ReminderSummaryText"
+                Margin="2,1,0,0"
+                FontSize="{StaticResource FontSizeChip}"
+                Foreground="{ThemeResource App.TextTertiaryBrush}"
+                TextTrimming="CharacterEllipsis"
+                Visibility="Collapsed" />
+
             <!-- "+N more" is a small link on the last line, not a button-looking pill. -->
             <Button
                 x:Name="MoreButton"
