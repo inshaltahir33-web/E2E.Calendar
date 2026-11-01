@@ -47,6 +47,13 @@ public sealed partial class QuickAddView : Window
 
     public QuickAddViewModel ViewModel => _viewModel;
 
+    /// <summary>Resets the capture for this open and picks event or reminder mode.</summary>
+    public void PrepareNewItem(bool reminderMode)
+    {
+        _viewModel.Prepare(reminderMode);
+        _root.FocusInput();
+    }
+
     private void ConfigurePresenter()
     {
         AppWindow.IsShownInSwitchers = false;

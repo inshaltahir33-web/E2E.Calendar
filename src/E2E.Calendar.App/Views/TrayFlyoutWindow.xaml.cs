@@ -200,7 +200,7 @@ public sealed partial class TrayFlyoutWindow : Window
     private void OnNewReminderClick(object sender, RoutedEventArgs e)
     {
         HideFlyout();
-        App.Current.ShowQuickAdd();
+        App.Current.ShowQuickAdd(reminderMode: true);
     }
 
     private void OnOpenClick(object sender, RoutedEventArgs e)

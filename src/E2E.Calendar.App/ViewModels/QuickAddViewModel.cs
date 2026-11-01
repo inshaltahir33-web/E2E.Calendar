@@ -27,6 +27,7 @@ public sealed partial class QuickAddViewModel : ObservableObject
     private readonly ICalendarRepository _calendarRepository;
 
     private ParsedItem? _parsed;
+    private bool _reminderMode;
 
     [ObservableProperty]
     private string _input = string.Empty;
@@ -93,8 +94,23 @@ public sealed partial class QuickAddViewModel : ObservableObject
 
     public event EventHandler? Saved;
 
+    /// <summary>
+    /// Selects what this open captures and clears the previous phrase, so every open
+    /// starts empty and a "New reminder" always saves a reminder.
+    /// </summary>
+    public void Prepare(bool asReminder)
+    {
+        _reminderMode = asReminder;
+        Input = string.Empty;
+        Reparse();
+    }
+
     public async Task LoadAsync()
     {
+        // The view model is shared between opens, so the last phrase must never
+        // survive into the next window.
+        Input = string.Empty;
+
         var calendars = await _calendarRepository.GetAllAsync();
 
         CalendarChoices.Clear();
@@ -120,7 +136,9 @@ public sealed partial class QuickAddViewModel : ObservableObject
 
     public void Reparse()
     {
-        var parsed = QuickAddParser.Parse(Input, _clock);
+        var parsed = _reminderMode
+            ? QuickAddParser.ParseAsReminder(Input, _clock)
+            : QuickAddParser.Parse(Input, _clock);
         _parsed = parsed;
 
         KindLabel = parsed.Kind == ParsedItemKind.Reminder ? "Reminder" : "Event";

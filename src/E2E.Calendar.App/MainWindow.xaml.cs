@@ -610,7 +610,7 @@ public sealed partial class MainWindow : Window
         await _editor.OpenNewAsync(start, start.AddHours(1));
     }
 
-    private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd();
+    private void OnNewReminderClick(object sender, RoutedEventArgs e) => App.Current.ShowQuickAdd(reminderMode: true);
 
     private void OnNewCountdownClick(object sender, RoutedEventArgs e)
     {
@@ -1791,7 +1791,7 @@ public sealed partial class MainWindow : Window
         }
 
         args.Handled = true;
-        App.Current.ShowQuickAdd();
+        App.Current.ShowQuickAdd(reminderMode: true);
     }
 
     private void OnTodayAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -1872,7 +1872,7 @@ public sealed partial class MainWindow : Window
         {
             new("Quick add (Win+Alt+C)", () => App.Current.ShowQuickAdd()),
             new("New event", OpenNewEvent),
-            new("New reminder", () => App.Current.ShowQuickAdd()),
+            new("New reminder", () => App.Current.ShowQuickAdd(reminderMode: true)),
             new("Go to today", () => StateViewModel.GoToTodayCommand.Execute(null)),
             new("Day view", () => ShowView(CalendarViewMode.Day, NavigationKeys.Day)),
             new("Week view", () => ShowView(CalendarViewMode.Week, NavigationKeys.Week)),

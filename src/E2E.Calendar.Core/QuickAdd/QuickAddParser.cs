@@ -32,7 +32,18 @@ public static partial class QuickAddParser
         ("sunday", DayOfWeek.Sunday),
     ];
 
-    public static ParsedItem Parse(string? input, IClock clock)
+    public static ParsedItem Parse(string? input, IClock clock) =>
+        Parse(input, clock, reminderMode: false);
+
+    /// <summary>
+    /// Parses a phrase that is always a reminder, whatever words it contains. A phrase
+    /// without a clock time lands on the next full hour of the named day (today by
+    /// default), so the reminder is always timed and shows up in Today.
+    /// </summary>
+    public static ParsedItem ParseAsReminder(string? input, IClock clock) =>
+        Parse(input, clock, reminderMode: true);
+
+    private static ParsedItem Parse(string? input, IClock clock, bool reminderMode)
     {
         ArgumentNullException.ThrowIfNull(clock);
 
@@ -41,7 +52,7 @@ public static partial class QuickAddParser
         var today = DateOnly.FromDateTime(nowLocal);
         var working = $" {(input ?? string.Empty).Trim()} ";
 
-        var kind = ParsedItemKind.Event;
+        var kind = reminderMode ? ParsedItemKind.Reminder : ParsedItemKind.Event;
         string? calendarHint = null;
         var priority = Priority.Normal;
         int? leadMinutes = null;
@@ -422,6 +433,11 @@ public static partial class QuickAddParser
             })
             : null;
 
+        if (reminderMode && explicitTime is null)
+        {
+            explicitTime = NextHourTime(nowLocal);
+        }
+
         var resolved = ResolveTimes(kind, date, explicitTime, durationMinutes, timeZone);
 
         return new ParsedItem
@@ -443,6 +459,20 @@ public static partial class QuickAddParser
             Priority = priority,
             Confidence = Math.Min(1d, confidence + (location is null ? 0d : 0.05d) + (rule is null ? 0d : 0.05d)),
         };
+    }
+
+    /// <summary>
+    /// The next whole hour in the user's local time. Near midnight that hour would land
+    /// on tomorrow, so it stops at 23:59 and the reminder keeps its Today day.
+    /// </summary>
+    private static TimeOnly NextHourTime(DateTime nowLocal)
+    {
+        var nextHour = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, nowLocal.Hour, 0, 0)
+            .AddHours(1);
+
+        return nextHour.Date == nowLocal.Date
+            ? TimeOnly.FromDateTime(nextHour)
+            : new TimeOnly(23, 59);
     }
 
     private static (DateTimeOffset StartUtc, DateTimeOffset EndUtc, TimeOnly? StartTime, TimeOnly? EndTime, bool AllDay)

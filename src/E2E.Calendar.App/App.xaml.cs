@@ -142,7 +142,7 @@ public partial class App : Application
 
             if (Environment.GetEnvironmentVariable("E2E_QUICKADD_SELFTEST") == "1")
             {
-                _mainWindow.DispatcherQueue.TryEnqueue(ShowQuickAdd);
+                _mainWindow.DispatcherQueue.TryEnqueue(() => ShowQuickAdd());
             }
         }
         catch (Exception ex)
@@ -310,18 +310,20 @@ public partial class App : Application
             .Any(argument => string.Equals(argument, "-startup", StringComparison.OrdinalIgnoreCase));
     }
 
-    public void ShowQuickAdd()
+    public void ShowQuickAdd(bool reminderMode = false)
     {
         ArgumentNullException.ThrowIfNull(_host);
 
         if (_quickAddWindow is not null)
         {
+            _quickAddWindow.PrepareNewItem(reminderMode);
             _quickAddWindow.Activate();
 
             return;
         }
 
         var view = _host.Services.GetRequiredService<Views.QuickAddView>();
+        view.PrepareNewItem(reminderMode);
 
         // The quick add window is hosted outside the main window, so it does not inherit
         // the per-window RequestedTheme that AppearanceService applies to the root element.

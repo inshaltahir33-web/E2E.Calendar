@@ -377,6 +377,74 @@ public sealed class QuickAddParserTests
             .StartTime.Should().Be(new TimeOnly(0, 0));
     }
 
+    [Fact]
+    public void Reminder_mode_gives_a_bare_title_the_next_full_hour_today()
+    {
+        var item = QuickAddParser.ParseAsReminder("Buy milk", AfternoonClock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.AllDay.Should().BeFalse();
+        item.Date.Should().Be(new DateOnly(2026, 10, 23));
+        item.StartTime.Should().Be(new TimeOnly(15, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 10, 23, 15, 0, 0, TimeSpan.Zero));
+        item.AlertOffsetsMinutes.Should().ContainSingle().Which.Should().Be(0);
+    }
+
+    [Fact]
+    public void Reminder_mode_keeps_a_clock_time_the_user_typed()
+    {
+        var item = QuickAddParser.ParseAsReminder("Call mom at 4pm", AfternoonClock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.AllDay.Should().BeFalse();
+        item.StartTime.Should().Be(new TimeOnly(16, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 10, 23, 16, 0, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void Reminder_mode_gives_a_named_day_a_time_instead_of_all_day()
+    {
+        var item = QuickAddParser.ParseAsReminder("Call mom tomorrow", AfternoonClock);
+
+        item.Kind.Should().Be(ParsedItemKind.Reminder);
+        item.Date.Should().Be(new DateOnly(2026, 10, 24));
+        item.AllDay.Should().BeFalse();
+        item.StartTime.Should().Be(new TimeOnly(15, 0));
+    }
+
+    [Fact]
+    public void Reminder_mode_near_midnight_stays_on_today()
+    {
+        var clock = new FixedClock(new DateTimeOffset(2026, 10, 23, 23, 40, 0, TimeSpan.Zero), TimeZoneInfo.Utc);
+
+        var item = QuickAddParser.ParseAsReminder("Buy milk", clock);
+
+        item.Date.Should().Be(new DateOnly(2026, 10, 23));
+        item.StartTime.Should().Be(new TimeOnly(23, 59));
+    }
+
+    [Fact]
+    public void Reminder_mode_uses_the_local_clock_for_the_next_full_hour()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test+05:30", TimeSpan.FromHours(5.5), "Test", "Test");
+        var clock = new FixedClock(new DateTimeOffset(2026, 10, 23, 20, 30, 0, TimeSpan.Zero), zone);
+
+        var item = QuickAddParser.ParseAsReminder("Buy milk", clock);
+
+        item.Date.Should().Be(new DateOnly(2026, 10, 24));
+        item.StartTime.Should().Be(new TimeOnly(3, 0));
+        item.StartUtc.Should().Be(new DateTimeOffset(2026, 10, 23, 21, 30, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void Event_mode_still_leaves_a_bare_title_all_day()
+    {
+        var item = QuickAddParser.Parse("Buy milk", AfternoonClock);
+
+        item.Kind.Should().Be(ParsedItemKind.Event);
+        item.AllDay.Should().BeTrue();
+    }
+
     private sealed class FixedClock : IClock
     {
         public FixedClock(DateTimeOffset utcNow, TimeZoneInfo timeZone)

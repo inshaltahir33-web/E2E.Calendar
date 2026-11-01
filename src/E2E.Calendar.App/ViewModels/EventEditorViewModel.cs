@@ -570,12 +570,23 @@ public sealed partial class EventEditorViewModel : ObservableObject
         Location = null;
         MeetingUrl = null;
         Notes = null;
+        Color = null;
+        CalendarId = null;
+        TimeZoneId = _clock.LocalTimeZone.ToIanaId();
         ErrorMessage = null;
         DetectedMeeting = null;
         IsAllDay = false;
         IsRecurring = false;
         Frequency = RecurrenceFrequency.None;
+        Interval = 1;
+        MonthlyPattern = MonthlyPattern.ByDate;
+        MonthlyDay = 1;
+        MonthlyWeekdayOrdinal = 1;
+        MonthlyWeekday = DayOfWeek.Monday;
+        YearlyMonth = 1;
         RecurrenceEnd = RecurrenceEnd.Never;
+        RepeatEndDate = null;
+        OccurrenceCount = 10;
         WeeklyDays = new ObservableCollection<DayOfWeek>();
         AlertRows = new ObservableCollection<AlertRow>();
         OccurrenceStartUtc = null;
@@ -587,6 +598,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
         EndUtc = end;
 
         await LoadCalendarsAsync();
+        NotifyRecurrenceEditors();
         SetCleanBaseline();
     }
 
@@ -634,6 +646,7 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         await LoadCalendarsAsync();
         await LoadAlertsAsync(calendarEvent.Id);
+        NotifyRecurrenceEditors();
         SetCleanBaseline();
     }
 
@@ -988,6 +1001,10 @@ public sealed partial class EventEditorViewModel : ObservableObject
         CalendarId = calendars.Any(calendar => calendar.Id == selectedId)
             ? selectedId
             : calendars.FirstOrDefault()?.Id;
+
+        // The picker binds SelectedItem, which is derived from CalendarId: a replaced
+        // ItemsSource would otherwise leave the dropdown blank.
+        OnPropertyChanged(nameof(SelectedCalendar));
     }
 
     private async Task LoadAlertsAsync(string ownerId)
@@ -1032,12 +1049,14 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     partial void OnMonthlyPatternChanged(MonthlyPattern value)
     {
+        OnPropertyChanged(nameof(MonthlyPatternIndex));
         OnPropertyChanged(nameof(IsMonthlyByWeekday));
         OnPropertyChanged(nameof(RecurrenceSummary));
     }
 
     partial void OnFrequencyChanged(RecurrenceFrequency value)
     {
+        OnPropertyChanged(nameof(FrequencyIndex));
         OnPropertyChanged(nameof(IsWeekly));
         OnPropertyChanged(nameof(IsMonthly));
         OnPropertyChanged(nameof(IsYearly));
@@ -1047,6 +1066,33 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
     partial void OnRecurrenceEndChanged(RecurrenceEnd value)
     {
+        OnPropertyChanged(nameof(RecurrenceEndIndex));
+        OnPropertyChanged(nameof(IsEndOnDate));
+        OnPropertyChanged(nameof(IsEndAfterCount));
+    }
+
+    partial void OnCalendarIdChanged(string? value) => OnPropertyChanged(nameof(SelectedCalendar));
+
+    /// <summary>
+    /// Pushes freshly loaded values back into the recurrence pickers. Their bindings use
+    /// derived properties, so a reset is only visible when those are announced too.
+    /// </summary>
+    private void NotifyRecurrenceEditors()
+    {
+        OnPropertyChanged(nameof(FrequencyIndex));
+        OnPropertyChanged(nameof(IntervalValue));
+        OnPropertyChanged(nameof(MonthlyPatternIndex));
+        OnPropertyChanged(nameof(MonthlyDayValue));
+        OnPropertyChanged(nameof(MonthlyWeekdayOrdinalValue));
+        OnPropertyChanged(nameof(MonthlyWeekdayIndex));
+        OnPropertyChanged(nameof(YearlyMonthValue));
+        OnPropertyChanged(nameof(RecurrenceEndIndex));
+        OnPropertyChanged(nameof(OccurrenceCountValue));
+        OnPropertyChanged(nameof(RecurrenceSummary));
+        OnPropertyChanged(nameof(IsWeekly));
+        OnPropertyChanged(nameof(IsMonthly));
+        OnPropertyChanged(nameof(IsYearly));
+        OnPropertyChanged(nameof(IsRepeating));
         OnPropertyChanged(nameof(IsEndOnDate));
         OnPropertyChanged(nameof(IsEndAfterCount));
     }

@@ -98,7 +98,7 @@ public sealed class TrayService : IDisposable
                     break;
 
                 case NewReminderCommand:
-                    App.Current.ShowQuickAdd();
+                    App.Current.ShowQuickAdd(reminderMode: true);
                     break;
 
                 case Remind10Command:
