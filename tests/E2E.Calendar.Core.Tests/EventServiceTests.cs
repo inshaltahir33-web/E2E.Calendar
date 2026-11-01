@@ -15,6 +15,7 @@ public sealed class EventServiceTests
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
     private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IEventQueryCache _cache = Substitute.For<IEventQueryCache>();
 
     public EventServiceTests()
     {
@@ -22,7 +23,7 @@ public sealed class EventServiceTests
     }
 
     private EventService CreateService(TimeSpan? undoWindow = null) =>
-        new(_events, _outbox, _clock, undoWindow);
+        new(_events, _outbox, _clock, undoWindow, _cache);
 
     private static EventDraft CreateDraft(
         string title = "Standup",
@@ -244,5 +245,13 @@ public sealed class EventServiceTests
         var act = () => CreateService().UndoDeleteAsync("evt-1");
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CreateAsync_invalidates_the_query_cache_so_views_refresh()
+    {
+        await CreateService().CreateAsync(CreateDraft());
+
+        _cache.Received(1).Invalidate();
     }
 }

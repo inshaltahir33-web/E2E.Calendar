@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
 using Ical.Net;
@@ -13,34 +14,192 @@ namespace E2E.Calendar.Sync.Ics;
 
 public sealed class IcsService
 {
-    public string Export(IEnumerable<CoreCalendarEvent> events)
+    public string Export(IEnumerable<CoreCalendarEvent> events) =>
+        Export(events, null);
+
+    public string Export(IEnumerable<CoreCalendarEvent> events, IEnumerable<Alert>? alerts)
     {
-        var calendar = new IcalCalendar();
+        ArgumentNullException.ThrowIfNull(events);
+
+        var alertLookup = (alerts ?? Array.Empty<Alert>())
+            .Where(alert => alert.OwnerType == OwnerType.Event)
+            .GroupBy(alert => alert.OwnerId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
+
+        var builder = new StringBuilder();
+        builder.Append("BEGIN:VCALENDAR\r\n");
+        builder.Append("VERSION:2.0\r\n");
+        builder.Append("PRODID:-//E2E Dev//E2E Calendar//EN\r\n");
+        builder.Append("CALSCALE:GREGORIAN\r\n");
+        builder.Append("METHOD:PUBLISH\r\n");
 
         foreach (var source in events.Where(item => !item.Deleted))
         {
-            var item = new IcalCalendarEvent
-            {
-                Uid = source.Id,
-                Summary = source.Title,
-                Description = NotesText.ToPlainText(source.Notes),
-                Location = source.Location,
-                DtStart = new CalDateTime(source.StartUtc.UtcDateTime, "UTC"),
-                DtEnd = new CalDateTime(source.EndUtc.UtcDateTime, "UTC"),
-            };
-
-            if (!string.IsNullOrWhiteSpace(source.RRule))
-            {
-                item.RecurrenceRule = new RecurrencePattern(
-                    source.RRule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase)
-                        ? source.RRule["RRULE:".Length..]
-                        : source.RRule);
-            }
-
-            calendar.Events.Add(item);
+            alertLookup.TryGetValue(source.Id, out var eventAlerts);
+            AppendEvent(builder, source, eventAlerts ?? []);
         }
 
-        return new CalendarSerializer(calendar).SerializeToString() ?? string.Empty;
+        builder.Append("END:VCALENDAR\r\n");
+        return builder.ToString();
+    }
+
+    private static void AppendEvent(StringBuilder builder, CoreCalendarEvent source, IReadOnlyList<Alert> alerts)
+    {
+        builder.Append("BEGIN:VEVENT\r\n");
+        AppendLine(builder, $"UID:{Escape(source.Id)}");
+        AppendLine(builder, $"DTSTAMP:{FormatUtc(DateTimeOffset.UtcNow)}");
+        AppendLine(builder, FormatStart(source));
+        AppendLine(builder, FormatEnd(source));
+        AppendLine(builder, $"SUMMARY:{Escape(source.Title)}");
+
+        if (!string.IsNullOrWhiteSpace(source.Location))
+        {
+            AppendLine(builder, $"LOCATION:{Escape(source.Location)}");
+        }
+
+        var description = NotesText.ToPlainText(source.Notes);
+
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            AppendLine(builder, $"DESCRIPTION:{Escape(description)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(source.RRule))
+        {
+            var rule = source.RRule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase)
+                ? source.RRule["RRULE:".Length..]
+                : source.RRule;
+            AppendLine(builder, $"RRULE:{rule}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(source.ExDates))
+        {
+            var exDates = ExDateListToString(source.ExDates);
+            if (!string.IsNullOrWhiteSpace(exDates))
+            {
+                AppendLine(builder, $"EXDATE:{exDates}");
+            }
+        }
+
+        foreach (var alert in alerts)
+        {
+            AppendAlarm(builder, source, alert);
+        }
+
+        builder.Append("END:VEVENT\r\n");
+    }
+
+    private static void AppendAlarm(StringBuilder builder, CoreCalendarEvent source, Alert alert)
+    {
+        builder.Append("BEGIN:VALARM\r\n");
+        builder.Append("ACTION:DISPLAY\r\n");
+        builder.Append($"DESCRIPTION:{Escape(source.Title)}\r\n");
+
+        if (alert.TriggerOffsetMinutes is { } offset)
+        {
+            AppendLine(builder, $"TRIGGER:-PT{Math.Abs(offset)}M");
+        }
+        else if (alert.TriggerAtUtc is { } at)
+        {
+            AppendLine(builder, $"TRIGGER;VALUE=DATE-TIME:{FormatUtc(at)}");
+        }
+        else
+        {
+            AppendLine(builder, "TRIGGER:-PT10M");
+        }
+
+        builder.Append("END:VALARM\r\n");
+    }
+
+    private static string FormatStart(CoreCalendarEvent source)
+    {
+        if (source.AllDay)
+        {
+            return $"DTSTART;VALUE=DATE:{source.StartUtc:yyyyMMdd}";
+        }
+
+        return $"DTSTART:{FormatUtc(source.StartUtc)}";
+    }
+
+    private static string FormatEnd(CoreCalendarEvent source)
+    {
+        if (source.AllDay)
+        {
+            var end = source.EndUtc.Date <= source.StartUtc.Date
+                ? source.StartUtc.Date.AddDays(1)
+                : source.EndUtc.Date;
+            return $"DTEND;VALUE=DATE:{end:yyyyMMdd}";
+        }
+
+        return $"DTEND:{FormatUtc(source.EndUtc)}";
+    }
+
+    private static string FormatUtc(DateTimeOffset value) =>
+        value.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+
+    private static string Escape(string value)
+    {
+        return value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace(";", "\\;", StringComparison.Ordinal)
+            .Replace(",", "\\,", StringComparison.Ordinal)
+            .Replace("\r\n", "\\n", StringComparison.Ordinal)
+            .Replace("\r", "\\n", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
+    }
+
+    private static void AppendLine(StringBuilder builder, string line)
+    {
+        builder.Append(Fold(line));
+        builder.Append("\r\n");
+    }
+
+    private static string Fold(string line)
+    {
+        if (line.Length <= 75)
+        {
+            return line;
+        }
+
+        var result = new StringBuilder();
+        var index = 0;
+        var first = true;
+
+        while (index < line.Length)
+        {
+            var chunkSize = first ? 75 : 74;
+            var take = Math.Min(chunkSize, line.Length - index);
+            var chunk = line.Substring(index, take);
+            if (!first)
+            {
+                result.Append("\r\n ");
+            }
+            result.Append(chunk);
+            index += take;
+            first = false;
+        }
+
+        return result.ToString();
+    }
+
+    private static string ExDateListToString(string exDates)
+    {
+        var parts = exDates.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var formatted = new List<string>();
+
+        foreach (var part in parts)
+        {
+            if (DateTimeOffset.TryParse(part, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var value))
+            {
+                formatted.Add(FormatUtc(value));
+            }
+            else
+            {
+                formatted.Add(part);
+            }
+        }
+
+        return string.Join(",", formatted);
     }
 
     public IReadOnlyList<CoreCalendarEvent> Import(string ics, string calendarId, DateTimeOffset nowUtc)

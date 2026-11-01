@@ -25,6 +25,7 @@ public sealed partial class QuickAddViewModel : ObservableObject
     private readonly ReminderEngine _engine;
     private readonly ReminderNotificationService _scheduler;
     private readonly ICalendarRepository _calendarRepository;
+    private readonly IEventQueryCache _queryCache;
 
     private ParsedItem? _parsed;
     private bool _reminderMode;
@@ -76,13 +77,15 @@ public sealed partial class QuickAddViewModel : ObservableObject
         EventService events,
         ReminderEngine engine,
         ReminderNotificationService scheduler,
-        ICalendarRepository calendarRepository)
+        ICalendarRepository calendarRepository,
+        IEventQueryCache queryCache)
     {
         _clock = clock;
         _events = events;
         _engine = engine;
         _scheduler = scheduler;
         _calendarRepository = calendarRepository;
+        _queryCache = queryCache;
 
         CalendarChoices = new ObservableCollection<CalendarOption>(FallbackCalendars);
     }
@@ -245,6 +248,7 @@ public sealed partial class QuickAddViewModel : ObservableObject
             });
 
             await _events.AddAlertsAsync(created.Id, parsed.AlertOffsetsMinutes);
+            _queryCache.Invalidate();
         }
 
         Saved?.Invoke(this, EventArgs.Empty);

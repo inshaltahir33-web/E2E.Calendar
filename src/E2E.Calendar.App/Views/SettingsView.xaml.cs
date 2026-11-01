@@ -98,6 +98,9 @@ public sealed partial class SettingsView : UserControl
         try
         {
             await ViewModel.DeleteAllDataAsync();
+
+            // Restart so no stale in-memory state survives the wipe.
+            Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
         }
         catch (Exception ex)
         {
@@ -164,6 +167,28 @@ public sealed partial class SettingsView : UserControl
                 CloseButtonText = "Close",
             };
             await _dialogs.ShowAsync(dialog);
+        }
+    }
+
+    private async void OnHolidayToggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleSwitch toggle || toggle.Tag is not string countryCode)
+        {
+            return;
+        }
+
+        try
+        {
+            await ViewModel.SetHolidayEnabledAsync(countryCode, toggle.IsOn);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Holiday calendar could not be updated",
+                Content = ex.Message,
+                CloseButtonText = "Close",
+            });
         }
     }
 
@@ -367,6 +392,23 @@ public sealed partial class SettingsView : UserControl
             {
                 Title = "Windows notification settings could not be opened",
                 Content = "Open Settings > System > Notifications manually.",
+                CloseButtonText = "Close",
+            });
+        }
+    }
+
+    private async void OnPrivacyPolicyClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Launcher.LaunchUriAsync(new Uri(ViewModel.PrivacyPolicyUrl));
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowAsync(new ContentDialog
+            {
+                Title = "Privacy policy could not be opened",
+                Content = ex.Message,
                 CloseButtonText = "Close",
             });
         }

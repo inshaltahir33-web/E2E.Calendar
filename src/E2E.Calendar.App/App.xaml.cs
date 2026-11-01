@@ -35,6 +35,7 @@ public partial class App : Application
     private CrashReportingService? _crashReporter;
     private TrayService? _tray;
     private PowerResumeService? _powerResume;
+    private Microsoft.Windows.AppLifecycle.AppInstance? _appInstance;
 
     public App()
     {
@@ -70,6 +71,17 @@ public partial class App : Application
     {
         try
         {
+            // Single instance: if another instance is already running, hand off activation
+            // to it and exit this process without starting the host.
+            _appInstance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("E2E.Calendar");
+            if (!_appInstance.IsCurrent)
+            {
+                await _appInstance.RedirectActivationToAsync(
+                    Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs());
+                Environment.Exit(0);
+                return;
+            }
+
             _host = BuildHost();
             _crashReporter = _host.Services.GetRequiredService<CrashReportingService>();
 
@@ -91,6 +103,12 @@ public partial class App : Application
 
             _mainWindow = _host.Services.GetRequiredService<MainWindow>();
             _window = _mainWindow;
+
+            // When another process redirects its activation to us, surface the window.
+            if (_appInstance is not null)
+            {
+                _appInstance.Activated += OnAppInstanceActivated;
+            }
 
             if (_mainWindow.Content is Microsoft.UI.Xaml.FrameworkElement root)
             {
@@ -218,6 +236,11 @@ public partial class App : Application
 
         _mainWindow.AppWindow.Show();
         _mainWindow.Activate();
+    }
+
+    private void OnAppInstanceActivated(object? sender, Microsoft.Windows.AppLifecycle.AppActivationArguments e)
+    {
+        _mainWindow?.DispatcherQueue.TryEnqueue(ShowMainWindow);
     }
 
     public void ShowNewEvent()
@@ -373,6 +396,7 @@ public partial class App : Application
                 // WidgetAgendaCardService (v1.1 Windows 11 widgets) is not surfaced in the UI yet,
                 // so it is intentionally not registered. Re-register when the widget host is wired up.
                 services.AddSingleton<WeatherService>();
+                services.AddSingleton<HolidayCalendarService>();
                 services.AddSingleton<CrashReportingService>();
                 services.AddSingleton<StartupTaskService>();
                 services.AddSingleton<TrayIconService>();

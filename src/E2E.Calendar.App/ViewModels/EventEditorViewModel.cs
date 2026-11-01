@@ -970,6 +970,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
 
         await SaveAlertsAsync(saved.Id);
 
+        _queryCache.Invalidate();
+
         OnPropertyChanged(nameof(AlertSummary));
         SetCleanBaseline();
 

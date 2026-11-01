@@ -578,8 +578,15 @@ public sealed partial class MainWindow : Window
             _editor.DiscardChanges();
         }
 
+        var selectedDate = StateViewModel.SelectedDate == default
+            ? StateViewModel.LocalDate
+            : StateViewModel.SelectedDate;
+
         var now = _clock.UtcNow;
-        var start = now.AddMinutes(30 - (now.Minute % 30));
+        var localNow = TimeZoneInfo.ConvertTime(now, _clock.LocalTimeZone);
+        var startMinuteOffset = 30 - (localNow.Minute % 30);
+        var localStart = selectedDate.ToDateTime(new TimeOnly(localNow.Hour, localNow.Minute)).AddMinutes(startMinuteOffset);
+        var start = TimeZoneInfo.ConvertTimeToUtc(localStart, _clock.LocalTimeZone);
         await _editor.OpenNewAsync(start, start.AddHours(1));
     }
 
@@ -1309,6 +1316,7 @@ public sealed partial class MainWindow : Window
 
         if (await _editor.SaveAsync(scope))
         {
+            _query.Invalidate();
             await CloseEditorAsync();
             ViewModel.Status = "Event saved";
         }

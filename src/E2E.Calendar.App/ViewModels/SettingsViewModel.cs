@@ -35,6 +35,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISecretStore _secrets;
     private readonly StartupTaskService _startupTasks;
     private readonly IEventTemplateStore _templateStore;
+    private readonly HolidayCalendarService _holidays;
+    private readonly IAlertRepository _alerts;
 
     private static readonly int[] SnoozeMinuteOptions = [5, 10, 15, 30, 60];
     private static readonly int[] RepeatMinuteOptions = [5, 10, 15, 30, 60];
@@ -54,7 +56,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         Db db,
         ISecretStore secrets,
         StartupTaskService startupTasks,
-        IEventTemplateStore templateStore)
+        IEventTemplateStore templateStore,
+        HolidayCalendarService holidays,
+        IAlertRepository alerts)
     {
         _settings = settings;
         _calendars = calendars;
@@ -69,6 +73,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _secrets = secrets;
         _startupTasks = startupTasks;
         _templateStore = templateStore;
+        _holidays = holidays;
+        _alerts = alerts;
 
         _calendars.Changed += OnCalendarsChanged;
 
@@ -94,6 +100,16 @@ public sealed partial class SettingsViewModel : ObservableObject
         sections.Add(new SettingsSection("About", "\uE946"));
 
         Sections = sections;
+
+        foreach (var country in HolidayCalendarService.Countries)
+        {
+            HolidayCalendars.Add(new SettingsHolidayItem
+            {
+                CountryCode = country.Code,
+                Name = country.Name,
+                IsEnabled = false,
+            });
+        }
 
         ThemeLabels = ["Use system setting", "Light", "Dark"];
         AccentLabels = ["Windows accent", "Match calendar", "Custom"];
@@ -124,6 +140,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<string> RepeatIntervalLabels { get; }
 
     public ObservableCollection<SettingsCalendarItem> Calendars { get; } = new();
+
+    public ObservableCollection<SettingsHolidayItem> HolidayCalendars { get; } = new();
 
     public ObservableCollection<SettingsAccountItem> Accounts { get; } = new();
 
@@ -178,6 +196,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     ];
 
     public string AppVersion => "1.0.0 (local)";
+
+    public string PrivacyPolicyUrl => AppFeatures.PrivacyPolicyUrl;
 
     public string DatabaseSummary => "Stored on this device, encrypted with SQLCipher";
 
@@ -339,6 +359,28 @@ public sealed partial class SettingsViewModel : ObservableObject
             .ToDictionary(subscription => subscription.CalendarId);
 
         ApplyCalendars(calendars, subscriptions);
+
+        HolidayCalendars.Clear();
+        foreach (var country in HolidayCalendarService.Countries)
+        {
+            var enabled = false;
+            try
+            {
+                enabled = await _holidays.IsEnabledAsync(country.Code);
+            }
+            catch
+            {
+                enabled = false;
+            }
+
+            HolidayCalendars.Add(new SettingsHolidayItem
+            {
+                CountryCode = country.Code,
+                Name = country.Name,
+                IsEnabled = enabled,
+            });
+        }
+
         await LoadTemplatesAsync();
 
         Accounts.Clear();
@@ -642,6 +684,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         await LoadAsync();
     }
 
+    public async Task SetHolidayEnabledAsync(string countryCode, bool enabled, CancellationToken cancellationToken = default)
+    {
+        await _holidays.SetEnabledAsync(countryCode, enabled, cancellationToken);
+        await _calendars.ReloadAsync(cancellationToken);
+
+        var item = HolidayCalendars.FirstOrDefault(item =>
+            string.Equals(item.CountryCode, countryCode, StringComparison.OrdinalIgnoreCase));
+
+        if (item is not null)
+        {
+            item.IsEnabled = enabled;
+        }
+    }
+
     public async Task CreateCalendarAsync(string name, string color, CancellationToken cancellationToken = default)
     {
         await _calendars.CreateLocalAsync(name, color, cancellationToken);
@@ -656,13 +712,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public async Task<string> ExportEventsAsync(CancellationToken cancellationToken = default)
     {
-        var events = await _events.GetInRangeAsync(
-            null,
-            _clock.UtcNow.AddYears(-10),
-            _clock.UtcNow.AddYears(10),
-            cancellationToken);
+        var events = await _events.SearchAsync(new EventSearchCriteria(), cancellationToken);
+        var alerts = (await _alerts.GetAllAlertsAsync(cancellationToken))
+            .Where(alert => alert.OwnerType == OwnerType.Event)
+            .ToList();
 
-        return _ics.Export(events);
+        return _ics.Export(events, alerts);
     }
 
     public async Task DeleteCalendarAsync(string id, CancellationToken cancellationToken = default)
@@ -791,6 +846,16 @@ public sealed partial class SettingsViewModel : ObservableObject
 }
 
 public sealed record SettingsSection(string Title, string Glyph);
+
+public sealed partial class SettingsHolidayItem : ObservableObject
+{
+    [ObservableProperty]
+    private bool _isEnabled;
+
+    public required string CountryCode { get; init; }
+
+    public required string Name { get; init; }
+}
 
 public sealed partial class SettingsCalendarItem : ObservableObject
 {

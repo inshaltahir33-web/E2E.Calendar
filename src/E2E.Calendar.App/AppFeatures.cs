@@ -8,6 +8,8 @@ public static class AppFeatures
 {
     public static bool SyncUiEnabled = false;
 
+    public static string PrivacyPolicyUrl = "https://example.com/privacy";
+
     public static bool DemoEnabled = string.Equals(
         Environment.GetEnvironmentVariable("E2E_DEMO"),
         "1",
