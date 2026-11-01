@@ -1536,6 +1536,16 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async void OnCalendarVisibilityClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox { DataContext: CalendarListItem item } box)
+        {
+            return;
+        }
+
+        await _calendars.SetVisibleAsync(item.Id, box.IsChecked == true);
+    }
+
     private void OnCalendarListRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         if (sender is not ListView list)

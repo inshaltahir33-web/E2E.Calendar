@@ -519,7 +519,8 @@
                                                     MinWidth="0"
                                                     VerticalAlignment="Center"
                                                     AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
-                                                    IsChecked="{x:Bind IsVisible, Mode=TwoWay}" />
+                                                    IsChecked="{x:Bind IsVisible, Mode=OneWay}"
+                                                    Click="OnCalendarVisibilityClick" />
                                                 <Ellipse
                                                     Grid.Column="1"
                                                     Width="{StaticResource CalendarSwatchSize}"

@@ -132,6 +132,42 @@ public sealed class CalendarServiceTests
     }
 
     [Fact]
+    public async Task Hiding_a_calendar_persists_the_flag_and_survives_a_reload()
+    {
+        var stored = new Calendar { Id = "cal-1", Name = "Personal", Visible = true, IsLocal = true };
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { stored });
+
+        var calendars = new CalendarService(_repository);
+        await calendars.GetAllAsync();
+
+        Calendar? persisted = null;
+        await _repository.UpsertAsync(Arg.Do<Calendar>(calendar => persisted = calendar), Arg.Any<CancellationToken>());
+
+        var changes = new List<CalendarListChangedEventArgs>();
+        calendars.Changed += (_, change) => changes.Add(change);
+
+        var updated = await calendars.SetVisibleAsync("cal-1", false);
+
+        updated.Should().NotBeNull();
+        updated!.Visible.Should().BeFalse();
+        persisted.Should().NotBeNull();
+        persisted!.Visible.Should().BeFalse();
+        changes.Should().ContainSingle(change =>
+            change.Kind == CalendarListChangeKind.Updated && change.CalendarId == "cal-1");
+        calendars.Calendars.Should().ContainSingle(calendar => !calendar.Visible);
+
+        // Toggling to the value that is already stored must not write again.
+        await calendars.SetVisibleAsync("cal-1", false);
+        await _repository.Received(1).UpsertAsync(
+            Arg.Is<Calendar>(calendar => calendar.Id == "cal-1" && !calendar.Visible),
+            Arg.Any<CancellationToken>());
+
+        // A restart re-reads the flag from storage.
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { persisted });
+        (await calendars.ReloadAsync()).Should().ContainSingle(calendar => !calendar.Visible);
+    }
+
+    [Fact]
     public async Task Deleting_a_calendar_raises_the_change_event_and_removes_it_from_the_shared_list()
     {
         var stored = new Calendar { Id = "cal-1", Name = "Personal", Visible = true, IsLocal = true };
