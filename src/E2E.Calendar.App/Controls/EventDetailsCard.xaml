@@ -61,7 +61,7 @@
                 Grid.Column="2"
                 VerticalAlignment="Center"
                 AutomationProperties.Name="Open the location in a map"
-                Content="Map" />
+                Content="Open in Maps" />
         </Grid>
 
         <Grid

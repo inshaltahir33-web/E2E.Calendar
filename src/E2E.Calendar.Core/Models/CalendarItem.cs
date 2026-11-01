@@ -18,6 +18,10 @@ public sealed record CalendarItem
 
     public string? Location { get; init; }
 
+    public double? Latitude { get; init; }
+
+    public double? Longitude { get; init; }
+
     public string? CalendarName { get; init; }
 
     public bool AllDay { get; init; }

@@ -130,7 +130,8 @@ public sealed partial class MainWindow : Window
         ScheduleExportService scheduleExport,
         TodoService todo,
         IDialogService dialogs,
-        EventDeletionCoordinator deletion)
+        EventDeletionCoordinator deletion,
+        PlaceSearchService placeSearch)
     {
         try
         {
@@ -152,6 +153,7 @@ public sealed partial class MainWindow : Window
             ArgumentNullException.ThrowIfNull(todo);
             ArgumentNullException.ThrowIfNull(dialogs);
             ArgumentNullException.ThrowIfNull(deletion);
+            ArgumentNullException.ThrowIfNull(placeSearch);
 
             ViewModel = viewModel;
             StateViewModel = stateViewModel;
@@ -203,7 +205,7 @@ public sealed partial class MainWindow : Window
 
             StateViewModel.PropertyChanged += OnStateViewModelPropertyChanged;
 
-            _editorView = new Views.EventEditorView(editor, dialogs);
+            _editorView = new Views.EventEditorView(editor, dialogs, placeSearch);
             EditorHost.Children.Add(_editorView);
             MiniCalendarHost.Children.Add(new Controls.MiniCalendarView(miniCalendar, dialogs));
 

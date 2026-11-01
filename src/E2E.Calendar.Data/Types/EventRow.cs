@@ -18,6 +18,10 @@ public sealed class EventRow
 
     public string? Location { get; init; }
 
+    public double? Latitude { get; init; }
+
+    public double? Longitude { get; init; }
+
     public string? Url { get; init; }
 
     public string StartUtc { get; init; } = string.Empty;
@@ -65,6 +69,8 @@ public sealed class EventRow
         Title = model.Title,
         Notes = model.Notes,
         Location = model.Location,
+        Latitude = model.Latitude,
+        Longitude = model.Longitude,
         Url = model.Url,
         StartUtc = SqliteTime.ToUtcText(model.StartUtc),
         EndUtc = SqliteTime.ToUtcText(model.EndUtc),

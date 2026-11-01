@@ -29,7 +29,9 @@ public sealed class MigrationRunner
                 if ((migration.Version == 3 &&
                      await ColumnExistsAsync(connection, transaction, "event", "attendees", cancellationToken)) ||
                     (migration.Version == 4 &&
-                     await ColumnExistsAsync(connection, transaction, "event", "tags", cancellationToken)))
+                     await ColumnExistsAsync(connection, transaction, "event", "tags", cancellationToken)) ||
+                    (migration.Version == 8 &&
+                     await ColumnExistsAsync(connection, transaction, "event", "latitude", cancellationToken)))
                 {
                     command.CommandText = "SELECT 1;";
                 }

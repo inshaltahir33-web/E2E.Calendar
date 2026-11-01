@@ -396,7 +396,7 @@
                                     Grid.Column="1"
                                     VerticalAlignment="Center"
                                     Click="OnOpenMapClick"
-                                    Content="Map"
+                                    Content="Pick place"
                                     IsEnabled="{x:Bind ViewModel.CanOpenMap, Mode=OneWay}"
                                     AutomationProperties.Name="Open the location in a map" />
                             </Grid>

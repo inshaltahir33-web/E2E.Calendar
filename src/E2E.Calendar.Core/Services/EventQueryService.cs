@@ -86,6 +86,8 @@ public sealed class EventQueryService : IEventQueryCache
                     ? calendarColor
                     : null),
             Location = calendarEvent.Location,
+            Latitude = calendarEvent.Latitude,
+            Longitude = calendarEvent.Longitude,
             AllDay = calendarEvent.AllDay,
             HasTime = !calendarEvent.AllDay,
             IsRecurring = !string.IsNullOrWhiteSpace(calendarEvent.RRule),

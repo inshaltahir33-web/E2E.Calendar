@@ -402,6 +402,7 @@ public partial class App : Application
                 services.AddSingleton<CrashReportingService>();
                 services.AddSingleton<StartupTaskService>();
                 services.AddSingleton<TaskbarJumpListService>();
+                services.AddSingleton<PlaceSearchService>();
                 services.AddSingleton<TrayIconService>();
                 services.AddSingleton<TrayService>();
                 services.AddSingleton<PowerResumeService>();

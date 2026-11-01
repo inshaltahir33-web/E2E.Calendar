@@ -21,15 +21,17 @@ public partial class EventEditorView : UserControl
 
     private readonly ThemeShadow _drawerShadow = new();
     private readonly IDialogService _dialogs;
+    private readonly PlaceSearchService _placeSearch;
     private string? _notesSnapshot;
     private bool _syncingNotes = true;
 
-    public EventEditorView(EventEditorViewModel viewModel, IDialogService dialogs)
+    public EventEditorView(EventEditorViewModel viewModel, IDialogService dialogs, PlaceSearchService? placeSearch = null)
     {
         ArgumentNullException.ThrowIfNull(dialogs);
 
         ViewModel = viewModel;
         _dialogs = dialogs;
+        _placeSearch = placeSearch ?? new PlaceSearchService(Microsoft.Extensions.Logging.Abstractions.NullLogger<PlaceSearchService>.Instance);
 
         InitializeComponent();
 
@@ -175,32 +177,19 @@ public partial class EventEditorView : UserControl
 
     private async void OnOpenMapClick(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.MapsAppUri is { } mapsAppUri)
+        var dialog = new PickPlaceDialog(_placeSearch)
         {
-            try
-            {
-                if (await Launcher.LaunchUriAsync(mapsAppUri))
-                {
-                    return;
-                }
-            }
-            catch (Exception)
-            {
-                // No handler for the bingmaps: scheme; fall back to the browser below.
-            }
-        }
+            XamlRoot = this.XamlRoot,
+        };
 
-        if (ViewModel.MapSearchUri is { } webUri && await Launcher.LaunchUriAsync(webUri))
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary || dialog.SelectedPlace is not { } place)
         {
             return;
         }
 
-        await _dialogs.ShowAsync(new ContentDialog
-        {
-            Title = "Maps could not be opened",
-            Content = "Open Bing Maps in a browser and search for the location manually.",
-            CloseButtonText = "Close",
-        });
+        ViewModel.Location = place.DisplayName;
+        ViewModel.Latitude = place.Latitude;
+        ViewModel.Longitude = place.Longitude;
     }
 
     private async void OnSaveTemplateClick(object sender, RoutedEventArgs e)

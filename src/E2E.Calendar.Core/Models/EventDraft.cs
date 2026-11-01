@@ -10,6 +10,10 @@ public sealed record EventDraft
 
     public string? Location { get; init; }
 
+    public double? Latitude { get; init; }
+
+    public double? Longitude { get; init; }
+
     public string? Url { get; init; }
 
     public required DateTimeOffset StartUtc { get; init; }

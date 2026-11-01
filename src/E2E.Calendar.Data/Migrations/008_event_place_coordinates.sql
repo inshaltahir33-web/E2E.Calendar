@@ -1,0 +1,2 @@
+ALTER TABLE event ADD COLUMN latitude REAL NULL;
+ALTER TABLE event ADD COLUMN longitude REAL NULL;

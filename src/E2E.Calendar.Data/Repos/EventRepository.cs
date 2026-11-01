@@ -15,6 +15,8 @@ public sealed class EventRepository : IEventRepository
         title AS Title,
         notes AS Notes,
         location AS Location,
+        latitude AS Latitude,
+        longitude AS Longitude,
         url AS Url,
         start_utc AS StartUtc,
         end_utc AS EndUtc,
@@ -38,12 +40,12 @@ public sealed class EventRepository : IEventRepository
 
     private const string UpsertSql = """
         INSERT INTO event (
-            id, calendar_id, remote_id, etag, title, notes, location, url,
+            id, calendar_id, remote_id, etag, title, notes, location, latitude, longitude, url,
             start_utc, end_utc, all_day, tz_id, rrule, exdates,
             recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, tags, category, travel_minutes,
             created_utc, updated_utc, deleted, dirty)
         VALUES (
-            @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Url,
+            @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Latitude, @Longitude, @Url,
             @StartUtc, @EndUtc, @AllDay, @TimeZoneId, @RRule, @ExDates,
             @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @Tags, @Category, @TravelMinutes,
             @CreatedUtc, @UpdatedUtc, @Deleted, @Dirty)
@@ -54,6 +56,8 @@ public sealed class EventRepository : IEventRepository
             title = excluded.title,
             notes = excluded.notes,
             location = excluded.location,
+            latitude = excluded.latitude,
+            longitude = excluded.longitude,
             url = excluded.url,
             start_utc = excluded.start_utc,
             end_utc = excluded.end_utc,
@@ -77,12 +81,12 @@ public sealed class EventRepository : IEventRepository
 
     private const string InsertManySql = """
         INSERT INTO event (
-            id, calendar_id, remote_id, etag, title, notes, location, url,
+            id, calendar_id, remote_id, etag, title, notes, location, latitude, longitude, url,
             start_utc, end_utc, all_day, tz_id, rrule, exdates,
             recurrence_master_id, recurrence_id_utc, color, meeting_url, attendees, tags, category, travel_minutes,
             created_utc, updated_utc, deleted, dirty)
         VALUES (
-            @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Url,
+            @Id, @CalendarId, @RemoteId, @ETag, @Title, @Notes, @Location, @Latitude, @Longitude, @Url,
             @StartUtc, @EndUtc, @AllDay, @TimeZoneId, @RRule, @ExDates,
             @RecurrenceMasterId, @RecurrenceIdUtc, @Color, @MeetingUrl, @Attendees, @Tags, @Category, @TravelMinutes,
             @CreatedUtc, @UpdatedUtc, @Deleted, @Dirty)

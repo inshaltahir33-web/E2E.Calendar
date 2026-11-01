@@ -41,6 +41,12 @@ public sealed partial class EventEditorViewModel : ObservableObject
     private string? _location;
 
     [ObservableProperty]
+    private double? _latitude;
+
+    [ObservableProperty]
+    private double? _longitude;
+
+    [ObservableProperty]
     private string? _meetingUrl;
 
     [ObservableProperty]
@@ -568,6 +574,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(LoadedEvent));
         Title = string.Empty;
         Location = null;
+        Latitude = null;
+        Longitude = null;
         MeetingUrl = null;
         Notes = null;
         Color = null;
@@ -614,6 +622,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
         EventId = calendarEvent.Id;
         Title = calendarEvent.Title;
         Location = calendarEvent.Location;
+        Latitude = calendarEvent.Latitude;
+        Longitude = calendarEvent.Longitude;
         MeetingUrl = calendarEvent.MeetingUrl;
         Notes = calendarEvent.Notes;
         Color = calendarEvent.Color;
@@ -928,6 +938,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
             Title = Title,
             Notes = notes,
             Location = Location,
+            Latitude = Latitude,
+            Longitude = Longitude,
             MeetingUrl = MeetingUrl,
             StartUtc = StartUtc,
             EndUtc = EndUtc,
@@ -949,6 +961,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
                 Title = edited.Title,
                 Notes = edited.Notes,
                 Location = edited.Location,
+                Latitude = edited.Latitude,
+                Longitude = edited.Longitude,
                 StartUtc = edited.StartUtc,
                 EndUtc = edited.EndUtc,
                 AllDay = edited.AllDay,
