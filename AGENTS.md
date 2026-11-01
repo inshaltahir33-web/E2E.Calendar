@@ -40,3 +40,5 @@ tests/*                      -> unit/integration tests
 
 ## Definition of Done (per task)
 Builds with 0 errors, tests pass, no TODO left silently, docs updated if behavior changed, committed.
+
+Work only in D:\WindowsCalendarApp on the current branch. Never create git worktrees or branches.
