@@ -27,16 +27,46 @@ if ($Configuration -ne "Release") {
 }
 
 function Invoke-MakeAppx {
-    $makeAppx = Get-Command makeappx.exe -ErrorAction SilentlyContinue
-    if ($null -eq $makeAppx) {
-        $makeAppx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter makeappx.exe -Recurse -ErrorAction SilentlyContinue |
+    # Look for makeappx.exe in order of preference:
+    #   1. PATH
+    #   2. %USERPROFILE%\.nuget\packages\microsoft.windows.sdk.buildtools\<version>\bin\<rid>\makeappx.exe (highest version first)
+    #   3. C:\Program Files (x86)\Windows Kits\10\bin\<version>\x64\makeappx.exe
+    $candidates = @()
+
+    $fromPath = Get-Command makeappx.exe -ErrorAction SilentlyContinue
+    if ($null -ne $fromPath) {
+        $candidates += $fromPath.Source
+    }
+
+    $nugetRoot = Join-Path $env:USERPROFILE ".nuget\packages\microsoft.windows.sdk.buildtools"
+    if (Test-Path $nugetRoot) {
+        $versions = Get-ChildItem -LiteralPath $nugetRoot -Directory | Sort-Object Name -Descending
+        foreach ($version in $versions) {
+            $candidate = Get-ChildItem -LiteralPath (Join-Path $version.FullName "bin") -Filter makeappx.exe -Recurse -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending |
+                Select-Object -First 1
+            if ($null -ne $candidate) {
+                $candidates += $candidate.FullName
+            }
+        }
+    }
+
+    $kitsRoot = "C:\Program Files (x86)\Windows Kits\10\bin"
+    if (Test-Path $kitsRoot) {
+        $kits = Get-ChildItem -LiteralPath $kitsRoot -Filter makeappx.exe -Recurse -ErrorAction SilentlyContinue |
             Sort-Object FullName -Descending |
             Select-Object -First 1
+        if ($null -ne $kits) {
+            $candidates += $kits.FullName
+        }
     }
-    if ($null -eq $makeAppx) {
-        throw "makeappx.exe was not found. Install the Windows SDK before packaging."
+
+    $found = $candidates | Select-Object -First 1
+    if ($null -ne $found -and (Test-Path $found)) {
+        return $found
     }
-    return $makeAppx.FullName
+
+    throw "Install the Windows 10/11 SDK"
 }
 
 function New-PackagePayload {
@@ -111,6 +141,7 @@ if (Test-Path $output) { Remove-Item $output -Recurse -Force }
 New-Item -ItemType Directory -Path (Join-Path $output "x64") | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $output "arm64") | Out-Null
 
+$makeAppx = Invoke-MakeAppx
 $bundles = @()
 
 foreach ($arch in @("x64", "ARM64")) {
