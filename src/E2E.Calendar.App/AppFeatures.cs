@@ -8,6 +8,12 @@ public static class AppFeatures
 {
     public static bool SyncUiEnabled = false;
 
+    /// <summary>
+    /// Shows the Premium settings section and billing entry points. Off by default so
+    /// the whole app is free; billing code stays compiled and reachable by flipping it.
+    /// </summary>
+    public static bool PremiumUiEnabled = false;
+
     public static string PrivacyPolicyUrl = "https://example.com/privacy";
 
     public static string HolidayOverridesUrl = "https://raw.githubusercontent.com/OWNER/REPO/main/holiday-overrides.json";

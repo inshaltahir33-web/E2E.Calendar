@@ -57,7 +57,13 @@ public sealed partial class SettingsView : UserControl
         sections.Add(("Notifications", SectionNotifications));
         sections.Add(("Appearance", SectionAppearance));
         sections.Add(("Shortcuts", SectionShortcuts));
-        sections.Add(("Premium", SectionPremium));
+
+        // Billing is hidden while the app is fully free; the panel stays in XAML.
+        if (AppFeatures.PremiumUiEnabled)
+        {
+            sections.Add(("Premium", SectionPremium));
+        }
+
         sections.Add(("Privacy & data", SectionPrivacy));
 
         if (AppFeatures.DemoEnabled)

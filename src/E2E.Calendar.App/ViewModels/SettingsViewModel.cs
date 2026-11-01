@@ -89,7 +89,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         sections.Add(new SettingsSection("Notifications", "\uEA8F"));
         sections.Add(new SettingsSection("Appearance", "\uE790"));
         sections.Add(new SettingsSection("Shortcuts", "\uE765"));
-        sections.Add(new SettingsSection("Premium", "\uE735"));
+
+        // Billing is hidden while the app is fully free; the view model stays compiled.
+        if (AppFeatures.PremiumUiEnabled)
+        {
+            sections.Add(new SettingsSection("Premium", "\uE735"));
+        }
+
         sections.Add(new SettingsSection("Privacy & data", "\uE72E"));
 
         if (AppFeatures.DemoEnabled)
@@ -504,7 +510,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private async Task AddAccountAsync(Provider provider)
     {
-        if (!_entitlements.Current.IsPremium && _sync.Accounts.Count >= FreeAccountLimit)
+        if (AppFeatures.PremiumUiEnabled &&
+            !_entitlements.Current.IsPremium &&
+            _sync.Accounts.Count >= FreeAccountLimit)
         {
             AccountStatus = "The free plan includes one connected account.";
 

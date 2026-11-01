@@ -238,7 +238,7 @@
                             <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Add an account" />
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Connect Google, Microsoft or CalDAV. The free plan includes one account; premium unlocks unlimited accounts." />
+                                Text="Connect Google, Microsoft or CalDAV." />
                             <TextBlock
                                 Style="{StaticResource SettingsCardDescriptionStyle}"
                                 Text="{x:Bind ViewModel.AccountStatus, Mode=OneWay}"
