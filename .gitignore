@@ -19,3 +19,5 @@ artifacts/
 # Source pack that this repo was initialised from; its contents live at the repo root.
 e2e-calendar-project-pack/
 e2e-calendar-project-pack.zip
+
+*.zip
