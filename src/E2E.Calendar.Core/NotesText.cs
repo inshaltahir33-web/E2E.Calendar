@@ -244,7 +244,7 @@ public static class NotesText
         var text = rtf.Trim();
         if (!text.StartsWith(@"{\rtf", StringComparison.Ordinal))
         {
-            return EscapeHtml(text).Replace("\n", "<br>", StringComparison.Ordinal);
+            return EscapeHtml(text);
         }
 
         var output = new StringBuilder(text.Length);
@@ -395,7 +395,7 @@ public static class NotesText
                     case "par":
                     case "line":
                         SyncFormat(output, ref applied, current);
-                        output.Append("<br>");
+                        output.Append('\n');
                         break;
                     case "tab":
                         SyncFormat(output, ref applied, current);
@@ -441,13 +441,7 @@ public static class NotesText
         }
 
         SyncFormat(output, ref applied, default);
-        var html = output.ToString();
-        while (html.EndsWith("<br>", StringComparison.Ordinal))
-        {
-            html = html[..^4];
-        }
-
-        return html.Trim();
+        return output.ToString().Trim();
     }
 
     /// <summary>Opens and closes inline tags so the emitted HTML matches the RTF run state.</summary>

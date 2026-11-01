@@ -79,6 +79,23 @@ public sealed class NotesTextTests
     }
 
     [Fact]
+    public void ToPlainText_treats_breaks_and_paragraphs_as_newlines()
+    {
+        var result = NotesText.ToPlainText("<p>First &lt;draft&gt;</p><div>Second<BR />Third</div>");
+
+        result.Should().Be("First <draft>\nSecond\nThird");
+    }
+
+    [Fact]
+    public void Editor_output_stores_line_breaks_as_newlines_not_break_tags()
+    {
+        var html = NotesText.RtfToHtml(NotesText.HtmlToRtf("<p>One<br>Two</p>"));
+
+        html.Should().NotContain("<br");
+        html.Should().Be("One\nTwo");
+    }
+
+    [Fact]
     public void Plain_authored_notes_survive_a_round_trip()
     {
         const string notes = "Call Ana\nBring the Q3 deck";

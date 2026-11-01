@@ -33,8 +33,9 @@ public sealed partial class EventDetailsCard : UserControl
         SetLocation(string.IsNullOrWhiteSpace(item.Location) ? details?.Location : item.Location);
         SetMeeting(details?.MeetingUrl);
 
-        var notes = details?.Notes;
-        NotesText.Text = notes ?? string.Empty;
+        // The x:Name "NotesText" shadows the helper class, so qualify the call.
+        var notes = E2E.Calendar.Core.NotesText.ToPlainText(details?.Notes);
+        NotesText.Text = notes;
         NotesHost.Visibility = string.IsNullOrWhiteSpace(notes) ? Visibility.Collapsed : Visibility.Visible;
     }
 
