@@ -25,7 +25,7 @@ public sealed class TrayService : IDisposable
     private const uint OpenCommand = 7;
     private const uint QuitCommand = 8;
 
-    private static readonly IReadOnlyList<TrayMenuEntry> Menu =
+    public static readonly IReadOnlyList<TrayMenuEntry> Menu =
     [
         new(NewEventCommand, "New event"),
         new(NewReminderCommand, "New reminder"),
@@ -198,7 +198,7 @@ public sealed class TrayService : IDisposable
             }
 
             var local = TimeZoneInfo.ConvertTime(nextTime.Value, _clock.LocalTimeZone);
-            _icon.SetTooltip($"Next: {nextTitle} {local:t}");
+            _icon.SetTooltip($"Next: {nextTitle} {local:HH:mm}");
         }
         catch (Exception ex)
         {
