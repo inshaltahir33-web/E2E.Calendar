@@ -223,13 +223,11 @@ public sealed partial class EventChipView : UserControl
             ? ThemeBrushes.Get(this, "ControlFillColorTransparentBrush")
             : chipBrushes.Fill;
 
-        TitleText.Foreground = isTickable
-            ? ThemeBrushes.Get(this, "App.TextPrimaryBrush")
-            : chipBrushes.Text;
-        TimeTextBlock.Foreground = isTickable
-            ? ThemeBrushes.Get(this, "App.TextSecondaryBrush")
-            : chipBrushes.Text;
-        TimeTextBlock.Opacity = 0.8;
+        // The block keeps the standard foreground so the calendar tint stays a light
+        // wash and text remains readable in both themes.
+        TitleText.Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush");
+        TimeTextBlock.Foreground = ThemeBrushes.Get(this, "App.TextSecondaryBrush");
+        TimeTextBlock.Opacity = 1;
 
         if (IsSelected)
         {

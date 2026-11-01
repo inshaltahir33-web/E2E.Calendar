@@ -83,6 +83,7 @@ public sealed partial class TimeGrid : UserControl
     private const int WeekViewMaxColumns = 3;
     private const int DayViewMaxColumns = 4;
     private const double MinChipHeight = 22;
+    private const double MaxDayBlockWidth = 640;
     private const double ResizeEdgeInPixels = 6;
     private const double SecondaryColumnWidth = 72;
     private const int SnapMinutes = 15;
@@ -887,7 +888,7 @@ public sealed partial class TimeGrid : UserControl
     {
         var chipBrushes = EventColorService.GetChipBrushes(item.Color, ActualTheme);
         var content = new Grid();
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var stripe = new Border { Background = chipBrushes.Stripe };
@@ -899,7 +900,7 @@ public sealed partial class TimeGrid : UserControl
             Text = item.Title,
             FontSize = Tokens.Double("FontSizeCaption", 12d),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = chipBrushes.Text,
+            Foreground = ThemeBrushes.Get(this, "App.TextPrimaryBrush"),
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 3, 4, 3),
@@ -1026,10 +1027,18 @@ public sealed partial class TimeGrid : UserControl
                         (placement.VisualEnd - placement.VisualStart).TotalHours * HourHeight - 2);
                 var columnCount = Math.Max(1, placement.ColumnCount);
                 var sliceWidth = _columnWidth / columnCount;
+                var blockWidth = Math.Max(24, sliceWidth - 2);
+
+                // A single day column can be very wide; keep one long event from
+                // stretching across the whole screen.
+                if (days.Count == 1)
+                {
+                    blockWidth = Math.Min(blockWidth, MaxDayBlockWidth);
+                }
 
                 Canvas.SetTop(chip, top);
                 Canvas.SetLeft(chip, (placement.Column * sliceWidth) + 1);
-                chip.Width = Math.Max(24, sliceWidth - 2);
+                chip.Width = blockWidth;
                 chip.Height = height;
                 canvas.Children.Add(chip);
             }
