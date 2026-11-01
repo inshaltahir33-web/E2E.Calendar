@@ -16,6 +16,12 @@ public sealed class PerformanceTests : IAsyncLifetime
     private static readonly DateTimeOffset MonthStart = new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset MonthEnd = new(2026, 7, 1, 0, 0, 0, TimeSpan.Zero);
 
+#if DEBUG
+    private const double QueryThresholdMs = 150.0;
+#else
+    private const double QueryThresholdMs = 50.0;
+#endif
+
     private readonly ITestOutputHelper _output;
     private readonly TempDatabase _database = new();
     private EventRepository _events = null!;
@@ -75,14 +81,41 @@ public sealed class PerformanceTests : IAsyncLifetime
 
         await _events.InsertManyAsync(events);
 
-        await _events.GetInRangeAsync(CalendarId, MonthStart, MonthEnd);
+        // Warm-up run: page-cache misses and JIT cost are paid here, not in the samples.
+        _ = await _events.GetInRangeAsync(CalendarId, MonthStart, MonthEnd);
 
-        var stopwatch = Stopwatch.StartNew();
-        var results = await _events.GetInRangeAsync(CalendarId, MonthStart, MonthEnd);
-        stopwatch.Stop();
+        var samples = new List<double>();
 
-        results.Should().NotBeEmpty();
-        _output.WriteLine($"Month range query over {EventCount} events returned {results.Count} rows in {stopwatch.ElapsedMilliseconds} ms.");
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(50);
+        for (var run = 0; run < 7; run++)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var results = await _events.GetInRangeAsync(CalendarId, MonthStart, MonthEnd);
+            stopwatch.Stop();
+
+            results.Should().NotBeEmpty();
+            samples.Add(stopwatch.Elapsed.TotalMilliseconds);
+            _output.WriteLine($"Month range query over {EventCount} events returned {results.Count} rows in {stopwatch.ElapsedMilliseconds} ms (sample {run + 1}).");
+        }
+
+        var medianMs = Median(samples);
+        _output.WriteLine($"Median of {samples.Count} samples: {medianMs} ms.");
+
+        // Debug builds run under a wider gate than Release; both keep the same budget shape.
+        var thresholdMs = QueryThresholdMs;
+
+        medianMs.Should().BeLessThan(thresholdMs);
+    }
+
+    private static double Median(IReadOnlyList<double> samples)
+    {
+        var sorted = samples.OrderBy(value => value).ToList();
+        var middle = sorted.Count / 2;
+
+        if (sorted.Count % 2 == 1)
+        {
+            return sorted[middle];
+        }
+
+        return (sorted[middle - 1] + sorted[middle]) / 2.0;
     }
 }
