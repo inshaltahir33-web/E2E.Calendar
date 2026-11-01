@@ -376,6 +376,7 @@ public partial class App : Application
                 services.AddSingleton<TrayIconService>();
                 services.AddSingleton<TrayService>();
                 services.AddSingleton<PowerResumeService>();
+                services.AddSingleton<FocusAssistService>();
                 services.AddTransient<Views.TrayFlyoutWindow>();
                 services.AddHostedService<UpdateCheckService>();
 
@@ -383,6 +384,7 @@ public partial class App : Application
                 // reminder loop after a toast Snooze/Done.
                 services.AddSingleton<ReminderNotificationService>();
                 services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ReminderNotificationService>());
+                services.AddSingleton<DailyDigestNotificationService>();
                 services.AddSingleton<ToastActivationService>();
 
                 services.AddSingleton(serviceProvider => new Db(
@@ -438,6 +440,7 @@ public partial class App : Application
                 services.AddSingleton<TodoService>();
                 services.AddSingleton<ReminderPlanner>();
                 services.AddSingleton<ReminderEngine>();
+                services.AddSingleton<DailyDigestService>();
                 // Store licensing reads the WinRT license; FreeEntitlementService stays the
                 // fallback for sideloaded/unpackaged builds and offline launches.
                 services.AddSingleton<FreeEntitlementService>();
@@ -481,6 +484,9 @@ public partial class App : Application
                 services.AddHostedService<AppStartupService>();
                 services.AddHostedService<NavigationRegistrationService>();
                 services.AddHostedService<ReminderNotificationService>();
+                // Starts after the migration in AppStartupService; keeps polling the
+                // digest time while the app sits in the tray.
+                services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<DailyDigestNotificationService>());
                 // Starts after AppStartupService so the database is migrated before the
                 // first subscription refresh pass runs.
                 services.AddHostedService<IcsSubscriptionRefreshService>();

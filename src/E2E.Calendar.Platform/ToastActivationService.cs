@@ -88,6 +88,12 @@ public sealed class ToastActivationService
                 return;
             }
 
+            if (string.Equals(action, "open-app", StringComparison.Ordinal))
+            {
+                OpenRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(instanceId))
             {
                 return;

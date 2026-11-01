@@ -421,7 +421,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
+                    <Border x:Name="DailyDigestCard" Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
                             <StackPanel Spacing="{StaticResource SpaceXS}">
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Daily digest" />
@@ -448,7 +448,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Style="{StaticResource SettingsCardStyle}">
+                    <Border x:Name="FocusAssistCard" Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource SpaceMD}">
                             <StackPanel Spacing="{StaticResource SpaceXS}">
                                 <TextBlock

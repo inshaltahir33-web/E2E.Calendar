@@ -2,6 +2,7 @@ using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.App.Views;
 using E2E.Calendar.Core.Abstractions;
 using E2E.Calendar.Core.Services;
+using E2E.Calendar.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -76,7 +77,8 @@ public sealed class NavigationRegistrationService : IHostedService
             NavigationKeys.Settings,
             _ => new SettingsView(
                 _services.GetRequiredService<SettingsViewModel>(),
-                _services.GetRequiredService<IDialogService>()));
+                _services.GetRequiredService<IDialogService>(),
+                _services.GetRequiredService<FocusAssistService>()));
 
         return Task.CompletedTask;
     }

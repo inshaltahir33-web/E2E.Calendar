@@ -21,6 +21,7 @@ public sealed class ReminderNotificationService : BackgroundService
     private readonly ReminderPlanner _planner;
     private readonly ReminderEngine _engine;
     private readonly ISettingsService _settings;
+    private readonly FocusAssistService _focusAssist;
     private readonly ILogger<ReminderNotificationService> _logger;
     private readonly SemaphoreSlim _wake = new(0, 1);
 
@@ -39,6 +40,7 @@ public sealed class ReminderNotificationService : BackgroundService
         ReminderPlanner planner,
         ReminderEngine engine,
         ISettingsService settings,
+        FocusAssistService focusAssist,
         ILogger<ReminderNotificationService> logger)
     {
         _alerts = alerts;
@@ -49,6 +51,7 @@ public sealed class ReminderNotificationService : BackgroundService
         _planner = planner;
         _engine = engine;
         _settings = settings;
+        _focusAssist = focusAssist;
         _logger = logger;
     }
 
@@ -121,6 +124,8 @@ public sealed class ReminderNotificationService : BackgroundService
             _logger.LogWarning(ex, "Reminder planning failed during startup.");
         }
 
+        var deferred = false;
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -140,6 +145,14 @@ public sealed class ReminderNotificationService : BackgroundService
                 if (delay < TimeSpan.Zero)
                 {
                     delay = TimeSpan.Zero;
+                }
+
+                // A deferred instance is still due, so without this floor the loop would
+                // wake immediately and re-check it in a hot spin for as long as Do Not
+                // Disturb is on. A wake (new or edited alert) still cuts the wait short.
+                if (deferred)
+                {
+                    delay = TimeSpan.FromSeconds(60);
                 }
 
                 // Wait for the next due time or for a wake (an alert was created or
@@ -162,7 +175,7 @@ public sealed class ReminderNotificationService : BackgroundService
                     else
                     {
                         await PlanAndScheduleAsync(stoppingToken);
-                        await ProcessDueAsync(stoppingToken, DuePass.Normal);
+                        deferred = await ProcessDueAsync(stoppingToken, DuePass.Normal);
                     }
                 }
                 finally
@@ -195,16 +208,19 @@ public sealed class ReminderNotificationService : BackgroundService
         _logger.LogInformation("Reminder plan: {Planned} instance(s) planned.", planned);
     }
 
-    private async Task ProcessDueAsync(CancellationToken cancellationToken, DuePass pass)
+    private async Task<bool> ProcessDueAsync(CancellationToken cancellationToken, DuePass pass)
     {
         var now = _clock.UtcNow;
         var due = await _alerts.GetPendingInstancesAsync(now, cancellationToken);
         if (due.Count == 0)
         {
-            return;
+            return false;
         }
 
         var missed = new List<AlertInstance>();
+        var focusAssistActive = _focusAssist.IsActive;
+        var criticalBreaksThrough = _settings.Current.CriticalBreaksThroughDoNotDisturb;
+        var deferred = false;
 
         foreach (var instance in due)
         {
@@ -238,19 +254,40 @@ public sealed class ReminderNotificationService : BackgroundService
                 continue;
             }
 
+            var (title, timeLabel, meetingUrl, ownerPriority) =
+                await GetOwnerSummaryAsync(instance, cancellationToken);
+            var alertPriority = await GetAlertPriorityAsync(instance, cancellationToken);
+            var priority = ownerPriority > alertPriority ? ownerPriority : alertPriority;
+
+            // Focus Assist: hold non-critical notifications (and critical ones when the
+            // user turned break-through off) as still-pending so they fire once Do Not
+            // Disturb ends instead of being silently dropped.
+            if (focusAssistActive && !(priority == Priority.Critical && criticalBreaksThrough))
+            {
+                deferred = true;
+                continue;
+            }
+
             if (!await _alerts.TryMarkFiredAsync(instance.Id, now, cancellationToken))
             {
                 continue;
             }
 
             _logger.LogInformation(
-                "Reminder fired: {InstanceId} at {FireAtUtc} (startup: {Startup}).",
+                "Reminder fired: {InstanceId} at {FireAtUtc} (startup: {Startup}, priority: {Priority}).",
                 instance.Id,
                 instance.FireAtUtc,
-                pass == DuePass.Startup);
+                pass == DuePass.Startup,
+                priority);
 
             await _engine.TryScheduleRepeatAsync(instance, now, cancellationToken);
-            await ShowToastAsync(instance, pass == DuePass.Startup ? "Missed reminder" : "Reminder");
+            ShowToast(
+                instance,
+                pass == DuePass.Startup ? "Missed reminder" : "Reminder",
+                title,
+                timeLabel,
+                meetingUrl,
+                priority);
         }
 
         if (missed.Count > 0)
@@ -262,6 +299,8 @@ public sealed class ReminderNotificationService : BackgroundService
                 count);
             ShowMissedSummary(count);
         }
+
+        return deferred;
     }
 
     private enum DuePass
@@ -271,14 +310,17 @@ public sealed class ReminderNotificationService : BackgroundService
         Resume,
     }
 
-    private async Task ShowToastAsync(AlertInstance instance, string heading)
+    private void ShowToast(
+        AlertInstance instance,
+        string heading,
+        string title,
+        string timeLabel,
+        string? meetingUrl,
+        Priority priority)
     {
         try
         {
-            var (title, timeLabel, meetingUrl, ownerPriority) =
-                await GetOwnerSummaryAsync(instance, CancellationToken.None);
-            var isHighPriority =
-                ownerPriority >= Priority.High || await IsAlertHighPriorityAsync(instance);
+            var isHighPriority = priority >= Priority.High;
 
             // AppNotificationBuilder is the supported way to attach actions without hand
             // writing toast XML. The body and the Open button open the app; every button
@@ -313,12 +355,22 @@ public sealed class ReminderNotificationService : BackgroundService
             // AppNotificationManager is the supported path without package identity. The
             // legacy ToastNotificationManager requires package identity or a Start menu
             // shortcut whose AppUserModelID matches the process.
-            AppNotificationManager.Default.Show(builder.BuildNotification());
+            var notification = builder.BuildNotification();
+
+            // Critical reminders ask Windows for a high-priority notification, which is
+            // what lets them through Focus Assist when the user allowed break-through.
+            if (priority == Priority.Critical)
+            {
+                notification.Priority = AppNotificationPriority.High;
+            }
+
+            AppNotificationManager.Default.Show(notification);
 
             _logger.LogInformation(
-                "Reminder toast shown for {InstanceId} (high priority: {IsHighPriority}).",
+                "Reminder toast shown for {InstanceId} (high priority: {IsHighPriority}, priority: {Priority}).",
                 instance.Id,
-                isHighPriority);
+                isHighPriority,
+                priority);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -385,17 +437,23 @@ public sealed class ReminderNotificationService : BackgroundService
             SnoozeChoice.TenMinutes);
     }
 
-    private async Task<bool> IsAlertHighPriorityAsync(AlertInstance instance)
+    private async Task<Priority> GetAlertPriorityAsync(
+        AlertInstance instance,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var alert = await _alerts.GetAlertByIdAsync(instance.AlertId);
-            return alert is { Priority: >= Priority.High };
+            var alert = await _alerts.GetAlertByIdAsync(instance.AlertId, cancellationToken);
+            return alert?.Priority ?? Priority.Normal;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not load the priority for alert instance {InstanceId}.", instance.Id);
-            return false;
+            return Priority.Normal;
         }
     }
 

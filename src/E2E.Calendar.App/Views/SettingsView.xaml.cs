@@ -4,6 +4,7 @@ using E2E.Calendar.App.Utilities;
 using E2E.Calendar.App.ViewModels;
 using E2E.Calendar.Core;
 using E2E.Calendar.Core.Models;
+using E2E.Calendar.Platform;
 using E2E.Calendar.Sync.Ics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,9 +20,13 @@ public sealed partial class SettingsView : UserControl
     private readonly (string Name, FrameworkElement Panel)[] _sections;
     private readonly IDialogService _dialogs;
 
-    public SettingsView(SettingsViewModel viewModel, IDialogService dialogs)
+    public SettingsView(
+        SettingsViewModel viewModel,
+        IDialogService dialogs,
+        FocusAssistService focusAssist)
     {
         ArgumentNullException.ThrowIfNull(dialogs);
+        ArgumentNullException.ThrowIfNull(focusAssist);
 
         ViewModel = viewModel;
         _dialogs = dialogs;
@@ -30,6 +35,14 @@ public sealed partial class SettingsView : UserControl
 
         BirthdayImportCard.Visibility = AppFeatures.SyncUiEnabled ? Visibility.Visible : Visibility.Collapsed;
         SectionAccounts.Visibility = Visibility.Collapsed;
+
+        // Leave no dead switches: hide each card when the platform cannot honour it.
+        DailyDigestCard.Visibility = DailyDigestNotificationService.IsSupported
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        FocusAssistCard.Visibility = focusAssist.IsSupported
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         // The panel array must mirror SettingsViewModel.Sections index for index, because the
         // selected index drives which panel is shown. Developer only exists when E2E_DEMO=1.
