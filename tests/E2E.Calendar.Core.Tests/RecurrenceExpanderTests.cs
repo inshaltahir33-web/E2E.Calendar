@@ -258,6 +258,18 @@ public sealed class RecurrenceExpanderTests
     }
 
     [Fact]
+    public void A_deleted_exception_is_ignored()
+    {
+        var exception = Exception("child-1", Utc(2026, 1, 7)) with { Deleted = true };
+
+        var occurrences = Expand(Master("FREQ=DAILY;COUNT=5"), new[] { exception });
+
+        occurrences.Should().HaveCount(5);
+        occurrences.Should().NotContain(o => o.IsException);
+        occurrences.Select(o => o.StartUtc).Should().Contain(Utc(2026, 1, 7));
+    }
+
+    [Fact]
     public void Occurrences_outside_the_requested_range_are_not_returned()
     {
         var occurrences = Expand(

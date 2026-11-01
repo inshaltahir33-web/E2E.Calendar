@@ -12,6 +12,7 @@ internal static class TimeGridInteractions
         EventEditorViewModel editor,
         IEventRepository events,
         IEventService eventService,
+        EventDeletionCoordinator deletions,
         ReminderQuickAdd reminders,
         EventDetailsPresenter details,
         Func<Task> refresh)
@@ -20,6 +21,7 @@ internal static class TimeGridInteractions
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(eventService);
+        ArgumentNullException.ThrowIfNull(deletions);
         ArgumentNullException.ThrowIfNull(reminders);
         ArgumentNullException.ThrowIfNull(details);
         ArgumentNullException.ThrowIfNull(refresh);
@@ -88,8 +90,11 @@ internal static class TimeGridInteractions
                     break;
 
                 case TimeGridItemAction.Delete:
-                    await eventService.SoftDeleteAsync(args.Item.Id);
-                    await refresh();
+                    if (await deletions.DeleteAsync(args.Item, grid.XamlRoot))
+                    {
+                        await refresh();
+                    }
+
                     break;
 
                 case TimeGridItemAction.ChangeColor:

@@ -47,6 +47,7 @@ public sealed partial class MainWindow : Window
     private readonly ScheduleExportService _scheduleExport;
     private readonly TodoService _todo;
     private readonly IDialogService _dialogs;
+    private readonly EventDeletionCoordinator _deletion;
     private Views.EventEditorView? _editorView;
     private bool _syncInProgress;
     private bool _rsvpInProgress;
@@ -129,7 +130,8 @@ public sealed partial class MainWindow : Window
         IcsService ics,
         ScheduleExportService scheduleExport,
         TodoService todo,
-        IDialogService dialogs)
+        IDialogService dialogs,
+        EventDeletionCoordinator deletion)
     {
         try
         {
@@ -150,6 +152,7 @@ public sealed partial class MainWindow : Window
             ArgumentNullException.ThrowIfNull(shellState);
             ArgumentNullException.ThrowIfNull(todo);
             ArgumentNullException.ThrowIfNull(dialogs);
+            ArgumentNullException.ThrowIfNull(deletion);
 
             ViewModel = viewModel;
             StateViewModel = stateViewModel;
@@ -172,6 +175,7 @@ public sealed partial class MainWindow : Window
             _scheduleExport = scheduleExport;
             _todo = todo;
             _dialogs = dialogs;
+            _deletion = deletion;
 
             this.InitializeComponent();
 
@@ -219,6 +223,7 @@ public sealed partial class MainWindow : Window
             EditorHost.KeyDown += OnEditorKeyDown;
 
             Snackbar.ActionInvoked += OnSnackbarAction;
+            _deletion.Deleted += OnEventDeleted;
 
             this.ExtendsContentIntoTitleBar = true;
             this.SetTitleBar(TitleBarElement);
@@ -1316,6 +1321,7 @@ public sealed partial class MainWindow : Window
         {
             await _editor.DeleteAsync();
 
+            _deletion.ForgetPending();
             ViewModel.RecordDeletion(_editor.EventId);
             await CloseEditorAsync();
             ViewModel.Status = "Event deleted";
@@ -1327,6 +1333,12 @@ public sealed partial class MainWindow : Window
             _logger.LogError(ex, "Failed to delete the event");
             ShowStatus("The event could not be deleted.", InfoBarSeverity.Error);
         }
+    }
+
+    private void OnEventDeleted(object? sender, EventArgs e)
+    {
+        ViewModel.Status = "Event deleted";
+        Snackbar.Show("Event deleted", "Undo");
     }
 
     private void ShowStatus(string message, InfoBarSeverity severity)
@@ -1638,6 +1650,12 @@ public sealed partial class MainWindow : Window
 
     private async Task UndoLastDeleteAsync()
     {
+        if (await _deletion.TryUndoAsync())
+        {
+            ViewModel.Status = "Event restored";
+            return;
+        }
+
         if (!ViewModel.CanUndoLastDelete)
         {
             return;

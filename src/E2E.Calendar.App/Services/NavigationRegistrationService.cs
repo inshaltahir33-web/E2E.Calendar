@@ -36,6 +36,7 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<IEventRepository>(),
                 _services.GetRequiredService<IEventService>(),
+                _services.GetRequiredService<EventDeletionCoordinator>(),
                 _services.GetRequiredService<ReminderQuickAdd>(),
                 _services.GetRequiredService<EventDetailsPresenter>()));
 
@@ -46,6 +47,7 @@ public sealed class NavigationRegistrationService : IHostedService
                 _services.GetRequiredService<EventEditorViewModel>(),
                 _services.GetRequiredService<IEventRepository>(),
                 _services.GetRequiredService<IEventService>(),
+                _services.GetRequiredService<EventDeletionCoordinator>(),
                 _services.GetRequiredService<ReminderQuickAdd>(),
                 _services.GetRequiredService<EventDetailsPresenter>()));
 

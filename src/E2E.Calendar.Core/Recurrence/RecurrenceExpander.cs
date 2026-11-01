@@ -34,6 +34,11 @@ public sealed class RecurrenceExpander : IRecurrenceExpander
 
         foreach (var exception in exceptions)
         {
+            if (exception.Deleted)
+            {
+                continue;
+            }
+
             if (exception.RecurrenceIdUtc is { } originalStart)
             {
                 exceptionByOriginalStart[originalStart] = exception;

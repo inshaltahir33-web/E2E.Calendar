@@ -432,6 +432,7 @@ public partial class App : Application
                 services.AddSingleton<CalendarService>();
                 services.AddSingleton<AgendaService>();
                 services.AddSingleton<RecurrenceEditService>();
+                services.AddSingleton<EventDeletionService>();
                 services.AddSingleton<IEventTemplateStore, EventTemplateRepository>();
                 services.AddSingleton<ReminderQuickAdd>();
                 services.AddSingleton<TodoService>();
@@ -474,6 +475,7 @@ public partial class App : Application
                 services.AddSingleton<MiniCalendarViewModel>();
                 services.AddSingleton<EventEditorViewModel>();
                 services.AddSingleton<Services.EventDetailsPresenter>();
+                services.AddSingleton<Services.EventDeletionCoordinator>();
                 services.AddSingleton<MainWindow>();
 
                 services.AddHostedService<AppStartupService>();
