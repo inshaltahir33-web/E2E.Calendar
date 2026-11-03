@@ -197,6 +197,12 @@ public sealed partial class MainWindow : Window
 
             this.InitializeComponent();
 
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+            if (File.Exists(iconPath))
+            {
+                this.AppWindow.SetIcon(iconPath);
+            }
+
             // Hard floor for the layout: below 900x600 the week grid stops being usable.
             if (this.AppWindow.Presenter is OverlappedPresenter presenter)
             {

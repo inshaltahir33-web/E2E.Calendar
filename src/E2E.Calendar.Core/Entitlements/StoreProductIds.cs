@@ -1,8 +1,9 @@
 namespace E2E.Calendar.Core.Entitlements;
 
 /// <summary>
-/// Microsoft Store product IDs. Replace each placeholder with the add-on's
-/// "product ID" (in-app offer token) from Partner Center before publishing.
+/// Microsoft Store add-on identifiers. These values are placeholders: real IDs must
+/// come from Partner Center before enabling premium (AppFeatures.PremiumUiEnabled).
+/// While premium is disabled the Store service never sends them to the Store.
 /// </summary>
 public static class StoreProductIds
 {

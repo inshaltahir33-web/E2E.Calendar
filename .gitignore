@@ -3,7 +3,11 @@ obj/
 .vs/
 *.user
 *.pfx
+*.cer
 *.snk
+*.msix
+*.msixbundle
+*.msixupload
 AppPackages/
 BundleArtifacts/
 secrets.json

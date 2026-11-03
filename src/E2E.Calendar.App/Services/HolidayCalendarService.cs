@@ -26,15 +26,13 @@ public sealed class HolidayCalendarService
         new("in", "India", "in.ics"),
     ];
 
-    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(5);
-
     private readonly ICalendarRepository _calendars;
     private readonly CalendarService _calendarCatalog;
     private readonly IEventRepository _events;
     private readonly IcsService _ics;
     private readonly IClock _clock;
     private readonly IEventQueryCache _cache;
-    private readonly HttpClient _httpClient;
+    private readonly HolidayOverrideClient _overrides;
 
     public HolidayCalendarService(
         ICalendarRepository calendars,
@@ -51,7 +49,7 @@ public sealed class HolidayCalendarService
         _ics = ics;
         _clock = clock;
         _cache = cache;
-        _httpClient = httpClient;
+        _overrides = new HolidayOverrideClient(httpClient);
     }
 
     public static string CalendarId(string countryCode) => $"holiday-{countryCode}";
@@ -61,6 +59,12 @@ public sealed class HolidayCalendarService
 
     public async Task<IReadOnlyList<HolidayOverride>> GetOverridesAsync(CancellationToken cancellationToken = default)
     {
+        // Placeholder or empty URL means remote overrides are off: no request, no cache IO.
+        if (!HolidayOverrideClient.IsConfigured(AppInfo.HolidayOverridesUrl))
+        {
+            return Array.Empty<HolidayOverride>();
+        }
+
         var cachePath = CachePath();
         var markerPath = MarkerPath();
         var today = _clock.UtcNow.Date;
@@ -182,6 +186,11 @@ public sealed class HolidayCalendarService
 
     public async Task RefreshEnabledAsync(CancellationToken cancellationToken = default)
     {
+        if (!HolidayOverrideClient.IsConfigured(AppInfo.HolidayOverridesUrl))
+        {
+            return;
+        }
+
         // Force a fresh download by clearing the daily marker.
         try
         {
@@ -216,27 +225,8 @@ public sealed class HolidayCalendarService
         }
     }
 
-    private async Task<string?> TryDownloadAsync(CancellationToken cancellationToken)
-    {
-        if (!Uri.TryCreate(AppFeatures.HolidayOverridesUrl, UriKind.Absolute, out var uri)
-            || uri.Scheme is not ("https" or "http"))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(DownloadTimeout);
-            using var response = await _httpClient.GetAsync(uri, timeoutCts.Token);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync(timeoutCts.Token);
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private Task<string?> TryDownloadAsync(CancellationToken cancellationToken) =>
+        _overrides.TryDownloadAsync(AppInfo.HolidayOverridesUrl, cancellationToken);
 
     private static IReadOnlyList<HolidayOverride>? TryParseOverrides(string json)
     {

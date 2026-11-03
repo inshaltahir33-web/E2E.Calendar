@@ -6,7 +6,7 @@
     AutomationProperties.Name="Premium plans"
     CloseButtonText="Not now"
     DefaultButton="Close"
-    Title="E2E Calendar Premium">
+    Title="Calendar Pro Premium">
 
     <StackPanel Spacing="{StaticResource SpaceMD}">
         <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind ViewModel.Status, Mode=OneWay}" />

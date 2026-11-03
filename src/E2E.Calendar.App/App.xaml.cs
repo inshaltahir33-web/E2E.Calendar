@@ -476,7 +476,12 @@ public partial class App : Application
                 // Store licensing reads the WinRT license; FreeEntitlementService stays the
                 // fallback for sideloaded/unpackaged builds and offline launches.
                 services.AddSingleton<FreeEntitlementService>();
-                services.AddSingleton<StoreEntitlementService>();
+                services.AddSingleton<StoreEntitlementService>(serviceProvider =>
+                    new StoreEntitlementService(
+                        serviceProvider.GetRequiredService<IClock>(),
+                        serviceProvider.GetRequiredService<FreeEntitlementService>(),
+                        serviceProvider.GetRequiredService<ILogger<StoreEntitlementService>>(),
+                        () => AppFeatures.PremiumUiEnabled));
                 services.AddSingleton<IEntitlementService>(serviceProvider =>
                     serviceProvider.GetRequiredService<StoreEntitlementService>());
                 services.AddSingleton<IPaywallService, PaywallService>();

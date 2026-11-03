@@ -193,7 +193,7 @@ public sealed class TrayService : IDisposable
 
             if (nextTime is null || string.IsNullOrWhiteSpace(nextTitle))
             {
-                _icon.SetTooltip("E2E Calendar");
+                _icon.SetTooltip("Calendar Pro");
                 return;
             }
 
@@ -203,7 +203,7 @@ public sealed class TrayService : IDisposable
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "The tray tooltip could not be refreshed.");
-            _icon.SetTooltip("E2E Calendar");
+            _icon.SetTooltip("Calendar Pro");
         }
     }
 

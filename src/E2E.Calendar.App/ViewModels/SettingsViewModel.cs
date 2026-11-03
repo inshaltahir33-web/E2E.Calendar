@@ -201,9 +201,23 @@ public sealed partial class SettingsViewModel : ObservableObject
         new("Windows Hello app lock", "Coming soon", "Coming soon", true),
     ];
 
-    public string AppVersion => "1.0.0 (local)";
+    public string AppName => AppInfo.DisplayName;
 
-    public string PrivacyPolicyUrl => AppFeatures.PrivacyPolicyUrl;
+    public string AppVersion => $"Version {AppInfo.Version}";
+
+    public string DeveloperLine => $"Developer: {AppInfo.Developer}";
+
+    public string SupportEmail => AppInfo.SupportEmail;
+
+    public string SupportUri => AppInfo.SupportUri;
+
+    public string PrivacyPolicyUrl => AppInfo.PrivacyPolicyUrl;
+
+    public string TermsOfUseUrl => AppInfo.TermsOfUseUrl;
+
+    public string RateUri => AppInfo.RateUri;
+
+    public string StoreUri => AppInfo.StoreUri;
 
     public string DatabaseSummary => "Stored on this device, encrypted with SQLCipher";
 
@@ -670,8 +684,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         StartAtLogin = StartupTaskService.IsEnabled(status);
         StartAtLoginNote = status switch
         {
-            StartupStatus.Unsupported => "Start at login is only available in the packaged (MSIX) build of E2E Calendar.",
-            StartupStatus.DisabledByUser => "Windows turned this off. Enable E2E Calendar in Windows Settings > Apps > Startup.",
+            StartupStatus.Unsupported => "Start at login is only available in the packaged (MSIX) build of Calendar Pro.",
+            StartupStatus.DisabledByUser => "Windows turned this off. Enable Calendar Pro in Windows Settings > Apps > Startup.",
             StartupStatus.DisabledByPolicy => "Start at login is turned off by your organization's policy.",
             StartupStatus.EnabledByPolicy => "Start at login is turned on by your organization's policy.",
             _ => null,

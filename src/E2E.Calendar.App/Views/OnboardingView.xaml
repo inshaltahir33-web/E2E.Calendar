@@ -25,7 +25,7 @@
             <TextBlock
                 HorizontalAlignment="Center"
                 Style="{ThemeResource SubtitleTextBlockStyle}"
-                Text="Welcome to E2E Calendar"
+                Text="Welcome to Calendar Pro"
                 TextAlignment="Center" />
             <TextBlock
                 MaxWidth="380"

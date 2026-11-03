@@ -55,7 +55,7 @@ public sealed partial class OnboardingView : UserControl
             DefaultButton = ContentDialogButton.Primary,
         };
 
-        AutomationProperties.SetName(dialog, "Welcome to E2E Calendar");
+        AutomationProperties.SetName(dialog, "Welcome to Calendar Pro");
 
         view.Completed += (_, _) =>
         {

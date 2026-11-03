@@ -171,7 +171,7 @@ public sealed class TrayIconService : IDisposable
         {
             var data = CreateIconData();
             data.szTip = string.IsNullOrWhiteSpace(tooltip)
-                ? "E2E Calendar"
+                ? "Calendar Pro"
                 : (tooltip.Length > 127 ? tooltip[..127] : tooltip);
 
             Shell_NotifyIcon(NimModify, ref data);
@@ -280,7 +280,7 @@ public sealed class TrayIconService : IDisposable
         uFlags = NifMessage | NifIcon | NifTip | NifShowTip,
         uCallbackMessage = TrayCallbackMessage,
         hIcon = _icon,
-        szTip = "E2E Calendar",
+        szTip = "Calendar Pro",
         szInfo = string.Empty,
         szInfoTitle = string.Empty,
     };

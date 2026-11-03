@@ -403,18 +403,30 @@ public sealed partial class SettingsView : UserControl
         }
     }
 
-    private async void OnPrivacyPolicyClick(object sender, RoutedEventArgs e)
+    private async void OnOpenLinkClick(object sender, RoutedEventArgs e)
     {
+        if (sender is not FrameworkElement { Tag: string target } ||
+            !Uri.TryCreate(target, UriKind.Absolute, out var uri))
+        {
+            return;
+        }
+
+        var opened = false;
         try
         {
-            await Launcher.LaunchUriAsync(new Uri(ViewModel.PrivacyPolicyUrl));
+            opened = await Launcher.LaunchUriAsync(uri);
         }
-        catch (Exception ex)
+        catch (Exception)
+        {
+            // Fall through to the message below, which still shows the target.
+        }
+
+        if (!opened)
         {
             await _dialogs.ShowAsync(new ContentDialog
             {
-                Title = "Privacy policy could not be opened",
-                Content = ex.Message,
+                Title = "Link could not be opened",
+                Content = target,
                 CloseButtonText = "Close",
             });
         }

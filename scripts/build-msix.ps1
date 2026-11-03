@@ -76,12 +76,19 @@ function New-PackagePayload {
     if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
     New-Item -ItemType Directory -Path $publishDir | Out-Null
 
-    dotnet publish $appProject -c $Configuration -r ("win-" + $Arch.ToLowerInvariant()) --self-contained true -o $publishDir -p:Platform=$Arch
+    # Send tool output to the host so the function returns only $publishDir;
+    # otherwise those lines become arguments to makeappx.
+    dotnet publish $appProject -c $Configuration -r ("win-" + $Arch.ToLowerInvariant()) --self-contained true -o $publishDir -p:Platform=$Arch -p:DebugType=None -p:DebugSymbols=false | Out-Host
 
-    Copy-Item (Join-Path $packaging "Package.appxmanifest") (Join-Path $publishDir "AppxManifest.xml") -Force
+    # makeappx treats the package as neutral unless the manifest declares an architecture,
+    # so stamp the target here; the source manifest stays architecture-agnostic.
+    $appxArchitecture = if ($Arch -eq "ARM64") { "arm64" } else { "x64" }
+    $manifest = Get-Content (Join-Path $packaging "Package.appxmanifest") -Raw
+    $manifest = $manifest -replace '<Identity Name=', "<Identity ProcessorArchitecture=`"$appxArchitecture`" Name="
+    Set-Content (Join-Path $publishDir "AppxManifest.xml") $manifest -Encoding UTF8
 
-    & (Join-Path $packaging "Generate-Assets.ps1") -OutputDirectory (Join-Path $packaging "Assets")
-    New-Item -ItemType Directory -Path (Join-Path $publishDir "Assets") | Out-Null
+    & (Join-Path $packaging "Generate-Assets.ps1") -OutputDirectory (Join-Path $packaging "Assets") | Out-Host
+    New-Item -ItemType Directory -Path (Join-Path $publishDir "Assets") -Force | Out-Null
     Copy-Item (Join-Path $packaging "Assets\*.png") (Join-Path $publishDir "Assets") -Force
 
     $referenced = Select-String -Path (Join-Path $packaging "Package.appxmanifest") -Pattern 'Assets\\[A-Za-z0-9._-]+\.(png|jpg|jpeg)' -AllMatches |
@@ -157,10 +164,16 @@ foreach ($arch in @("x64", "ARM64")) {
 }
 
 Write-Host ":: Bundling x64 and ARM64 packages into E2E.Calendar.msixbundle"
-& $makeAppx bundle /d $output /p (Join-Path $output "E2E.Calendar.msixbundle") /o
+# makeappx bundle needs a directory holding only the .msix payloads; pointing it at
+# the artifact root would try to parse the unpacked publish folders as packages.
+$bundleInput = Join-Path $output "bundle-input"
+New-Item -ItemType Directory -Path $bundleInput | Out-Null
+Copy-Item -Path $bundles -Destination $bundleInput
+& $makeAppx bundle /d $bundleInput /p (Join-Path $output "E2E.Calendar.msixbundle") /o
 if ($LASTEXITCODE -ne 0) {
     throw "makeappx.exe failed with exit code $LASTEXITCODE while bundling."
 }
+Remove-Item -LiteralPath $bundleInput -Recurse -Force
 
 Write-Host "Unsigned MSIX bundle created at $(Join-Path $output 'E2E.Calendar.msixbundle')"
 Write-Host "MSIX per-architecture artifacts: $($bundles -join ', ')"

@@ -20,13 +20,18 @@ New-Item -ItemType Directory -Path $package | Out-Null
 dotnet publish $appProject -c $Configuration -r ("win-" + $Architecture.ToLowerInvariant()) --self-contained true -o $package -p:Platform=$Architecture
 
 $manifestPath = Join-Path $PSScriptRoot "Package.appxmanifest"
-Copy-Item $manifestPath (Join-Path $package "AppxManifest.xml") -Force
+# makeappx treats the package as neutral unless the manifest declares an architecture,
+# so stamp the target here; the source manifest stays architecture-agnostic.
+$packageArchitecture = if ($Architecture -eq "ARM64") { "arm64" } else { "x64" }
+$manifest = Get-Content $manifestPath -Raw
+$manifest = $manifest -replace '<Identity Name=', "<Identity ProcessorArchitecture=`"$packageArchitecture`" Name="
+Set-Content (Join-Path $package "AppxManifest.xml") $manifest -Encoding UTF8
 
-# Image assets live next to the manifest and are produced from the single SVG placeholder
-# by Generate-Assets.ps1. Only the PNGs are packaged; the manifest cannot reference SVG.
+# Image assets live next to the manifest and are produced from the master artwork
+# (packaging/appicon.png) by Generate-Assets.ps1. Only the PNGs are packaged.
 & (Join-Path $PSScriptRoot "Generate-Assets.ps1")
 $assets = Join-Path $package "Assets"
-New-Item -ItemType Directory -Path $assets | Out-Null
+New-Item -ItemType Directory -Path $assets -Force | Out-Null
 Copy-Item (Join-Path $PSScriptRoot "Assets\*.png") $assets -Force
 
 # Fail the build instead of shipping a package whose manifest points at missing images.

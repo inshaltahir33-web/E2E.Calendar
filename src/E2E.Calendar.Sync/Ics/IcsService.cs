@@ -30,7 +30,7 @@ public sealed class IcsService
         var builder = new StringBuilder();
         builder.Append("BEGIN:VCALENDAR\r\n");
         builder.Append("VERSION:2.0\r\n");
-        builder.Append("PRODID:-//E2E Dev//E2E Calendar//EN\r\n");
+        builder.Append("PRODID:-//BindLabs//Calendar Pro//EN\r\n");
         builder.Append("CALSCALE:GREGORIAN\r\n");
         builder.Append("METHOD:PUBLISH\r\n");
 

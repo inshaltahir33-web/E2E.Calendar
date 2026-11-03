@@ -7,7 +7,7 @@
     xmlns:ctrl="using:E2E.Calendar.App.Controls"
     xmlns:views="using:E2E.Calendar.App.Views"
     xmlns:vm="using:E2E.Calendar.App.ViewModels"
-    Title="E2E Calendar">
+    Title="Calendar Pro">
 
     <!-- FIX 1: KeyboardAcceleratorPlacementMode="Hidden" removes the stray "N" badge that followed the cursor. -->
     <Grid
@@ -93,6 +93,12 @@
                 Orientation="Horizontal"
                 VerticalAlignment="Center"
                 Spacing="{StaticResource SpaceXS}">
+                <Image
+                    Width="20"
+                    Height="20"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Calendar Pro"
+                    Source="ms-appx:///Assets/AppIcon.png" />
                 <Button
                     x:Name="SidebarToggleButton"
                     Click="OnSidebarToggleClick"

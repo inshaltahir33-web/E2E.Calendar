@@ -51,7 +51,7 @@ def build_ics(country_code: str, country_name: str) -> str:
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//E2E Dev//E2E Calendar//EN",
+        "PRODID:-//BindLabs//Calendar Pro//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
     ]

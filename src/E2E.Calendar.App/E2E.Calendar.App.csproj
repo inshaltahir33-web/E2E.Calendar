@@ -1,57 +1,63 @@
-<Project Sdk="Microsoft.NET.Sdk">
+  <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>E2E.Calendar.App</RootNamespace>
-    <AssemblyName>E2E.Calendar.App</AssemblyName>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Platforms>x64;ARM64</Platforms>
-    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
-    <UseWinUI>true</UseWinUI>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <WindowsPackageType>None</WindowsPackageType>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
-    <UserSecretsId>e2e-calendar-app-local</UserSecretsId>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-  </PropertyGroup>
- 
+    <PropertyGroup>
+      <OutputType>WinExe</OutputType>
+      <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+      <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+      <RootNamespace>E2E.Calendar.App</RootNamespace>
+      <AssemblyName>E2E.Calendar.App</AssemblyName>
+      <ApplicationManifest>app.manifest</ApplicationManifest>
+      <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+      <Platforms>x64;ARM64</Platforms>
+      <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+      <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+      <UseWinUI>true</UseWinUI>
+      <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+      <WindowsPackageType>None</WindowsPackageType>
+      <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+      <UserSecretsId>e2e-calendar-app-local</UserSecretsId>
+      <Version>1.0.0</Version>
+      <AssemblyVersion>1.0.0.0</AssemblyVersion>
+      <FileVersion>1.0.0.0</FileVersion>
+    </PropertyGroup>
+  
 
-  <!-- Google two-way sync stays behind a build flag (default off) until the Google OAuth
-       app is approved. Enable with: dotnet build -p:GoogleSyncEnabled=true -->
-  <PropertyGroup>
-    <GoogleSyncEnabled Condition="'$(GoogleSyncEnabled)' == ''">false</GoogleSyncEnabled>
-    <DefineConstants Condition="'$(GoogleSyncEnabled)' == 'true'">$(DefineConstants);GoogleSyncEnabled</DefineConstants>
-  </PropertyGroup>
+    <!-- Google two-way sync stays behind a build flag (default off) until the Google OAuth
+        app is approved. Enable with: dotnet build -p:GoogleSyncEnabled=true -->
+    <PropertyGroup>
+      <GoogleSyncEnabled Condition="'$(GoogleSyncEnabled)' == ''">false</GoogleSyncEnabled>
+      <DefineConstants Condition="'$(GoogleSyncEnabled)' == 'true'">$(DefineConstants);GoogleSyncEnabled</DefineConstants>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Manifest Include="$(ApplicationManifest)" />
-  </ItemGroup>
+    <ItemGroup>
+      <Manifest Include="$(ApplicationManifest)" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\Holidays\*.ics" />
-  </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Include="Resources\Holidays\*.ics" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260804001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
-    <PackageReference Include="Serilog" Version="4.4.0" />
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-  </ItemGroup>
+    <ItemGroup>
+      <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\E2E.Calendar.Core\E2E.Calendar.Core.csproj" />
-    <ProjectReference Include="..\E2E.Calendar.Data\E2E.Calendar.Data.csproj" />
-    <ProjectReference Include="..\E2E.Calendar.Platform\E2E.Calendar.Platform.csproj" />
-    <ProjectReference Include="..\E2E.Calendar.Sync\E2E.Calendar.Sync.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
+      <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260804001" />
+      <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+      <PackageReference Include="Serilog" Version="4.4.0" />
+      <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+      <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    </ItemGroup>
 
-</Project>
+    <ItemGroup>
+      <ProjectReference Include="..\E2E.Calendar.Core\E2E.Calendar.Core.csproj" />
+      <ProjectReference Include="..\E2E.Calendar.Data\E2E.Calendar.Data.csproj" />
+      <ProjectReference Include="..\E2E.Calendar.Platform\E2E.Calendar.Platform.csproj" />
+      <ProjectReference Include="..\E2E.Calendar.Sync\E2E.Calendar.Sync.csproj" />
+    </ItemGroup>
+
+  </Project>

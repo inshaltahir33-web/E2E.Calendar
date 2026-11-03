@@ -18,12 +18,17 @@ public sealed class StoreEntitlementService : IEntitlementService
     private readonly IClock _clock;
     private readonly FreeEntitlementService _fallback;
     private readonly ILogger<StoreEntitlementService> _logger;
+    private readonly Func<bool> _purchasesEnabled;
     private readonly object _gate = new();
 
     private StoreContext? _context;
     private EntitlementSnapshot _current;
 
-    public StoreEntitlementService(IClock clock, FreeEntitlementService fallback, ILogger<StoreEntitlementService> logger)
+    public StoreEntitlementService(
+        IClock clock,
+        FreeEntitlementService fallback,
+        ILogger<StoreEntitlementService> logger,
+        Func<bool>? purchasesEnabled = null)
     {
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(fallback);
@@ -32,6 +37,9 @@ public sealed class StoreEntitlementService : IEntitlementService
         _clock = clock;
         _fallback = fallback;
         _logger = logger;
+        // Disabled by default: the placeholder add-on IDs must never reach the Store
+        // unless the app explicitly wires the premium feature flag in.
+        _purchasesEnabled = purchasesEnabled ?? (static () => false);
         _current = EntitlementSnapshot.Free(clock.UtcNow);
     }
 
@@ -108,6 +116,11 @@ public sealed class StoreEntitlementService : IEntitlementService
 
     public async Task<IReadOnlyList<StoreProductInfo>> GetProductsAsync(CancellationToken cancellationToken = default)
     {
+        if (!_purchasesEnabled())
+        {
+            return [];
+        }
+
         var context = _context;
 
         if (context is null)
@@ -159,6 +172,11 @@ public sealed class StoreEntitlementService : IEntitlementService
 
     public async Task<PurchaseResult> PurchaseAsync(string productId, CancellationToken cancellationToken = default)
     {
+        if (!_purchasesEnabled())
+        {
+            return new PurchaseResult(PurchaseStatus.NotAvailable, Current, "Premium is not available.");
+        }
+
         if (!StoreProductIds.All.Contains(productId))
         {
             return new PurchaseResult(PurchaseStatus.NotAvailable, Current, "Unknown product.");

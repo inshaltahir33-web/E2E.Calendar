@@ -152,7 +152,7 @@
                                 <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="Start at login" />
                                 <TextBlock
                                     Style="{StaticResource SettingsCardDescriptionStyle}"
-                                    Text="Launch E2E Calendar minimized to the tray when you sign in, so reminders keep firing."
+                                    Text="Launch Calendar Pro minimized to the tray when you sign in, so reminders keep firing."
                                     TextWrapping="Wrap" />
                                 <TextBlock
                                     Style="{StaticResource SettingsCardDescriptionStyle}"
@@ -724,7 +724,7 @@
 
                     <TextBlock
                         Style="{StaticResource SettingsCardDescriptionStyle}"
-                        Text="Purchases open in the Microsoft Store version of E2E Calendar."
+                        Text="Purchases open in the Microsoft Store version of Calendar Pro."
                         Visibility="{x:Bind ViewModel.IsPurchaseUnavailable, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
 
@@ -794,16 +794,62 @@
                 <StackPanel x:Name="SectionAbout" Spacing="{StaticResource SpaceMD}" Visibility="Collapsed">
                     <TextBlock Style="{StaticResource SettingsSectionHeaderStyle}" Text="About" />
                     <Border Style="{StaticResource SettingsCardStyle}">
-                        <StackPanel Spacing="{StaticResource SpaceXS}">
-                            <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="E2E Calendar" />
-                            <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind ViewModel.AppVersion, Mode=OneTime}" />
-                            <TextBlock
-                                Style="{StaticResource SettingsCardDescriptionStyle}"
-                                Text="Offline-first calendar, reminders and tasks for Windows." />
-                            <HyperlinkButton
-                                Content="Privacy policy"
-                                AutomationProperties.Name="Privacy policy"
-                                Click="OnPrivacyPolicyClick" />
+                        <StackPanel Spacing="{StaticResource SpaceMD}">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource SpaceMD}">
+                                <Image
+                                    Width="48"
+                                    Height="48"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{x:Bind ViewModel.AppName, Mode=OneTime}"
+                                    Source="ms-appx:///Assets/AppIcon.png" />
+                                <StackPanel
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Spacing="{StaticResource SpaceXXS}">
+                                    <TextBlock Style="{StaticResource SettingsCardTitleStyle}" Text="{x:Bind ViewModel.AppName, Mode=OneTime}" />
+                                    <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind ViewModel.AppVersion, Mode=OneTime}" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Spacing="{StaticResource SpaceXXS}">
+                                <TextBlock Style="{StaticResource SettingsCardDescriptionStyle}" Text="{x:Bind ViewModel.DeveloperLine, Mode=OneTime}" />
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceXXS}">
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource SettingsCardDescriptionStyle}"
+                                        Text="Support:" />
+                                    <HyperlinkButton
+                                        Padding="0"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.Name="Email BindLabs support"
+                                        Click="OnOpenLinkClick"
+                                        Content="{x:Bind ViewModel.SupportEmail, Mode=OneTime}"
+                                        Tag="{x:Bind ViewModel.SupportUri, Mode=OneTime}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceMD}">
+                                <HyperlinkButton
+                                    AutomationProperties.Name="Privacy Policy"
+                                    Click="OnOpenLinkClick"
+                                    Content="Privacy Policy"
+                                    Tag="{x:Bind ViewModel.PrivacyPolicyUrl, Mode=OneTime}" />
+                                <HyperlinkButton
+                                    AutomationProperties.Name="Terms of Use"
+                                    Click="OnOpenLinkClick"
+                                    Content="Terms of Use"
+                                    Tag="{x:Bind ViewModel.TermsOfUseUrl, Mode=OneTime}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpaceSM}">
+                                <Button
+                                    AutomationProperties.Name="Rate this app"
+                                    Click="OnOpenLinkClick"
+                                    Content="Rate this app"
+                                    Tag="{x:Bind ViewModel.RateUri, Mode=OneTime}" />
+                                <Button
+                                    AutomationProperties.Name="View Calendar Pro in the Microsoft Store"
+                                    Click="OnOpenLinkClick"
+                                    Content="View in Store"
+                                    Tag="{x:Bind ViewModel.StoreUri, Mode=OneTime}" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>
